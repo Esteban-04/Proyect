@@ -1,7 +1,7 @@
 export const translations = {
   es: {
     // Login & Register & Reset
-    welcomeMessage: 'Bienvenido a nuestro sistema de soporte',
+    welcomeMessage: 'Bienvenido a nuestro sistema',
     emailLabel: 'Correo electrónico',
     passwordLabel: 'contraseña',
     loginButton: 'ACCESO',
@@ -37,7 +37,7 @@ export const translations = {
   },
   en: {
     // Login & Register & Reset
-    welcomeMessage: 'Welcome to our support system',
+    welcomeMessage: 'Welcome to our system',
     emailLabel: 'Email address',
     passwordLabel: 'password',
     loginButton: 'ACCESS',
