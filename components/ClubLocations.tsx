@@ -1,0 +1,60 @@
+import React from 'react';
+import { Country } from '../types';
+import ClubButton from './ClubButton';
+import { useLanguage } from '../context/LanguageContext';
+
+interface ClubLocationsProps {
+  country: Country;
+  selectedClub: string | null;
+  onClubSelect: (club: string) => void;
+  onBack: () => void;
+}
+
+const ClubLocations: React.FC<ClubLocationsProps> = ({
+  country,
+  selectedClub,
+  onClubSelect,
+  onBack,
+}) => {
+  const { t } = useLanguage();
+
+  return (
+    <div>
+      <div className="flex justify-center items-center mb-8">
+        <img
+          src={`https://flagcdn.com/w40/${country.code}.png`}
+          alt={`${country.name} flag`}
+          className="w-10 h-auto mr-4 rounded-sm shadow-md"
+        />
+        <h2 className="text-2xl font-bold text-gray-800">
+            {country.name}
+        </h2>
+      </div>
+      <p className="text-gray-600 mb-6 text-center font-bold">
+        {t('selectClubPrompt')}
+      </p>
+
+      <div className="grid grid-cols-1 gap-4 max-w-md mx-auto">
+        {country.clubs?.map((clubName) => (
+            <ClubButton
+              key={clubName}
+              name={clubName}
+              isSelected={selectedClub === clubName}
+              onClick={onClubSelect}
+            />
+        ))}
+      </div>
+      
+      <div className="mt-8 text-center">
+        <button
+          onClick={onBack}
+          className="bg-blue-800 text-white font-semibold py-2 px-6 rounded-lg shadow-md hover:bg-blue-900 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-700"
+        >
+          {t('backButton')}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default ClubLocations;
