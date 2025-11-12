@@ -10,7 +10,7 @@ interface CountryCardProps {
 const CountryCard: React.FC<CountryCardProps> = ({ country, isSelected, onSelect }) => {
   // Conditionally apply a dark blue border if the card is selected.
   const borderClass = isSelected 
-    ? 'border-2 border-blue-800' 
+    ? 'border-2 border-[#0d1a2e]' 
     : 'border border-gray-200';
 
   return (

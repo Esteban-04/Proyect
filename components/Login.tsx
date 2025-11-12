@@ -164,7 +164,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         value={registerName}
                         onChange={(e) => setRegisterName(e.target.value)}
                         placeholder={t('fullNamePlaceholder')}
-                        className="block w-full pl-10 pr-3 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-blue-500 sm:text-sm"
+                        className="block w-full pl-10 pr-3 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-[#0d1a2e] sm:text-sm"
                         disabled={!!registerMessage}
                     />
                 </div>
@@ -181,7 +181,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         value={registerEmail}
                         onChange={(e) => setRegisterEmail(e.target.value)}
                         placeholder={t('emailPlaceholder')}
-                        className="block w-full pl-10 pr-3 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-blue-500 sm:text-sm"
+                        className="block w-full pl-10 pr-3 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-[#0d1a2e] sm:text-sm"
                         disabled={!!registerMessage}
                     />
                 </div>
@@ -203,7 +203,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         value={registerPassword}
                         onChange={(e) => setRegisterPassword(e.target.value)}
                         placeholder={t('passwordPlaceholder')}
-                        className="block w-full pl-10 pr-10 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-blue-500 sm:text-sm"
+                        className="block w-full pl-10 pr-10 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-[#0d1a2e] sm:text-sm"
                         disabled={!!registerMessage}
                     />
                 </div>
@@ -211,7 +211,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     <button
                         type="submit"
                         disabled={!!registerMessage}
-                        className="w-full flex justify-center py-2 px-4 border border-blue-500 rounded-md shadow-sm text-sm font-medium text-blue-500 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full flex justify-center py-2 px-4 border border-[#0d1a2e] rounded-md shadow-sm text-sm font-medium text-[#0d1a2e] bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0d1a2e] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {t('registerButton')}
                     </button>
@@ -221,7 +221,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 <a
                     href="#"
                     onClick={(e) => { e.preventDefault(); navigateTo('login'); }}
-                    className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                    className="text-xs font-medium text-[#0d1a2e] hover:text-[#1a2b4e]"
                 >
                     {t('backToLoginLink')}
                 </a>
@@ -262,14 +262,14 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         value={resetEmail}
                         onChange={(e) => setResetEmail(e.target.value)}
                         placeholder={t('emailPlaceholder')}
-                        className="block w-full pl-10 pr-3 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-blue-500 sm:text-sm"
+                        className="block w-full pl-10 pr-3 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-[#0d1a2e] sm:text-sm"
                     />
                 </div>
 
                 <div>
                     <button
                         type="submit"
-                        className="w-full flex justify-center py-2 px-4 border border-blue-500 rounded-md shadow-sm text-sm font-medium text-blue-500 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        className="w-full flex justify-center py-2 px-4 border border-[#0d1a2e] rounded-md shadow-sm text-sm font-medium text-[#0d1a2e] bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0d1a2e]"
                     >
                         {t('sendLinkButton')}
                     </button>
@@ -279,7 +279,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 <a
                     href="#"
                     onClick={(e) => { e.preventDefault(); navigateTo('login'); }}
-                    className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                    className="text-xs font-medium text-[#0d1a2e] hover:text-[#1a2b4e]"
                 >
                     {t('backToLoginLink')}
                 </a>
@@ -311,7 +311,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder={t('emailPlaceholder')}
-                    className="block w-full pl-10 pr-3 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-blue-500 sm:text-sm"
+                    className="block w-full pl-10 pr-3 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-[#0d1a2e] sm:text-sm"
                 />
             </div>
             
@@ -333,7 +333,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={t('passwordPlaceholder')}
-                    className="block w-full pl-10 pr-10 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-blue-500 sm:text-sm"
+                    className="block w-full pl-10 pr-10 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-[#0d1a2e] sm:text-sm"
                 />
             </div>
 
@@ -344,7 +344,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <div>
                 <button
                     type="submit"
-                    className="w-full flex justify-center py-2 px-4 border border-blue-500 rounded-md shadow-sm text-sm font-medium text-blue-500 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    className="w-full flex justify-center py-2 px-4 border border-[#0d1a2e] rounded-md shadow-sm text-sm font-medium text-[#0d1a2e] bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0d1a2e]"
                 >
                     {t('loginButton')}
                 </button>
@@ -355,7 +355,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <a
                 href="#"
                 onClick={(e) => { e.preventDefault(); navigateTo('forgotPassword'); }}
-                className="font-medium text-blue-600 hover:text-blue-700"
+                className="font-medium text-[#0d1a2e] hover:text-[#1a2b4e]"
             >
                 {t('forgotPasswordButton')}
             </a>
@@ -363,7 +363,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
         <div className="text-center text-sm">
             <p className="text-gray-600">
-                {t('registerPrompt')} <a href="#" onClick={(e) => { e.preventDefault(); navigateTo('register'); }} className="font-medium text-blue-600 hover:text-blue-700">{t('registerLink')}</a>.
+                {t('registerPrompt')} <a href="#" onClick={(e) => { e.preventDefault(); navigateTo('register'); }} className="font-medium text-[#0d1a2e] hover:text-[#1a2b4e]">{t('registerLink')}</a>.
             </p>
         </div>
     </div>

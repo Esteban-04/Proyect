@@ -63,7 +63,7 @@ const App: React.FC = () => {
 
   return (
     <div className="bg-gray-50 min-h-screen font-sans">
-       <header className="bg-blue-800 shadow-md">
+       <header className="shadow-md" style={{ backgroundColor: '#0d1a2e' }}>
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
                 <h1 className="text-xl md:text-2xl font-bold text-white">SALTEX GROUP</h1>
@@ -71,21 +71,21 @@ const App: React.FC = () => {
                     <div className="flex items-center text-white text-sm font-medium">
                        <button 
                          onClick={() => setLanguage('es')}
-                         className={`px-2 py-1 rounded-md transition-colors duration-200 ${language === 'es' ? 'bg-white text-blue-800' : 'hover:bg-blue-700'}`}
+                         className={`px-2 py-1 rounded-md transition-colors duration-200 ${language === 'es' ? 'bg-white text-[#0d1a2e]' : 'hover:bg-gray-700'}`}
                        >
                          ES
                        </button>
-                       <span className="mx-1 text-blue-600">|</span>
+                       <span className="mx-1 text-gray-500">|</span>
                        <button
                          onClick={() => setLanguage('en')}
-                         className={`px-2 py-1 rounded-md transition-colors duration-200 ${language === 'en' ? 'bg-white text-blue-800' : 'hover:bg-blue-700'}`}
+                         className={`px-2 py-1 rounded-md transition-colors duration-200 ${language === 'en' ? 'bg-white text-[#0d1a2e]' : 'hover:bg-gray-700'}`}
                        >
                          EN
                        </button>
                     </div>
                     <button
                         onClick={handleLogout}
-                        className="bg-white text-blue-800 font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-800 focus:ring-white text-sm"
+                        className="bg-white text-[#0d1a2e] font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0d1a2e] focus:ring-white text-sm"
                     >
                         {t('logoutButton')}
                     </button>

@@ -399,7 +399,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({
       <div className="mt-8 text-center">
         <button
           onClick={onBack}
-          className="bg-blue-800 text-white font-semibold py-2 px-6 rounded-lg shadow-md hover:bg-blue-900 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-700"
+          className="bg-[#0d1a2e] text-white font-semibold py-2 px-6 rounded-lg shadow-md hover:bg-[#1a2b4e] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0d1a2e]"
         >
           {t('backButton')}
         </button>
