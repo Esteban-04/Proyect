@@ -116,14 +116,14 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     <div className="absolute top-4 right-4 flex items-center text-sm font-medium">
       <button
         onClick={() => setLanguage('es')}
-        className={`px-2 py-1 rounded-md transition-colors duration-200 ${language === 'es' ? 'bg-blue-800 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+        className={`px-2 py-1 rounded-md transition-colors duration-200 ${language === 'es' ? 'bg-[#0d1a2e] text-cyan-200' : 'text-gray-500 hover:bg-gray-100'}`}
       >
         ES
       </button>
-      <span className="mx-1 text-gray-300">|</span>
+      <span className="mx-1 text-gray-400">|</span>
       <button
         onClick={() => setLanguage('en')}
-        className={`px-2 py-1 rounded-md transition-colors duration-200 ${language === 'en' ? 'bg-blue-800 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+        className={`px-2 py-1 rounded-md transition-colors duration-200 ${language === 'en' ? 'bg-[#0d1a2e] text-cyan-200' : 'text-gray-500 hover:bg-gray-100'}`}
       >
         EN
       </button>
@@ -136,7 +136,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         <div className="relative w-full max-w-md bg-white rounded-xl shadow-2xl p-8 space-y-6 z-10">
             {languageSwitcher}
             <div className="flex justify-center pt-8">
-                <SaltexLogo className="h-12 w-auto text-blue-800" />
+                <SaltexLogo className="h-12 w-auto" />
             </div>
             <h2 className="text-center text-xl font-semibold text-gray-700">{t('createAccountTitle')}</h2>
             
@@ -236,7 +236,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         <div className="relative w-full max-w-md bg-white rounded-xl shadow-2xl p-8 space-y-6 z-10">
             {languageSwitcher}
             <div className="flex justify-center pt-8">
-                <SaltexLogo className="h-12 w-auto text-blue-800" />
+                <SaltexLogo className="h-12 w-auto" />
             </div>
             <h2 className="text-center text-xl font-semibold text-gray-700">{t('resetPasswordTitle')}</h2>
             
@@ -293,7 +293,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     <div className="relative w-full max-w-md bg-white rounded-xl shadow-2xl p-8 space-y-6 z-10">
         {languageSwitcher}
         <div className="flex justify-center pt-8">
-            <SaltexLogo className="h-12 w-auto text-blue-800" />
+            <SaltexLogo className="h-12 w-auto" />
         </div>
         <h2 className="text-center text-xl font-semibold text-gray-700">{t('welcomeMessage')}</h2>
         

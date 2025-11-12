@@ -7,16 +7,19 @@ export const SaltexLogo: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     {...props}
     preserveAspectRatio="xMidYMid meet"
   >
-    <g fill="#004494">
+    <g>
       <text 
         x="50%" 
         y="50%" 
         dominantBaseline="middle"
         textAnchor="middle"
         fontFamily="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
-        fontSize="65" 
+        fontSize="55" 
         fontWeight="700"
         letterSpacing="2"
+        fill="#0d1a2e"
+        stroke="#a5f3fc"
+        strokeWidth="0.5"
       >
         SALTEX GROUP
       </text>

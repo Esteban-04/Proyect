@@ -19,6 +19,23 @@ const codeSnippets = [
   'opacity: 0.5;',
 ];
 
+const ipAddresses = [
+  '192.168.1.1',
+  '10.0.0.1',
+  '172.16.0.10',
+  '203.0.113.42',
+  '198.51.100.0',
+  '8.8.8.8',
+  '1.1.1.1',
+  '127.0.0.1',
+  '255.255.255.0',
+  '192.168.12.10',
+  '192.168.15.20',
+  '10.1.2.3',
+];
+
+const displayItems = [...codeSnippets, ...ipAddresses];
+
 interface Snippet {
   id: number;
   code: string;
@@ -39,7 +56,7 @@ const CodeBackground: React.FC = () => {
     for (let i = 0; i < snippetCount; i++) {
       generatedSnippets.push({
         id: i,
-        code: codeSnippets[Math.floor(Math.random() * codeSnippets.length)],
+        code: displayItems[Math.floor(Math.random() * displayItems.length)],
         top: `${Math.random() * 100}%`,
         left: `${Math.random() * 100}%`,
         opacity: Math.random() * 0.2 + 0.1, // Faint opacity
