@@ -3,9 +3,9 @@ export const translations = {
     // Login & Register & Reset
     welcomeMessage: 'Bienvenido a nuestro sistema',
     emailLabel: 'Correo electrónico',
-    passwordLabel: 'contraseña',
+    passwordLabel: 'Contraseña',
     loginButton: 'ACCESO',
-    forgotPasswordButton: '¿HAS OLVIDADO TU CONTRASEÑA?',
+    forgotPasswordButton: '¿Olvidaste tu contraseña?',
     registerPrompt: '¿Aún no tienes una cuenta? Regístrate',
     registerLink: 'aquí',
     loginErrorIncorrectCredentials: 'Usuario o contraseña incorrectos.',
@@ -39,9 +39,9 @@ export const translations = {
     // Login & Register & Reset
     welcomeMessage: 'Welcome to our system',
     emailLabel: 'Email address',
-    passwordLabel: 'password',
+    passwordLabel: 'Password',
     loginButton: 'ACCESS',
-    forgotPasswordButton: 'FORGOT YOUR PASSWORD?',
+    forgotPasswordButton: 'Forgot your password?',
     registerPrompt: "Don't have an account yet? Register",
     registerLink: 'here',
     loginErrorIncorrectCredentials: 'Incorrect username or password.',

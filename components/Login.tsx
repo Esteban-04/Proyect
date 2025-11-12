@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { UserIcon, EyeIcon, EyeOffIcon, LockClosedIcon } from '../assets/icons';
 import { SaltexLogo } from '../assets/saltex-logo';
-import { UserIcon, EyeIcon, EyeOffIcon } from '../assets/icons';
 import { useLanguage } from '../context/LanguageContext';
 
 interface LoginProps {
@@ -17,7 +17,7 @@ interface User {
 type ErrorKey = 'loginErrorIncorrectCredentials' | 'registerErrorEmailExists';
 
 const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
-  const { t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   // State for different views
   const [view, setView] = useState<'login' | 'forgotPassword' | 'register'>('login');
 
@@ -111,13 +111,32 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       setRegisterMessage('');
       setView(targetView);
   }
+  
+  const languageSwitcher = (
+    <div className="absolute top-4 right-4 flex items-center text-sm font-medium">
+      <button
+        onClick={() => setLanguage('es')}
+        className={`px-2 py-1 rounded-md transition-colors duration-200 ${language === 'es' ? 'bg-blue-800 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+      >
+        ES
+      </button>
+      <span className="mx-1 text-gray-300">|</span>
+      <button
+        onClick={() => setLanguage('en')}
+        className={`px-2 py-1 rounded-md transition-colors duration-200 ${language === 'en' ? 'bg-blue-800 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+      >
+        EN
+      </button>
+    </div>
+  );
 
   // --- Render Register View ---
   if (view === 'register') {
       return (
-        <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-8 space-y-6 z-10">
+        <div className="relative w-full max-w-md bg-white rounded-xl shadow-2xl p-8 space-y-6 z-10">
+            {languageSwitcher}
             <div className="flex justify-center">
-                <SaltexLogo className="h-12 w-auto" />
+                <SaltexLogo className="h-16 w-auto text-blue-800" />
             </div>
             <h2 className="text-center text-xl font-semibold text-gray-700">{t('createAccountTitle')}</h2>
             
@@ -167,6 +186,9 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     />
                 </div>
                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <LockClosedIcon className="h-5 w-5 text-gray-400" />
+                    </div>
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                         <button type="button" onClick={() => setShowRegisterPassword(!showRegisterPassword)} className="text-gray-400 hover:text-gray-500">
                             {showRegisterPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
@@ -181,7 +203,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         value={registerPassword}
                         onChange={(e) => setRegisterPassword(e.target.value)}
                         placeholder={t('passwordPlaceholder')}
-                        className="block w-full pr-10 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-blue-500 sm:text-sm"
+                        className="block w-full pl-10 pr-10 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-blue-500 sm:text-sm"
                         disabled={!!registerMessage}
                     />
                 </div>
@@ -211,9 +233,10 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   // --- Render Forgot Password View ---
   if (view === 'forgotPassword') {
     return (
-        <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-8 space-y-6 z-10">
+        <div className="relative w-full max-w-md bg-white rounded-xl shadow-2xl p-8 space-y-6 z-10">
+            {languageSwitcher}
             <div className="flex justify-center">
-                <SaltexLogo className="h-12 w-auto" />
+                <SaltexLogo className="h-16 w-auto text-blue-800" />
             </div>
             <h2 className="text-center text-xl font-semibold text-gray-700">{t('resetPasswordTitle')}</h2>
             
@@ -267,17 +290,17 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
   // --- Render Login View ---
   return (
-    <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-8 space-y-6 z-10">
+    <div className="relative w-full max-w-md bg-white rounded-xl shadow-2xl p-8 space-y-6 z-10">
+        {languageSwitcher}
         <div className="flex justify-center">
-            <SaltexLogo className="h-12 w-auto" />
+            <SaltexLogo className="h-16 w-auto text-blue-800" />
         </div>
         <h2 className="text-center text-xl font-semibold text-gray-700">{t('welcomeMessage')}</h2>
         
         <form onSubmit={handleLoginSubmit} className="space-y-6">
             <div className="relative">
-                <label htmlFor="username" className="text-xs text-gray-500 absolute -top-4 left-0">{t('emailLabel')}</label>
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                     <UserIcon className="h-5 w-5 text-gray-400" />
+                    <UserIcon className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                     id="username"
@@ -287,12 +310,15 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
+                    placeholder={t('emailPlaceholder')}
                     className="block w-full pl-10 pr-3 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-blue-500 sm:text-sm"
                 />
             </div>
             
             <div className="relative">
-                 <label htmlFor="password" className="text-xs text-gray-500 absolute -top-4 left-0">{t('passwordLabel')}</label>
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <LockClosedIcon className="h-5 w-5 text-gray-400" />
+                </div>
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-gray-400 hover:text-gray-500">
                         {showPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
@@ -306,12 +332,13 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full pr-10 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-blue-500 sm:text-sm"
+                    placeholder={t('passwordPlaceholder')}
+                    className="block w-full pl-10 pr-10 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-blue-500 sm:text-sm"
                 />
             </div>
 
              {error && (
-                <p className="text-center text-xs text-red-600">{t(error)}</p>
+                <p className="text-center text-xs text-red-600 -mt-2">{t(error)}</p>
             )}
 
             <div>
@@ -324,13 +351,14 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             </div>
         </form>
 
-        <div>
-            <button
-                 onClick={() => navigateTo('forgotPassword')}
-                 className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        <div className="text-center text-sm">
+            <a
+                href="#"
+                onClick={(e) => { e.preventDefault(); navigateTo('forgotPassword'); }}
+                className="font-medium text-blue-600 hover:text-blue-700"
             >
                 {t('forgotPasswordButton')}
-            </button>
+            </a>
         </div>
 
         <div className="text-center text-sm">
