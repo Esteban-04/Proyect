@@ -6,7 +6,7 @@ import ClubLocations from './components/ClubLocations';
 import FinalSelection from './components/FinalSelection';
 import Login from './components/Login';
 import { useLanguage } from './context/LanguageContext';
-import { NETWORK_BACKGROUND_IMAGE } from './assets/network-background';
+import CodeBackground from './components/CodeBackground';
 
 // Main App Component
 const App: React.FC = () => {
@@ -52,10 +52,10 @@ const App: React.FC = () => {
   if (!isAuthenticated) {
     return (
       <div 
-        className="relative min-h-screen font-sans flex items-center justify-center p-4 bg-cover bg-center"
-        style={{ backgroundImage: `url(${NETWORK_BACKGROUND_IMAGE})` }}
+        className="min-h-screen font-sans flex items-center justify-center p-4 relative overflow-hidden"
+        style={{ backgroundColor: '#0d1a2e' }}
       >
-        <div className="absolute inset-0 bg-black opacity-60 z-0"></div>
+        <CodeBackground />
         <Login onLoginSuccess={handleLoginSuccess} />
       </div>
     );

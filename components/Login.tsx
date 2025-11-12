@@ -135,8 +135,8 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       return (
         <div className="relative w-full max-w-md bg-white rounded-xl shadow-2xl p-8 space-y-6 z-10">
             {languageSwitcher}
-            <div className="flex justify-center">
-                <SaltexLogo className="h-16 w-auto text-blue-800" />
+            <div className="flex justify-center pt-8">
+                <SaltexLogo className="h-12 w-auto text-blue-800" />
             </div>
             <h2 className="text-center text-xl font-semibold text-gray-700">{t('createAccountTitle')}</h2>
             
@@ -235,8 +235,8 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     return (
         <div className="relative w-full max-w-md bg-white rounded-xl shadow-2xl p-8 space-y-6 z-10">
             {languageSwitcher}
-            <div className="flex justify-center">
-                <SaltexLogo className="h-16 w-auto text-blue-800" />
+            <div className="flex justify-center pt-8">
+                <SaltexLogo className="h-12 w-auto text-blue-800" />
             </div>
             <h2 className="text-center text-xl font-semibold text-gray-700">{t('resetPasswordTitle')}</h2>
             
@@ -292,8 +292,8 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   return (
     <div className="relative w-full max-w-md bg-white rounded-xl shadow-2xl p-8 space-y-6 z-10">
         {languageSwitcher}
-        <div className="flex justify-center">
-            <SaltexLogo className="h-16 w-auto text-blue-800" />
+        <div className="flex justify-center pt-8">
+            <SaltexLogo className="h-12 w-auto text-blue-800" />
         </div>
         <h2 className="text-center text-xl font-semibold text-gray-700">{t('welcomeMessage')}</h2>
         
