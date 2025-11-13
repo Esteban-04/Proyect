@@ -5,9 +5,9 @@ export const DhlLogo: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <rect width="200" height="60" fill="#FFCC00"/>
     <text 
       x="100" 
-      y="35" 
+      y="42" 
       fontFamily="'Delivery', sans-serif" 
-      fontSize="40" 
+      fontSize="50" 
       fontWeight="bold" 
       fill="#D40511" 
       textAnchor="middle"
