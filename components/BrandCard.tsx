@@ -3,9 +3,10 @@ import React from 'react';
 interface BrandCardProps {
   name: string;
   onClick: () => void;
+  className?: string;
 }
 
-const BrandCard: React.FC<BrandCardProps> = ({ name, onClick }) => {
+const BrandCard: React.FC<BrandCardProps> = ({ name, onClick, className }) => {
   const lowerCaseName = name.toLowerCase();
   
   let backgroundClass = 'bg-white';
@@ -29,7 +30,7 @@ const BrandCard: React.FC<BrandCardProps> = ({ name, onClick }) => {
   return (
     <div
       onClick={onClick}
-      className={`${backgroundClass} p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer flex flex-col items-center justify-center text-center border-2 border-transparent ${hoverBorderClass}`}
+      className={`${backgroundClass} p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer flex flex-col items-center justify-center text-center ${hoverBorderClass} ${className ?? 'border-2 border-transparent'}`}
       style={{ minHeight: '200px' }}
     >
       <span className={`${textClass} ${fontStyling}`}>
