@@ -181,7 +181,7 @@ const App: React.FC = () => {
   };
   
   return (
-    <div className="bg-gray-50 min-h-screen font-sans">
+    <div className="bg-gray-50 min-h-screen font-sans flex flex-col">
        <header className="shadow-md" style={{ backgroundColor: '#0d1a2e' }}>
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
@@ -213,7 +213,7 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="flex items-center justify-center p-4 mt-4">
+      <main className="flex-grow flex items-center justify-center p-4">
         <div className="w-full max-w-5xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8">
             {renderContent()}
         </div>
