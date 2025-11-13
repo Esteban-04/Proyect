@@ -17,6 +17,7 @@ const BrandCard: React.FC<BrandCardProps> = ({ name, onClick }) => {
     backgroundClass = 'bg-[#FFCC00]';
     textClass = 'text-[#D40511]';
     hoverBorderClass = 'hover:border-[#D40511]';
+    fontSizeClass = 'text-3xl';
   } else if (lowerCaseName === 'pricesmart') {
     backgroundClass = 'bg-[#0d1a2e]';
     textClass = 'text-white';

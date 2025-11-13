@@ -2,7 +2,6 @@ import React from 'react';
 import { Country } from '../types';
 import { REMOTE_DESKTOP_ICON } from '../assets/remote-desktop-icon';
 import { useLanguage } from '../context/LanguageContext';
-import { DhlLogo } from '../assets/dhl-logo';
 
 // --- Helper Components & Interfaces ---
 
@@ -16,7 +15,8 @@ interface ServerDetails {
 
 interface ServerInfo {
   server1: ServerDetails;
-  server2: ServerDetails;
+  // FIX: Made server2 optional to handle clubs with only one server.
+  server2?: ServerDetails;
   server3?: ServerDetails;
   server4?: ServerDetails;
   server5?: ServerDetails;
@@ -391,17 +391,22 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({
     <div className="w-full">
       <div className="flex justify-center items-center text-center mb-8">
         {isDhl ? (
-          <DhlLogo className="w-20 h-auto mr-4" />
+          <h2 className="flex items-baseline flex-wrap justify-center">
+            <span className="text-5xl font-black italic text-[#D40511] tracking-tighter mr-2">{country.name}</span>
+            <span className="text-2xl md:text-3xl font-bold text-gray-800">- {clubName}</span>
+          </h2>
         ) : (
-          <img
-              src={`https://flagcdn.com/w40/${country.code}.png`}
-              alt={`${country.name} flag`}
-              className="w-10 h-auto mr-4 rounded-sm shadow-md"
-          />
+          <>
+            <img
+                src={`https://flagcdn.com/w40/${country.code}.png`}
+                alt={`${country.name} flag`}
+                className="w-10 h-auto mr-4 rounded-sm shadow-md"
+            />
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-800">
+              {country.name} - {clubName}
+            </h2>
+          </>
         )}
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-800">
-          {country.name} - {clubName}
-        </h2>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
