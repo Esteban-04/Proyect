@@ -393,7 +393,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({
         {isDhl ? (
           <h2 className="flex items-baseline flex-wrap justify-center">
             <span className="text-5xl font-black italic text-[#D40511] tracking-tighter mr-2">{country.name}</span>
-            <span className="text-2xl md:text-3xl font-bold text-gray-800">- {clubName}</span>
+            <span className="text-5xl font-bold text-gray-800">- {clubName}</span>
           </h2>
         ) : (
           <>

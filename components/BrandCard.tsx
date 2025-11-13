@@ -23,7 +23,7 @@ const BrandCard: React.FC<BrandCardProps> = ({ name, onClick, className }) => {
   } else if (lowerCaseName === 'pricesmart') {
     backgroundClass = 'bg-[#0d1a2e]';
     textClass = 'text-white';
-    hoverBorderClass = 'hover:border-white';
+    hoverBorderClass = 'hover:border-gray-400';
     fontStyling = 'font-bold text-5xl tracking-wide';
   }
 
