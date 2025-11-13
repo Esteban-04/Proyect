@@ -2,6 +2,7 @@ import React from 'react';
 import { Country } from '../types';
 import ClubButton from './ClubButton';
 import { useLanguage } from '../context/LanguageContext';
+import { DhlLogo } from '../assets/dhl-logo';
 
 interface ClubLocationsProps {
   country: Country;
@@ -17,15 +18,20 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
   onBack,
 }) => {
   const { t } = useLanguage();
+  const isDhl = country.code === 'dhl';
 
   return (
     <div>
       <div className="flex justify-center items-center mb-8">
-        <img
-          src={`https://flagcdn.com/w40/${country.code}.png`}
-          alt={`${country.name} flag`}
-          className="w-10 h-auto mr-4 rounded-sm shadow-md"
-        />
+        {isDhl ? (
+          <DhlLogo className="w-20 h-auto mr-4" />
+        ) : (
+          <img
+            src={`https://flagcdn.com/w40/${country.code}.png`}
+            alt={`${country.name} flag`}
+            className="w-10 h-auto mr-4 rounded-sm shadow-md"
+          />
+        )}
         <h2 className="text-2xl font-bold text-gray-800">
             {country.name}
         </h2>

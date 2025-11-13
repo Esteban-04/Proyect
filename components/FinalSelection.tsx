@@ -2,6 +2,7 @@ import React from 'react';
 import { Country } from '../types';
 import { REMOTE_DESKTOP_ICON } from '../assets/remote-desktop-icon';
 import { useLanguage } from '../context/LanguageContext';
+import { DhlLogo } from '../assets/dhl-logo';
 
 // --- Helper Components & Interfaces ---
 
@@ -156,7 +157,7 @@ const serverData: ClubServerData = {
     server2: { ip: '192.168.13.20', user: 'admin', teamviewerId: '307 986 008', teamviewerPassword: '@l3ss21++' },
   },
   'Barranquilla': {
-    server1: { ip: '192.168.11.10', user: 'administrator', teamviewerId: '1 279 617 762', teamviewerPassword: '@l3ss21++' },
+    server1: { ip: '192.168.11.10', user: 'administrator', teamviewerId: '1 626 036 641', teamviewerPassword: '@l3ss21++' },
     server2: { ip: '192.168.11.20', user: 'administrator', teamviewerId: '1 289 199 790', teamviewerPassword: '@l3ss21++' },
     server3: { ip: '192.168.11.30', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
   },
@@ -304,6 +305,22 @@ const serverData: ClubServerData = {
     server3: { ip: '192.168.15.30', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
     server4: { ip: '192.168.15.40', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
   },
+  'Intexzona': {
+    server1: { ip: '10.20.1.10', user: 'dhl_admin', teamviewerId: '2 123 456 789' },
+    server2: { ip: '10.20.1.20', user: 'dhl_admin', teamviewerId: '2 123 456 790' },
+  },
+  'San Carlos II': {
+    server1: { ip: '10.20.2.10', user: 'dhl_admin', teamviewerId: '2 223 456 789' },
+    server2: { ip: '10.20.2.20', user: 'dhl_admin', teamviewerId: '2 223 456 790' },
+  },
+  'Easy': {
+    server1: { ip: '10.20.3.10', user: 'dhl_admin', teamviewerId: '2 323 456 789' },
+  },
+  'PLC': {
+    server1: { ip: '10.20.4.10', user: 'dhl_admin', teamviewerId: '2 423 456 789' },
+    server2: { ip: '10.20.4.20', user: 'dhl_admin', teamviewerId: '2 423 456 790' },
+    server3: { ip: '10.20.4.30', user: 'dhl_admin', teamviewerId: '2 423 456 791' },
+  },
 };
 
 // TeamViewer Icon Component
@@ -360,6 +377,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({
 }) => {
   const { t } = useLanguage();
   const clubData = serverData[clubName] || serverData['Cali - Cañas Gordas']; // Fallback
+  const isDhl = country.code === 'dhl';
   
   // Create an array of servers from the data object to map over
   const servers = Object.entries(clubData)
@@ -372,11 +390,15 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({
   return (
     <div className="w-full">
       <div className="flex justify-center items-center text-center mb-8">
-        <img
-            src={`https://flagcdn.com/w40/${country.code}.png`}
-            alt={`${country.name} flag`}
-            className="w-10 h-auto mr-4 rounded-sm shadow-md"
-        />
+        {isDhl ? (
+          <DhlLogo className="w-20 h-auto mr-4" />
+        ) : (
+          <img
+              src={`https://flagcdn.com/w40/${country.code}.png`}
+              alt={`${country.name} flag`}
+              className="w-10 h-auto mr-4 rounded-sm shadow-md"
+          />
+        )}
         <h2 className="text-2xl md:text-3xl font-bold text-gray-800">
           {country.name} - {clubName}
         </h2>

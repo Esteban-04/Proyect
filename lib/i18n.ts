@@ -20,14 +20,16 @@ export const translations = {
     emailPlaceholder: 'Correo electrónico',
     passwordPlaceholder: 'Contraseña',
     registerButton: 'REGISTRARSE',
-    registerSuccessMessage: '¡Registro exitoso! Ahora puedes iniciar sesión.',
+    registerSuccessMessage: '¡Registro exitoso! Se ha enviado un correo de confirmación. Por favor, revisa tu bandeja de entrada.',
     registerErrorEmailExists: 'Este correo electrónico ya está registrado.',
 
     // Main App
     logoutButton: 'Cerrar Sesión',
+    selectBrandTitle: 'Selecciona una empresa para continuar',
     allCountriesTitle: 'Todos los países',
     selectClubPrompt: 'Selecciona una sede para continuar.',
     backButton: 'Volver',
+    noLocationsMessage: 'No hay sedes de DHL disponibles por el momento.',
 
     // Final Selection
     remoteDesktopLabel: 'Escritorio Remoto:',
@@ -56,14 +58,16 @@ export const translations = {
     emailPlaceholder: 'Email address',
     passwordPlaceholder: 'Password',
     registerButton: 'REGISTER',
-    registerSuccessMessage: 'Registration successful! You can now log in.',
+    registerSuccessMessage: 'Registration successful! A confirmation email has been sent. Please check your inbox.',
     registerErrorEmailExists: 'This email address is already registered.',
 
     // Main App
     logoutButton: 'Logout',
+    selectBrandTitle: 'Select a company to continue',
     allCountriesTitle: 'All countries',
     selectClubPrompt: 'Select a location to continue.',
     backButton: 'Back',
+    noLocationsMessage: 'No DHL locations are available at this time.',
 
     // Final Selection
     remoteDesktopLabel: 'Remote Desktop:',

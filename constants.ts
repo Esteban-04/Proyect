@@ -33,3 +33,10 @@ export const COUNTRIES: Country[] = [
     ] 
   },
 ];
+
+export const DHL_DATA: Country = {
+  name: 'DHL',
+  code: 'dhl', // Special code for DHL
+  count: 4,
+  clubs: ['Intexzona', 'San Carlos II', 'Easy', 'PLC'],
+};
