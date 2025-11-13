@@ -11,18 +11,19 @@ const BrandCard: React.FC<BrandCardProps> = ({ name, onClick }) => {
   let backgroundClass = 'bg-white';
   let textClass = 'text-gray-800';
   let hoverBorderClass = 'hover:border-[#0d1a2e]';
-  let fontSizeClass = 'text-2xl';
+  let fontStyling = 'font-bold text-2xl tracking-wide';
 
   if (lowerCaseName === 'dhl') {
     backgroundClass = 'bg-[#FFCC00]';
     textClass = 'text-[#D40511]';
     hoverBorderClass = 'hover:border-[#D40511]';
-    fontSizeClass = 'text-3xl';
+    // Match the style from ClubLocations for a consistent, bold look
+    fontStyling = 'text-5xl font-black italic tracking-tighter';
   } else if (lowerCaseName === 'pricesmart') {
     backgroundClass = 'bg-[#0d1a2e]';
     textClass = 'text-white';
     hoverBorderClass = 'hover:border-white';
-    fontSizeClass = 'text-3xl';
+    fontStyling = 'font-bold text-3xl tracking-wide';
   }
 
   return (
@@ -31,7 +32,7 @@ const BrandCard: React.FC<BrandCardProps> = ({ name, onClick }) => {
       className={`${backgroundClass} p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer flex flex-col items-center justify-center text-center border-2 border-transparent ${hoverBorderClass}`}
       style={{ minHeight: '200px' }}
     >
-      <span className={`${textClass} font-bold ${fontSizeClass} tracking-wide`}>
+      <span className={`${textClass} ${fontStyling}`}>
         {name}
       </span>
     </div>
