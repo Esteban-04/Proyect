@@ -321,6 +321,9 @@ const serverData: ClubServerData = {
     server2: { ip: '10.20.4.20', user: 'dhl_admin', teamviewerId: '2 423 456 790' },
     server3: { ip: '10.20.4.30', user: 'dhl_admin', teamviewerId: '2 423 456 791' },
   },
+  'Rio Negro': {
+    server1: { ip: '10.20.5.10', user: 'dhl_admin', teamviewerId: '2 523 456 789' },
+  },
 };
 
 // TeamViewer Icon Component
