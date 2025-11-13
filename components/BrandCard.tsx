@@ -23,7 +23,7 @@ const BrandCard: React.FC<BrandCardProps> = ({ name, onClick }) => {
     backgroundClass = 'bg-[#0d1a2e]';
     textClass = 'text-white';
     hoverBorderClass = 'hover:border-white';
-    fontStyling = 'font-bold text-3xl tracking-wide';
+    fontStyling = 'font-bold text-5xl tracking-wide';
   }
 
   return (
