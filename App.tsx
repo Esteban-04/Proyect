@@ -63,7 +63,6 @@ const App: React.FC = () => {
   const otherCountries = COUNTRIES.filter(c => c.code !== 'co');
 
   const showFinalSelection = !!selectedClub;
-  const isBrandSelectionView = !selectedBrand;
 
   if (!isAuthenticated) {
     return (
@@ -80,7 +79,7 @@ const App: React.FC = () => {
   // --- Brand Selection View ---
   const brandSelectionView = (
     <div>
-      <p className="text-white mb-8 text-center font-semibold text-xl">{t('selectBrandTitle')}</p>
+      <p className="text-gray-600 mb-8 text-center font-semibold text-xl">{t('selectBrandTitle')}</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-2xl mx-auto">
         <BrandCard
           name="PriceSmart"
@@ -216,7 +215,7 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-grow flex items-center justify-center p-4">
-        <div className={`w-full max-w-5xl mx-auto rounded-xl shadow-lg p-6 md:p-8 ${isBrandSelectionView ? 'bg-[#0d1a2e]' : 'bg-white'}`}>
+        <div className="w-full max-w-5xl mx-auto rounded-xl shadow-lg p-6 md:p-8 bg-white">
             {renderContent()}
         </div>
       </main>
