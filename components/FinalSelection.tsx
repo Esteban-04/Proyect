@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Country } from '../types';
 import { REMOTE_DESKTOP_ICON } from '../assets/remote-desktop-icon';
 import { useLanguage } from '../context/LanguageContext';
@@ -15,7 +15,6 @@ interface ServerDetails {
 
 interface ServerInfo {
   server1: ServerDetails;
-  // FIX: Made server2 optional to handle clubs with only one server.
   server2?: ServerDetails;
   server3?: ServerDetails;
   server4?: ServerDetails;
@@ -335,10 +334,13 @@ const TeamViewerIcon: React.FC = () => (
 );
 
 // Sub-component for a single information card
-const InfoCard: React.FC<{ title: string; details: ServerDetails }> = ({ title, details }) => {
+const InfoCard: React.FC<{ title: string; details: ServerDetails; onClick?: () => void }> = ({ title, details, onClick }) => {
   const { t } = useLanguage();
   return (
-    <div className="bg-gray-800 text-white rounded-lg shadow-xl p-6 flex flex-col">
+    <div 
+      className={`bg-gray-800 text-white rounded-lg shadow-xl p-6 flex flex-col ${onClick ? 'cursor-pointer hover:bg-gray-700 transition-colors' : ''}`}
+      onClick={onClick}
+    >
       <h3 className="text-xl font-bold text-center mb-4 border-b border-gray-600 pb-3">{title}</h3>
       <div className="space-y-4">
         <div>
@@ -365,6 +367,135 @@ const InfoCard: React.FC<{ title: string; details: ServerDetails }> = ({ title, 
   );
 };
 
+// --- Data for Modal ---
+const BARRANQUILLA_SERVER1_DATA = [
+  { name: 'VA | BOVEDA 1', ip: '192.168.2.187', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'VA | BOVEDA 2', ip: '192.168.2.188', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'VA | BOVEDA CLICK & GO', ip: '192.168.2.230', manufacturer: 'Vivotek', user: 'root', pass: 'red12345', comp: 'H265' },
+  { name: 'VA | CONTEO 1', ip: '192.168.2.186', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'VA | ENTRADA CONTEO', ip: '192.168.2.189', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'FE | ENTRADA SOCIOS', ip: '192.168.2.120', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'FE | FACIAL', ip: '192.168.2.224', manufacturer: 'Vivotek', user: 'root', pass: 'red12345', comp: 'H264' },
+  { name: 'FE | MEMBERCHIP', ip: '192.168.2.175', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'FE | PODIUM', ip: '192.168.2.117', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'FE | SALIDA SOCIOS', ip: '192.168.2.103', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'FE | 1-2 CAJAS', ip: '192.168.2.194', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'FE | 3-4-5-6 CAJAS', ip: '192.168.2.192', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'FE | 7-8-9-10 CAJAS', ip: '192.168.2.193', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'FE | 11-12-13 CAJAS', ip: '192.168.2.195', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'FE | LINEA CAJAS', ip: '192.168.2.176', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'RA | COMPACTADORA', ip: '192.168.2.162', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'RA | CONTENEDORES', ip: '192.168.2.164', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'RA | DOMO RECIBO', ip: '192.168.2.161', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'RA | ENTRADA PEATONAL', ip: '192.168.2.152', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'RA | ENTRADA PISO RECIBO', ip: '192.168.2.149', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'RA | ENTRADA RECIBO', ip: '192.168.2.9', manufacturer: 'Milesight', user: 'admin', pass: 'mssg7509', comp: 'H265' },
+  { name: 'RA | GARITA GUARDAS', ip: '192.168.2.168', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'RA | MUELLE 1', ip: '192.168.2.209', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'RA | MUELLE 2', ip: '192.168.2.115', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'RA | MUELLES CONTENEDORES', ip: '192.168.2.148', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'RA | PROVEDORES NACIONALES', ip: '192.168.2.212', manufacturer: 'Milesight', user: 'admin', pass: 'mssg7509', comp: 'H265' },
+  { name: 'RA | OFICINA RAPPI', ip: '192.168.2.93', manufacturer: 'Vivotek', user: 'root', pass: 'red12345', comp: 'H265' },
+  { name: 'RA | CENTRO LLANTAS', ip: '192.168.2.191', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'PA | CAJA FOOD', ip: '192.168.2.184', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'PA | DELI', ip: '192.168.2.113', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'PA | DEMO', ip: '192.168.2.169', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'PA | FOOD SERVICE 1', ip: '192.168.2.171', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'PA | FOOD SERVICE 2', ip: '192.168.2.111', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'PA | PROCESOS', ip: '192.168.2.185', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'EX | EXTERNA 2', ip: '192.168.2.159', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'PK | ACCESO 1', ip: '192.168.2.94', manufacturer: 'Vivotek', user: 'root', pass: 'red12345', comp: 'H265' },
+  { name: 'PK | ACCESO 2', ip: '192.168.2.135', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'PK | ALFA 3', ip: '192.168.2.96', manufacturer: 'Vivotek', user: 'root', pass: 'red12345', comp: 'H265' },
+  { name: 'PK | ASCENSOR NIVEL 2', ip: '192.168.2.146', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'PK | CAMARA PLACA LPR', ip: '192.168.2.225', manufacturer: 'Vivotek', user: 'root', pass: 'red12345', comp: 'H265' },
+  { name: 'PK | DOMO PARQUEADERO', ip: '192.168.2.181', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'PK | ESCALERA ELECTRICA', ip: '192.168.2.134', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'PK | ESCALERA ELECTRICA 2 PISO', ip: '192.168.2.213', manufacturer: 'Milesight', user: 'admin', pass: 'mssg7509', comp: 'H264' },
+  { name: 'PK | LATERAL ALFA 3', ip: '192.168.2.139', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'PK | LATERAL CRA 53', ip: '192.168.2.210', manufacturer: 'Milesight', user: 'admin', pass: 'mssg7509', comp: 'H265' },
+  { name: 'PK | PARQUEADERO 6', ip: '192.168.2.143', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'PK | PARQUEADERO FOOD', ip: '192.168.2.178', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'PK | PARQUEADERO LLANTAS', ip: '192.168.2.182', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
+  { name: 'PK | SALIDA VEHICULAR 1', ip: '192.168.2.142', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
+  { name: 'RA | RECIBO EXTERNA 2', ip: '192.168.2.160', manufacturer: 'Milesight', user: 'admin', pass: 'Mssg7509', comp: 'H265' },
+];
+
+interface DetailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  data: typeof BARRANQUILLA_SERVER1_DATA;
+  title: string;
+}
+
+const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, data, title }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        {/* Background overlay */}
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={onClose}></div>
+
+        {/* Modal panel */}
+        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full">
+          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                  {title}
+                </h3>
+                <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
+                  <span className="sr-only">Close</span>
+                  <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+            </div>
+            
+            <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Address</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Manufacturer</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Password</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compression</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200 text-sm">
+                  {data.map((row, index) => (
+                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{row.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-500">{row.ip}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-500">{row.manufacturer}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-500">{row.user}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-500">{row.pass}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-500">{row.comp}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <button
+              type="button"
+              className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+              onClick={onClose}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 // --- Main FinalSelection Component ---
 
 interface FinalSelectionProps {
@@ -379,6 +510,10 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({
   onBack,
 }) => {
   const { t } = useLanguage();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalData, setModalData] = useState<typeof BARRANQUILLA_SERVER1_DATA>([]);
+  const [modalTitle, setModalTitle] = useState('');
+
   const clubData = serverData[clubName] || serverData['Cali - Cañas Gordas']; // Fallback
   const isDhl = country.code === 'dhl';
   
@@ -390,8 +525,23 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({
       details: value as ServerDetails,
     }));
 
+  const handleInfoCardClick = (title: string) => {
+    if (clubName === 'Barranquilla' && title === 'SERVER_01') {
+      setModalData(BARRANQUILLA_SERVER1_DATA);
+      setModalTitle('Barranquilla - Server 01 Details');
+      setIsModalOpen(true);
+    }
+  };
+
   return (
     <div className="w-full">
+      <DetailModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        data={modalData}
+        title={modalTitle}
+      />
+
       <div className="flex justify-center items-center text-center mb-8">
         {isDhl ? (
           <h2 className="flex items-baseline flex-wrap justify-center">
@@ -417,10 +567,17 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({
             const isOddLayout = servers.length % 2 !== 0 && servers.length > 1;
             const isFirstItem = index === 0;
             const spanClass = isOddLayout && isFirstItem ? 'md:col-span-2' : '';
+            
+            // Determine if this specific card should be clickable
+            const isClickable = clubName === 'Barranquilla' && server.title === 'SERVER_01';
 
             return (
               <div key={server.title} className={spanClass}>
-                <InfoCard title={server.title} details={server.details} />
+                <InfoCard 
+                  title={server.title} 
+                  details={server.details} 
+                  onClick={isClickable ? () => handleInfoCardClick(server.title) : undefined}
+                />
               </div>
             );
         })}
