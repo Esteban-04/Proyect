@@ -36,6 +36,19 @@ export const translations = {
     userLabel: 'Usuario:',
     finalPasswordLabel: 'Contraseña:',
     idLabel: 'ID:',
+    
+    // Modal Details
+    modalTitle: 'Detalles del Servidor 01 - Barranquilla',
+    colIndex: '#',
+    colName: 'Nombre',
+    colIp: 'Dirección IP',
+    colManufacturer: 'Fabricante',
+    colUser: 'Usuario',
+    colPassword: 'Contraseña',
+    colCompression: 'Compresión',
+    closeButton: 'Cerrar',
+    saveButton: 'Guardar',
+    saveSuccess: '¡Cambios guardados exitosamente!',
   },
   en: {
     // Login & Register & Reset
@@ -74,6 +87,19 @@ export const translations = {
     userLabel: 'User:',
     finalPasswordLabel: 'Password:',
     idLabel: 'ID:',
+
+    // Modal Details
+    modalTitle: 'Server 01 Details - Barranquilla',
+    colIndex: '#',
+    colName: 'Name',
+    colIp: 'IP Address',
+    colManufacturer: 'Manufacturer',
+    colUser: 'User Name',
+    colPassword: 'Password',
+    colCompression: 'Compression',
+    closeButton: 'Close',
+    saveButton: 'Save',
+    saveSuccess: 'Changes saved successfully!',
   },
 };
 

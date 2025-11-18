@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Country } from '../types';
 import { REMOTE_DESKTOP_ICON } from '../assets/remote-desktop-icon';
 import { useLanguage } from '../context/LanguageContext';
+import { EyeIcon, EyeOffIcon } from '../assets/icons';
 
 // --- Helper Components & Interfaces ---
 
@@ -368,7 +369,16 @@ const InfoCard: React.FC<{ title: string; details: ServerDetails; onClick?: () =
 };
 
 // --- Data for Modal ---
-const BARRANQUILLA_SERVER1_DATA = [
+interface ServerRow {
+  name: string;
+  ip: string;
+  manufacturer: string;
+  user: string;
+  pass: string;
+  comp: string;
+}
+
+const BARRANQUILLA_SERVER1_DATA: ServerRow[] = [
   { name: 'VA | BOVEDA 1', ip: '192.168.2.187', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H265' },
   { name: 'VA | BOVEDA 2', ip: '192.168.2.188', manufacturer: 'Milesight', user: 'admin', pass: 'ms1234', comp: 'H264' },
   { name: 'VA | BOVEDA CLICK & GO', ip: '192.168.2.230', manufacturer: 'Vivotek', user: 'root', pass: 'red12345', comp: 'H265' },
@@ -424,12 +434,39 @@ const BARRANQUILLA_SERVER1_DATA = [
 interface DetailModalProps {
   isOpen: boolean;
   onClose: () => void;
-  data: typeof BARRANQUILLA_SERVER1_DATA;
+  data: ServerRow[];
   title: string;
+  onSave: (newData: ServerRow[]) => void;
 }
 
-const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, data, title }) => {
+const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, data, title, onSave }) => {
+  const { t } = useLanguage();
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({});
+  const [localData, setLocalData] = useState<ServerRow[]>(data);
+
+  // Sync local state with props when modal opens or data changes
+  useEffect(() => {
+    setLocalData(data);
+  }, [data, isOpen]);
+
   if (!isOpen) return null;
+
+  const handleInputChange = (index: number, field: keyof ServerRow, value: string) => {
+    const newData = [...localData];
+    newData[index] = { ...newData[index], [field]: value };
+    setLocalData(newData);
+  };
+
+  const togglePasswordVisibility = (index: number) => {
+    setVisiblePasswords((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }));
+  };
+  
+  const handleSave = () => {
+      onSave(localData);
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -446,7 +483,7 @@ const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, data, title 
                   {title}
                 </h3>
                 <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
-                  <span className="sr-only">Close</span>
+                  <span className="sr-only">{t('closeButton')}</span>
                   <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -455,25 +492,79 @@ const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, data, title 
             
             <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0">
+                <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Address</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Manufacturer</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Name</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Password</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compression</th>
+                    <th scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{t('colIndex')}</th>
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{t('colName')}</th>
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{t('colIp')}</th>
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{t('colManufacturer')}</th>
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{t('colUser')}</th>
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{t('colPassword')}</th>
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{t('colCompression')}</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200 text-sm">
-                  {data.map((row, index) => (
+                  {localData.map((row, index) => (
                     <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{row.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-500">{row.ip}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-500">{row.manufacturer}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-500">{row.user}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-500">{row.pass}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-500">{row.comp}</td>
+                      <td className="px-3 py-4 whitespace-nowrap text-gray-500 text-xs text-center">{index + 1}</td>
+                      <td className="px-2 py-2 whitespace-nowrap font-medium text-gray-900">
+                        <input
+                          type="text"
+                          value={row.name}
+                          onChange={(e) => handleInputChange(index, 'name', e.target.value)}
+                          className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:outline-none px-2 py-1 hover:border-gray-300 transition-colors text-center"
+                        />
+                      </td>
+                      <td className="px-2 py-2 whitespace-nowrap text-gray-500">
+                         <input
+                          type="text"
+                          value={row.ip}
+                          onChange={(e) => handleInputChange(index, 'ip', e.target.value)}
+                          className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:outline-none px-2 py-1 hover:border-gray-300 transition-colors text-center"
+                        />
+                      </td>
+                      <td className="px-2 py-2 whitespace-nowrap text-gray-500">
+                        <input
+                          type="text"
+                          value={row.manufacturer}
+                          onChange={(e) => handleInputChange(index, 'manufacturer', e.target.value)}
+                          className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:outline-none px-2 py-1 hover:border-gray-300 transition-colors text-center"
+                        />
+                      </td>
+                      <td className="px-2 py-2 whitespace-nowrap text-gray-500">
+                        <input
+                          type="text"
+                          value={row.user}
+                          onChange={(e) => handleInputChange(index, 'user', e.target.value)}
+                          className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:outline-none px-2 py-1 hover:border-gray-300 transition-colors text-center"
+                        />
+                      </td>
+                      <td className="px-2 py-2 whitespace-nowrap text-gray-500">
+                        <div className="relative flex items-center">
+                            <input
+                              type={visiblePasswords[index] ? "text" : "password"}
+                              value={row.pass}
+                              onChange={(e) => handleInputChange(index, 'pass', e.target.value)}
+                              className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:outline-none px-2 py-1 pr-8 hover:border-gray-300 transition-colors text-center"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => togglePasswordVisibility(index)}
+                                className="absolute right-0 p-1 text-gray-400 hover:text-gray-600 focus:outline-none"
+                                tabIndex={-1}
+                            >
+                                {visiblePasswords[index] ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                            </button>
+                        </div>
+                      </td>
+                      <td className="px-2 py-2 whitespace-nowrap text-gray-500">
+                        <input
+                          type="text"
+                          value={row.comp}
+                          onChange={(e) => handleInputChange(index, 'comp', e.target.value)}
+                          className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:outline-none px-2 py-1 hover:border-gray-300 transition-colors text-center"
+                        />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -483,10 +574,53 @@ const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, data, title 
           <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
             <button
               type="button"
+              className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-[#0d1a2e] text-base font-medium text-white hover:bg-[#1a2b4e] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0d1a2e] sm:ml-3 sm:w-auto sm:text-sm"
+              onClick={handleSave}
+            >
+              {t('saveButton')}
+            </button>
+            <button
+              type="button"
               className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
               onClick={onClose}
             >
-              Close
+              {t('closeButton')}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SuccessModal: React.FC<{ isOpen: boolean; onClose: () => void; message: string }> = ({ isOpen, onClose, message }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={onClose}></div>
+        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-sm sm:w-full sm:p-6">
+          <div>
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+              <svg className="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div className="mt-3 text-center sm:mt-5">
+              <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                {message}
+              </h3>
+            </div>
+          </div>
+          <div className="mt-5 sm:mt-6">
+            <button
+              type="button"
+              className="inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-[#0d1a2e] text-base font-medium text-white hover:bg-[#1a2b4e] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0d1a2e] sm:text-sm"
+              onClick={onClose}
+            >
+              OK
             </button>
           </div>
         </div>
@@ -511,8 +645,9 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({
 }) => {
   const { t } = useLanguage();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalData, setModalData] = useState<typeof BARRANQUILLA_SERVER1_DATA>([]);
-  const [modalTitle, setModalTitle] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [modalData, setModalData] = useState<ServerRow[]>([]);
+  const [activeServerKey, setActiveServerKey] = useState<string | null>(null);
 
   const clubData = serverData[clubName] || serverData['Cali - Cañas Gordas']; // Fallback
   const isDhl = country.code === 'dhl';
@@ -527,11 +662,38 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({
 
   const handleInfoCardClick = (title: string) => {
     if (clubName === 'Barranquilla' && title === 'SERVER_01') {
-      setModalData(BARRANQUILLA_SERVER1_DATA);
-      setModalTitle('Barranquilla - Server 01 Details');
+      const storageKey = 'barranquilla_s1_data';
+      const savedData = localStorage.getItem(storageKey);
+      
+      if (savedData) {
+          try {
+              setModalData(JSON.parse(savedData));
+          } catch (e) {
+              console.error("Failed to parse saved data", e);
+              setModalData(BARRANQUILLA_SERVER1_DATA);
+          }
+      } else {
+          setModalData(BARRANQUILLA_SERVER1_DATA);
+      }
+      
+      setActiveServerKey('barranquilla_s1');
       setIsModalOpen(true);
     }
   };
+
+  const handleSaveData = (newData: ServerRow[]) => {
+      if (activeServerKey === 'barranquilla_s1') {
+          setModalData(newData);
+          localStorage.setItem('barranquilla_s1_data', JSON.stringify(newData));
+          setShowSuccess(true);
+      }
+  };
+
+  // Determine title dynamically based on active server/key
+  let dynamicModalTitle = '';
+  if (activeServerKey === 'barranquilla_s1') {
+    dynamicModalTitle = t('modalTitle');
+  }
 
   return (
     <div className="w-full">
@@ -539,7 +701,14 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         data={modalData}
-        title={modalTitle}
+        title={dynamicModalTitle}
+        onSave={handleSaveData}
+      />
+      
+      <SuccessModal
+        isOpen={showSuccess}
+        onClose={() => setShowSuccess(false)}
+        message={t('saveSuccess')}
       />
 
       <div className="flex justify-center items-center text-center mb-8">
@@ -594,5 +763,6 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({
     </div>
   );
 };
+
 
 export default FinalSelection;
