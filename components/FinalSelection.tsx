@@ -431,6 +431,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const handleOpenModal = () => {
       setTempCameras(cameras);
       setShowSaveSuccess(false);
+      setVisiblePasswords({});
       setShowModal(true);
   };
 
