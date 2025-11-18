@@ -402,6 +402,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const { t } = useLanguage();
   const [showModal, setShowModal] = useState(false);
   const [cameras, setCameras] = useState(INITIAL_CAMERA_DATA);
+  const [tempCameras, setTempCameras] = useState(INITIAL_CAMERA_DATA);
   const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({});
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
@@ -427,8 +428,14 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const serverEntries = Object.entries(servers);
   const isOdd = serverEntries.length % 2 !== 0;
 
+  const handleOpenModal = () => {
+      setTempCameras(cameras);
+      setShowSaveSuccess(false);
+      setShowModal(true);
+  };
+
   const handleInputChange = (id: number, field: string, value: string) => {
-    setCameras(prev => prev.map(cam => 
+    setTempCameras(prev => prev.map(cam => 
         cam.id === id ? { ...cam, [field]: value } : cam
     ));
     setShowSaveSuccess(false);
@@ -442,7 +449,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   }
 
   const handleSave = () => {
-      // Logic to persist changes would go here
+      setCameras(tempCameras);
       setShowSaveSuccess(true);
       setTimeout(() => setShowSaveSuccess(false), 3000);
   }
@@ -479,7 +486,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
             return (
               <div 
                 key={key} 
-                onClick={() => isServer1 && setShowModal(true)}
+                onClick={() => isServer1 && handleOpenModal()}
                 className={`bg-[#1a2233] text-white rounded-lg shadow-lg overflow-hidden border border-gray-800 ${spanClass} ${cursorClass}`}
               >
                 <div className="p-5">
@@ -563,7 +570,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {cameras.map((cam) => (
+                    {tempCameras.map((cam) => (
                       <tr key={cam.id} className="hover:bg-blue-50 transition-colors group">
                         <td className="px-4 py-3 text-sm text-gray-900 font-medium text-center">{cam.id}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">
