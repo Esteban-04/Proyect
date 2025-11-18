@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Country } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { EyeIcon, EyeOffIcon } from '../assets/icons';
 
 // --- Icons ---
 
@@ -41,7 +42,7 @@ interface ClubServerData {
 
 // --- Data ---
 
-const CAMERA_DATA = [
+const INITIAL_CAMERA_DATA = [
   { id: 1, name: 'VA | BOVEDA 1', ip: '192.168.2.187', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H265' },
   { id: 2, name: 'VA | BOVEDA 2', ip: '192.168.2.188', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
   { id: 3, name: 'VA | BOVEDA CLICK & GO', ip: '192.168.2.230', manufacturer: 'Vivotek', user: 'root', password: 'red12345', compression: 'H265' },
@@ -400,6 +401,9 @@ interface FinalSelectionProps {
 const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBack }) => {
   const { t } = useLanguage();
   const [showModal, setShowModal] = useState(false);
+  const [cameras, setCameras] = useState(INITIAL_CAMERA_DATA);
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({});
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
   const servers = serverData[clubName];
   const isDhl = country.code === 'dhl';
@@ -422,6 +426,26 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
   const serverEntries = Object.entries(servers);
   const isOdd = serverEntries.length % 2 !== 0;
+
+  const handleInputChange = (id: number, field: string, value: string) => {
+    setCameras(prev => prev.map(cam => 
+        cam.id === id ? { ...cam, [field]: value } : cam
+    ));
+    setShowSaveSuccess(false);
+  };
+  
+  const togglePasswordVisibility = (id: number) => {
+      setVisiblePasswords(prev => ({
+          ...prev,
+          [id]: !prev[id]
+      }));
+  }
+
+  const handleSave = () => {
+      // Logic to persist changes would go here
+      setShowSaveSuccess(true);
+      setTimeout(() => setShowSaveSuccess(false), 3000);
+  }
 
   return (
     <div>
@@ -510,14 +534,17 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
               <h3 className="text-white text-xl font-bold flex items-center">
                  {t('modalTitle')}
               </h3>
-              <button 
-                onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="flex items-center space-x-4">
+                  {showSaveSuccess && <span className="text-green-400 text-sm font-semibold">{t('saveSuccess')}</span>}
+                  <button 
+                    onClick={() => setShowModal(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+              </div>
             </div>
 
             {/* Modal Body (Scrollable) */}
@@ -526,25 +553,76 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-100">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colIndex')}</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colIndex')}</th>
                       <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colName')}</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colIp')}</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colManufacturer')}</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colUser')}</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colPassword')}</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colCompression')}</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colIp')}</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colManufacturer')}</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colUser')}</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colPassword')}</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colCompression')}</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {CAMERA_DATA.map((cam) => (
-                      <tr key={cam.id} className="hover:bg-blue-50 transition-colors">
-                        <td className="px-4 py-3 text-sm text-gray-900 font-medium">{cam.id}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{cam.name}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700 font-mono">{cam.ip}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{cam.manufacturer}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{cam.user}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700 font-mono">{cam.password}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{cam.compression}</td>
+                    {cameras.map((cam) => (
+                      <tr key={cam.id} className="hover:bg-blue-50 transition-colors group">
+                        <td className="px-4 py-3 text-sm text-gray-900 font-medium text-center">{cam.id}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                            <input 
+                                type="text" 
+                                value={cam.name} 
+                                onChange={(e) => handleInputChange(cam.id, 'name', e.target.value)}
+                                className="w-full bg-transparent border border-transparent hover:border-gray-300 focus:border-[#0d1a2e] rounded px-2 py-1 focus:outline-none transition-colors"
+                            />
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700 font-mono">
+                            <input 
+                                type="text" 
+                                value={cam.ip} 
+                                onChange={(e) => handleInputChange(cam.id, 'ip', e.target.value)}
+                                className="w-full bg-transparent border border-transparent hover:border-gray-300 focus:border-[#0d1a2e] rounded px-2 py-1 focus:outline-none transition-colors text-center"
+                            />
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                             <input 
+                                type="text" 
+                                value={cam.manufacturer} 
+                                onChange={(e) => handleInputChange(cam.id, 'manufacturer', e.target.value)}
+                                className="w-full bg-transparent border border-transparent hover:border-gray-300 focus:border-[#0d1a2e] rounded px-2 py-1 focus:outline-none transition-colors text-center"
+                            />
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                            <input 
+                                type="text" 
+                                value={cam.user} 
+                                onChange={(e) => handleInputChange(cam.id, 'user', e.target.value)}
+                                className="w-full bg-transparent border border-transparent hover:border-gray-300 focus:border-[#0d1a2e] rounded px-2 py-1 focus:outline-none transition-colors text-center"
+                            />
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700 font-mono">
+                            <div className="flex items-center space-x-2">
+                                <input 
+                                    type={visiblePasswords[cam.id] ? "text" : "password"}
+                                    value={cam.password}
+                                    onChange={(e) => handleInputChange(cam.id, 'password', e.target.value)}
+                                    className="w-full bg-transparent border border-transparent hover:border-gray-300 focus:border-[#0d1a2e] rounded px-2 py-1 focus:outline-none transition-colors text-center"
+                                />
+                                <button 
+                                    onClick={() => togglePasswordVisibility(cam.id)}
+                                    className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                                    tabIndex={-1}
+                                >
+                                    {visiblePasswords[cam.id] ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                                </button>
+                            </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                             <input 
+                                type="text" 
+                                value={cam.compression} 
+                                onChange={(e) => handleInputChange(cam.id, 'compression', e.target.value)}
+                                className="w-full bg-transparent border border-transparent hover:border-gray-300 focus:border-[#0d1a2e] rounded px-2 py-1 focus:outline-none transition-colors text-center"
+                            />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -553,12 +631,18 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-gray-100 px-6 py-4 flex justify-end border-t border-gray-200">
+            <div className="bg-gray-100 px-6 py-4 flex justify-end items-center space-x-4 border-t border-gray-200">
               <button
                 onClick={() => setShowModal(false)}
                 className="bg-[#0d1a2e] text-white font-semibold py-2 px-6 rounded-lg shadow-md hover:bg-[#1a2b4e] transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0d1a2e]"
               >
                 {t('closeButton')}
+              </button>
+               <button
+                onClick={handleSave}
+                className="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
+              >
+                {t('saveButton')}
               </button>
             </div>
           </div>
