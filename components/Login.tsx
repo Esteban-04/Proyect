@@ -152,9 +152,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
             <form onSubmit={handleRegisterSubmit} className="space-y-6">
                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <UserIcon className="h-5 w-5 text-gray-400" />
-                    </div>
                     <input
                         id="register-name"
                         name="name"
@@ -167,11 +164,11 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         className="block w-full pl-10 pr-3 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-[#0d1a2e] sm:text-sm"
                         disabled={!!registerMessage}
                     />
-                </div>
-                <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <UserIcon className="h-5 w-5 text-gray-400" />
                     </div>
+                </div>
+                <div className="relative">
                     <input
                         id="register-email"
                         name="email"
@@ -184,16 +181,11 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         className="block w-full pl-10 pr-3 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-[#0d1a2e] sm:text-sm"
                         disabled={!!registerMessage}
                     />
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <UserIcon className="h-5 w-5 text-gray-400" />
+                    </div>
                 </div>
                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <LockClosedIcon className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                        <button type="button" onClick={() => setShowRegisterPassword(!showRegisterPassword)} className="text-gray-400 hover:text-gray-500">
-                            {showRegisterPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                        </button>
-                    </div>
                     <input
                         id="register-password"
                         name="password"
@@ -206,6 +198,14 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         className="block w-full pl-10 pr-10 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-[#0d1a2e] sm:text-sm"
                         disabled={!!registerMessage}
                     />
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <LockClosedIcon className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                        <button type="button" onClick={() => setShowRegisterPassword(!showRegisterPassword)} className="text-gray-400 hover:text-gray-500">
+                            {showRegisterPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                        </button>
+                    </div>
                 </div>
                 <div>
                     <button
@@ -250,9 +250,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
             <form onSubmit={handleResetSubmit} className="space-y-6">
                 <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <UserIcon className="h-5 w-5 text-gray-400" />
-                    </div>
                     <input
                         id="email-reset"
                         name="email"
@@ -264,6 +261,9 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         placeholder={t('emailPlaceholder')}
                         className="block w-full pl-10 pr-3 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-[#0d1a2e] sm:text-sm"
                     />
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <UserIcon className="h-5 w-5 text-gray-400" />
+                    </div>
                 </div>
 
                 <div>
@@ -299,9 +299,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         
         <form onSubmit={handleLoginSubmit} className="space-y-6">
             <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <UserIcon className="h-5 w-5 text-gray-400" />
-                </div>
                 <input
                     id="username"
                     name="username"
@@ -313,17 +310,12 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     placeholder={t('emailPlaceholder')}
                     className="block w-full pl-10 pr-3 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-[#0d1a2e] sm:text-sm"
                 />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <UserIcon className="h-5 w-5 text-gray-400" />
+                </div>
             </div>
             
             <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <LockClosedIcon className="h-5 w-5 text-gray-400" />
-                </div>
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-gray-400 hover:text-gray-500">
-                        {showPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                    </button>
-                </div>
                 <input
                     id="password"
                     name="password"
@@ -335,6 +327,14 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     placeholder={t('passwordPlaceholder')}
                     className="block w-full pl-10 pr-10 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-[#0d1a2e] sm:text-sm"
                 />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <LockClosedIcon className="h-5 w-5 text-gray-400" />
+                </div>
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-gray-400 hover:text-gray-500">
+                        {showPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                    </button>
+                </div>
             </div>
 
              {error && (

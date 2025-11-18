@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Country } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -531,6 +530,16 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
               </div>
             );
         })}
+      </div>
+      
+      {/* Back Button */}
+      <div className="mt-8 text-center">
+        <button
+          onClick={onBack}
+          className="bg-[#0d1a2e] text-white font-semibold py-2 px-6 rounded-lg shadow-md hover:bg-[#1a2b4e] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0d1a2e]"
+        >
+          {t('backButton')}
+        </button>
       </div>
 
       {/* Modal for Camera Details */}
