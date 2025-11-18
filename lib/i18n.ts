@@ -1,3 +1,4 @@
+
 export const translations = {
   es: {
     // Login & Register & Reset
@@ -49,6 +50,7 @@ export const translations = {
     closeButton: 'Cerrar',
     saveButton: 'Guardar',
     saveSuccess: '¡Cambios guardados exitosamente!',
+    okButton: 'Aceptar',
   },
   en: {
     // Login & Register & Reset
@@ -100,6 +102,7 @@ export const translations = {
     closeButton: 'Close',
     saveButton: 'Save',
     saveSuccess: 'Changes saved successfully!',
+    okButton: 'OK',
   },
 };
 

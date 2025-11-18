@@ -1,7 +1,9 @@
+
 import React from 'react';
 import { Country } from '../types';
 import ClubButton from './ClubButton';
 import { useLanguage } from '../context/LanguageContext';
+import { DHL_HEADER_IMAGE } from '../assets/dhl-header-image';
 
 interface ClubLocationsProps {
   country: Country;
@@ -21,6 +23,15 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
 
   return (
     <div>
+      {isDhl && (
+        <div className="mb-6 rounded-lg overflow-hidden shadow-md">
+          <img 
+            src={DHL_HEADER_IMAGE} 
+            alt="DHL Logistics" 
+            className="w-full h-48 object-cover object-center"
+          />
+        </div>
+      )}
       <div className="flex justify-center items-center mb-8">
         {isDhl ? (
           <h2 className="text-5xl font-black italic text-[#D40511] tracking-tighter">
