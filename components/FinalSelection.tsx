@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Country } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -39,9 +40,19 @@ interface ClubServerData {
   [key: string]: ServerInfo;
 }
 
+interface CameraData {
+  id: number;
+  name: string;
+  ip: string;
+  manufacturer: string;
+  user: string;
+  password: string;
+  compression: string;
+}
+
 // --- Data ---
 
-const INITIAL_CAMERA_DATA = [
+const SERVER1_CAMERA_DATA: CameraData[] = [
   { id: 1, name: 'VA | BOVEDA 1', ip: '192.168.2.187', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H265' },
   { id: 2, name: 'VA | BOVEDA 2', ip: '192.168.2.188', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
   { id: 3, name: 'VA | BOVEDA CLICK & GO', ip: '192.168.2.230', manufacturer: 'Vivotek', user: 'root', password: 'red12345', compression: 'H265' },
@@ -92,6 +103,49 @@ const INITIAL_CAMERA_DATA = [
   { id: 48, name: 'PK | PARQUEADERO LLANTAS', ip: '192.168.2.182', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H265' },
   { id: 49, name: 'PK | SALIDA VEHICULAR 1', ip: '192.168.2.142', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
   { id: 50, name: 'RA | RECIBO EXTERNA 2', ip: '192.168.2.160', manufacturer: 'Milesight', user: 'admin', password: 'Mssg7509', compression: 'H265' },
+];
+
+const SERVER2_CAMERA_DATA: CameraData[] = [
+  { id: 1, name: 'PK | PARQUEADERO MOTOS', ip: '192.168.2.95', manufacturer: 'Vivotek', user: 'root', password: 'red12345', compression: 'H265' },
+  { id: 2, name: 'PK | PARQUEADERO SEGUNDO PISO 1', ip: '192.168.2.138', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 3, name: 'PK | PARQUEADERO ENTRADA FOOD', ip: '192.168.2.177', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 4, name: 'OA | LOKERS CABALLEROS', ip: '192.168.2.216', manufacturer: 'Milesight', user: 'admin', password: 'mssg7509', compression: 'H265' },
+  { id: 5, name: 'PK | RAMPA VEHICULAR', ip: '192.168.2.137', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 6, name: 'SF | 117-ISLA TECNO', ip: '192.168.2.199', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 7, name: 'SF | 119-119 PASILLO', ip: '192.168.2.89', manufacturer: 'Vivotek', user: 'root', password: 'red12345', compression: 'H264' },
+  { id: 8, name: 'SF | 122-123 PASILLO', ip: '192.168.2.118', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 9, name: 'SF | 124-125 PASILLO', ip: '192.168.2.202', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 10, name: 'SF | 126-127 ASEO HOGAR', ip: '192.168.2.107', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 11, name: 'SF | 128-129 DESECHABLES', ip: '192.168.2.109', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 12, name: 'SF | 212-213 PASILLO', ip: '192.168.2.133', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 13, name: 'SF | 216-217 CAFE CEREALES', ip: '192.168.2.125', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 14, name: 'SF | 218-1219 LECHES', ip: '192.168.2.196', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 15, name: 'SF | 220-221 JUGOS', ip: '192.168.2.126', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 16, name: 'SF | 224-225 PASTAS ACEITES', ip: '192.168.2.106', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 17, name: 'SF | 226-227 SALSAS', ip: '192.168.2.110', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 18, name: 'SF | 228-229 HBA', ip: '192.168.2.114', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 19, name: 'SF | FRUTAS Y VERDURAS', ip: '192.168.2.183', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 20, name: 'SF | LICORES 2', ip: '192.168.2.100', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 21, name: 'SF | NEVERAS', ip: '192.168.2.99', manufacturer: 'Milesight', user: 'root', password: 'red12345', compression: 'H264' },
+  { id: 22, name: 'SF | OPTICA', ip: '192.168.2.206', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 23, name: 'SF | PASILLO 130', ip: '192.168.2.129', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 24, name: 'FONDO CONTENEDORES', ip: '192.168.2.150', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 25, name: 'SF | PASILLO 211 LICORES', ip: '192.168.2.112', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 26, name: 'SF | PASILLO 214-215', ip: '192.168.2.131', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 27, name: 'SF | PASILLO CENTRAL 1', ip: '192.168.2.122', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 28, name: 'SF | PASILLO CENTRAL 2', ip: '192.168.2.121', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 29, name: 'SF | PASILLO FONDO 129', ip: '192.168.2.98', manufacturer: 'Vivotek', user: 'root', password: 'red12345', compression: 'H264' },
+  { id: 30, name: 'SF | PASILLO SHUT DE BASURA', ip: '192.168.2.223', manufacturer: 'Vivotek', user: 'root', password: 'red12345', compression: 'H264' },
+  { id: 31, name: 'SF | SEASON', ip: '192.168.2.105', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 32, name: 'SF | SEASONAL', ip: '192.168.2.97', manufacturer: 'Vivotek', user: 'root', password: 'red12345', compression: 'H264' },
+  { id: 33, name: 'SF | SODAS 1', ip: '192.168.2.220', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 34, name: 'SF | SODAS 2', ip: '192.168.2.208', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 35, name: 'SF | TEMPORADAS', ip: '192.168.2.123', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 36, name: 'SF | TEXTIL', ip: '192.168.2.124', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 37, name: 'SF | TEXTIL Y TELEVISORES', ip: '192.168.2.198', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 38, name: 'SF | PRODUCE', ip: '192.168.2.116', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 39, name: 'SF | RACK', ip: '192.168.2.227', manufacturer: 'Vivotek', user: 'root', password: 'red12345', compression: 'H265' },
+  { id: 40, name: 'SF | DOMO INTERNO', ip: '192.168.2.197', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H265' },
 ];
 
 const serverData: ClubServerData = {
@@ -244,37 +298,31 @@ const serverData: ClubServerData = {
     server1: { ip: '192.168.16.10', user: 'administrator', teamviewerId: '1 279 617 762', teamviewerPassword: '@l3ss21++' },
     server2: { ip: '192.168.16.20', user: 'administrator', teamviewerId: '1 289 199 790', teamviewerPassword: '@l3ss21++' },
     server3: { ip: '192.168.16.30', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
-    server4: { ip: '192.168.16.40', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
   },
   'Chía': {
     server1: { ip: '192.168.17.10', user: 'administrator', teamviewerId: '1 279 617 762', teamviewerPassword: '@l3ss21++' },
     server2: { ip: '192.168.17.20', user: 'administrator', teamviewerId: '1 289 199 790', teamviewerPassword: '@l3ss21++' },
     server3: { ip: '192.168.17.30', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
     server4: { ip: '192.168.17.40', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
+    server5: { ip: '192.168.17.60', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
   },
   'Bogotá - Usaquén': {
     server1: { ip: '192.168.18.10', user: 'administrator', teamviewerId: '1 279 617 762', teamviewerPassword: '@l3ss21++' },
     server2: { ip: '192.168.18.20', user: 'administrator', teamviewerId: '1 289 199 790', teamviewerPassword: '@l3ss21++' },
     server3: { ip: '192.168.18.30', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
-    server4: { ip: '192.168.18.40', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
   },
   'Bucaramanga - Floridablanca': {
     server1: { ip: '192.168.19.10', user: 'administrator', teamviewerId: '1 279 617 762', teamviewerPassword: '@l3ss21++' },
     server2: { ip: '192.168.19.20', user: 'administrator', teamviewerId: '1 289 199 790', teamviewerPassword: '@l3ss21++' },
     server3: { ip: '192.168.19.30', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
-    server4: { ip: '192.168.19.40', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
   },
   'Medellín - El Poblado': {
     server1: { ip: '192.168.101.10', user: 'administrator', teamviewerId: '1 279 617 762', teamviewerPassword: '@l3ss21++' },
     server2: { ip: '192.168.101.20', user: 'administrator', teamviewerId: '1 289 199 790', teamviewerPassword: '@l3ss21++' },
-    server3: { ip: '192.168.101.30', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
-    server4: { ip: '192.168.101.40', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
   },
   'Chaguanas': {
-    server1: { ip: '192.168.20.10', user: 'administrator', teamviewerId: '1 279 617 762', teamviewerPassword: '@l3ss21++' },
-    server2: { ip: '192.168.20.20', user: 'administrator', teamviewerId: '1 289 199 790', teamviewerPassword: '@l3ss21++' },
-    server3: { ip: '192.168.20.30', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
-    server4: { ip: '192.168.20.40', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
+    server1: { ip: '192.168.81.10', user: 'administrator', teamviewerId: '1 279 617 762', teamviewerPassword: '@l3ss21++' },
+    server2: { ip: '192.168.81.20', user: 'administrator', teamviewerId: '1 289 199 790', teamviewerPassword: '@l3ss21++' },
   },
   'Port of Spain': {
     server1: { ip: '192.168.20.10', user: 'administrator', teamviewerId: '1 279 617 762', teamviewerPassword: '@l3ss21++' },
@@ -400,8 +448,16 @@ interface FinalSelectionProps {
 const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBack }) => {
   const { t } = useLanguage();
   const [showModal, setShowModal] = useState(false);
-  const [cameras, setCameras] = useState(INITIAL_CAMERA_DATA);
-  const [tempCameras, setTempCameras] = useState(INITIAL_CAMERA_DATA);
+  const [selectedServerKey, setSelectedServerKey] = useState<string | null>(null);
+  
+  // Store camera data for each server independently. 
+  // Initializes both servers with their respective default data lists.
+  const [allServerCameras, setAllServerCameras] = useState<Record<string, CameraData[]>>({
+    server1: SERVER1_CAMERA_DATA,
+    server2: SERVER2_CAMERA_DATA,
+  });
+  
+  const [tempCameras, setTempCameras] = useState<CameraData[]>([]);
   const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({});
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
@@ -427,8 +483,13 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const serverEntries = Object.entries(servers);
   const isOdd = serverEntries.length % 2 !== 0;
 
-  const handleOpenModal = () => {
-      setTempCameras(cameras);
+  const handleOpenModal = (serverKey: string) => {
+      // Use existing data for this server, or fallback to initial data if not set yet
+      // We default to SERVER1 data if for some reason the key doesn't exist in our state map yet,
+      // but it should since we initialized it.
+      const currentData = allServerCameras[serverKey] || (serverKey === 'server2' ? SERVER2_CAMERA_DATA : SERVER1_CAMERA_DATA);
+      setTempCameras(currentData);
+      setSelectedServerKey(serverKey);
       setShowSaveSuccess(false);
       setVisiblePasswords({});
       setShowModal(true);
@@ -449,10 +510,22 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   }
 
   const handleSave = () => {
-      setCameras(tempCameras);
-      setShowSaveSuccess(true);
-      setTimeout(() => setShowSaveSuccess(false), 3000);
+      if (selectedServerKey) {
+          setAllServerCameras(prev => ({
+              ...prev,
+              [selectedServerKey]: tempCameras
+          }));
+          setShowSaveSuccess(true);
+          setTimeout(() => setShowSaveSuccess(false), 3000);
+      }
   }
+
+  // Determine title for the modal based on selection
+  const getModalTitle = () => {
+      if (selectedServerKey === 'server1') return `Detalles del Servidor 01 - ${clubName}`;
+      if (selectedServerKey === 'server2') return `Detalles del Servidor 02 - ${clubName}`;
+      return t('modalTitle');
+  };
 
   return (
     <div>
@@ -476,17 +549,19 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
         {serverEntries.map(([key, info], index) => {
             const isFirst = index === 0;
-            const isServer1 = key === 'server1';
+            // Check if this server card should be clickable (Server 1 or Server 2)
+            const isInteractive = key === 'server1' || key === 'server2';
+            
             // If odd number of servers, span the first one across 2 columns to center it (as seen in screenshot)
             const spanClass = (isOdd && isFirst) ? 'md:col-span-2' : '';
             
-            // Server 1 specific styles for interactivity
-            const cursorClass = isServer1 ? 'cursor-pointer hover:ring-2 hover:ring-[#4f46e5] hover:scale-[1.01] transition-all duration-200' : '';
+            // Interactive specific styles
+            const cursorClass = isInteractive ? 'cursor-pointer hover:ring-2 hover:ring-[#4f46e5] hover:scale-[1.01] transition-all duration-200' : '';
 
             return (
               <div 
                 key={key} 
-                onClick={() => isServer1 && handleOpenModal()}
+                onClick={() => isInteractive && handleOpenModal(key)}
                 className={`bg-[#1a2233] text-white rounded-lg shadow-lg overflow-hidden border border-gray-800 ${spanClass} ${cursorClass}`}
               >
                 <div className="p-5">
@@ -549,7 +624,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
             {/* Modal Header */}
             <div className="bg-[#0d1a2e] px-6 py-4 flex justify-between items-center">
               <h3 className="text-white text-xl font-bold flex items-center">
-                 {t('modalTitle')}
+                 {getModalTitle()}
               </h3>
               <div className="flex items-center space-x-4">
                   {showSaveSuccess && <span className="text-green-400 text-sm font-semibold">{t('saveSuccess')}</span>}
