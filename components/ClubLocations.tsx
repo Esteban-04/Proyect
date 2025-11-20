@@ -34,8 +34,8 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
                backgroundPosition: 'center',
              }}
            />
-           {/* Overlay to ensure text readability */}
-           <div className="absolute inset-0 z-0 bg-white/90 backdrop-blur-sm" />
+           {/* Overlay to ensure text readability. Removed blur and reduced opacity for sharpness */}
+           <div className="absolute inset-0 z-0 bg-white/80" />
         </>
       )}
 
