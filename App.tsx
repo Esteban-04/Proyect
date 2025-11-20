@@ -88,7 +88,6 @@ const App: React.FC = () => {
         <BrandCard
           name="PriceSmart"
           onClick={() => handleBrandSelect('pricesmart')}
-          className="border-2 border-gray-500"
         />
         <BrandCard
           name="DHL"

@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface BrandCardProps {
@@ -14,18 +15,19 @@ const BrandCard: React.FC<BrandCardProps> = ({ name, onClick, className }) => {
   let hoverBorderClass = 'hover:border-[#0d1a2e]';
   let fontStyling = 'font-bold text-2xl tracking-wide';
 
-  // Check if name is DHL or DHL GLOBAL
+  // Check brands
   const isDhl = lowerCaseName.includes('dhl');
+  const isPriceSmart = lowerCaseName.includes('pricesmart');
 
   if (isDhl) {
     backgroundClass = 'bg-[#FFCC00]';
-    // Text styles are not needed for image, but kept for border logic consistency
     hoverBorderClass = 'hover:border-[#D40511]';
-  } else if (lowerCaseName === 'pricesmart') {
+  } else if (isPriceSmart) {
     backgroundClass = 'bg-[#0d1a2e]';
     textClass = 'text-white';
-    hoverBorderClass = 'hover:border-gray-400';
-    fontStyling = 'font-bold text-5xl tracking-wide';
+    hoverBorderClass = 'hover:border-white';
+    // Updated styling to match the screenshot: Large, bold, mixed case (PriceSmart)
+    fontStyling = 'font-bold text-5xl tracking-normal';
   }
 
   return (
