@@ -15,12 +15,12 @@ const BrandCard: React.FC<BrandCardProps> = ({ name, onClick, className }) => {
   let fontStyling = 'font-bold text-2xl tracking-wide';
 
   // Check if name is DHL or DHL GLOBAL
-  if (lowerCaseName.includes('dhl')) {
+  const isDhl = lowerCaseName.includes('dhl');
+
+  if (isDhl) {
     backgroundClass = 'bg-[#FFCC00]';
-    textClass = 'text-[#D40511]';
+    // Text styles are not needed for image, but kept for border logic consistency
     hoverBorderClass = 'hover:border-[#D40511]';
-    // Match the style from ClubLocations for a consistent, bold look
-    fontStyling = 'text-5xl font-black italic tracking-tighter';
   } else if (lowerCaseName === 'pricesmart') {
     backgroundClass = 'bg-[#0d1a2e]';
     textClass = 'text-white';
@@ -34,9 +34,17 @@ const BrandCard: React.FC<BrandCardProps> = ({ name, onClick, className }) => {
       className={`${backgroundClass} p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer flex flex-col items-center justify-center text-center ${hoverBorderClass} ${className ?? 'border-2 border-transparent'}`}
       style={{ minHeight: '200px' }}
     >
-      <span className={`${textClass} ${fontStyling}`}>
-        {name}
-      </span>
+      {isDhl ? (
+        <img 
+          src="https://www.dhl.com/content/dam/dhl/global/core/images/logos/dhl-logo.svg" 
+          alt="DHL Logo" 
+          className="w-48 md:w-64 h-auto object-contain"
+        />
+      ) : (
+        <span className={`${textClass} ${fontStyling}`}>
+          {name}
+        </span>
+      )}
     </div>
   );
 };
