@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { UserIcon, EyeIcon, EyeOffIcon, LockClosedIcon } from '../assets/icons';
 import { SaltexLogo } from '../assets/saltex-logo';
@@ -41,7 +42,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   // State for login form
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // State for toggling login password visibility
   const [error, setError] = useState<ErrorKey | null>(null);
 
   // State for forgot password flow
@@ -110,6 +111,9 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       setResetMessage('');
       setRegisterMessage('');
       setView(targetView);
+      // Reset password visibility states when navigating
+      setShowPassword(false);
+      setShowRegisterPassword(false);
   }
   
   const languageSwitcher = (
@@ -202,7 +206,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         <LockClosedIcon className="h-5 w-5 text-gray-400" />
                     </div>
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                        <button type="button" onClick={() => setShowRegisterPassword(!showRegisterPassword)} className="text-gray-400 hover:text-gray-500">
+                        <button type="button" onClick={() => setShowRegisterPassword(!showRegisterPassword)} className="text-gray-400 hover:text-gray-500 focus:outline-none">
                             {showRegisterPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                         </button>
                     </div>
@@ -331,7 +335,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     <LockClosedIcon className="h-5 w-5 text-gray-400" />
                 </div>
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-gray-400 hover:text-gray-500">
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-gray-400 hover:text-gray-500 focus:outline-none">
                         {showPassword ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                     </button>
                 </div>
