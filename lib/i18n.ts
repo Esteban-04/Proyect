@@ -1,4 +1,5 @@
 
+
 export const translations = {
   es: {
     // Login & Register & Reset
@@ -51,6 +52,7 @@ export const translations = {
     saveButton: 'Guardar',
     saveSuccess: '¡Cambios guardados exitosamente!',
     okButton: 'Aceptar',
+    searchPlaceholder: 'Buscar por Nombre o IP...',
   },
   en: {
     // Login & Register & Reset
@@ -103,6 +105,7 @@ export const translations = {
     saveButton: 'Save',
     saveSuccess: 'Changes saved successfully!',
     okButton: 'OK',
+    searchPlaceholder: 'Search by Name or IP...',
   },
 };
 

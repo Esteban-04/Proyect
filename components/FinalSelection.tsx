@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Country } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { EyeIcon, EyeOffIcon } from '../assets/icons';
+import { EyeIcon, EyeOffIcon, SearchIcon } from '../assets/icons';
 
 // --- Icons ---
 
@@ -492,6 +492,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const { t } = useLanguage();
   const [showModal, setShowModal] = useState(false);
   const [selectedServerKey, setSelectedServerKey] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Store camera data for each server independently. 
   // Initializes all servers with their respective default data lists.
@@ -539,6 +540,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       setSelectedServerKey(serverKey);
       setShowSaveSuccess(false);
       setVisiblePasswords({});
+      setSearchQuery(''); // Reset search query
       setShowModal(true);
   };
 
@@ -574,6 +576,16 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       if (selectedServerKey === 'server3') return `Detalles del Servidor 03 - ${clubName}`;
       return t('modalTitle');
   };
+
+  // Filter logic
+  const filteredCameras = tempCameras.filter(cam => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+          cam.name.toLowerCase().includes(query) ||
+          cam.ip.toLowerCase().includes(query)
+      );
+  });
 
   return (
     <div>
@@ -688,7 +700,22 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
             </div>
 
             {/* Modal Body (Scrollable) */}
-            <div className="p-6 overflow-auto bg-gray-50 flex-grow">
+            <div className="p-6 overflow-auto bg-gray-50 flex-grow flex flex-col">
+              
+              {/* Search Bar */}
+              <div className="mb-4 relative">
+                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <SearchIcon className="h-5 w-5 text-gray-400" />
+                 </div>
+                 <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={t('searchPlaceholder')}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 text-black focus:outline-none focus:ring-1 focus:ring-[#0d1a2e] focus:border-[#0d1a2e] sm:text-sm transition duration-150 ease-in-out shadow-sm"
+                 />
+              </div>
+
               <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm bg-white">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-100">
@@ -703,7 +730,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {tempCameras.map((cam) => (
+                    {filteredCameras.map((cam) => (
                       <tr key={cam.id} className="hover:bg-blue-50 transition-colors group">
                         <td className="px-4 py-3 text-sm text-gray-900 font-medium text-center">{cam.id}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">
@@ -765,6 +792,13 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                         </td>
                       </tr>
                     ))}
+                    {filteredCameras.length === 0 && (
+                        <tr>
+                            <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                                No se encontraron resultados.
+                            </td>
+                        </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
