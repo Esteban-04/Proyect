@@ -21,8 +21,12 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
   const { t } = useLanguage();
   const isDhl = country.code === 'dhl';
 
+  // Use full bleed layout ONLY for DHL
+  const containerClass = isDhl ? 'rounded-xl overflow-hidden' : '';
+  const paddingClass = isDhl ? 'p-8 md:p-12' : '';
+
   return (
-    <div className={`relative w-full ${isDhl ? 'rounded-xl overflow-hidden' : ''}`}>
+    <div className={`relative w-full ${containerClass}`}>
       {/* Background Image for DHL */}
       {isDhl && (
         <>
@@ -40,8 +44,8 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
         </>
       )}
 
-      {/* Content - Increased padding for DHL since parent padding is removed */}
-      <div className={`relative z-10 ${isDhl ? 'p-8 md:p-12' : 'p-4'}`}>
+      {/* Content */}
+      <div className={`relative z-10 ${paddingClass}`}>
         <div className="flex justify-center items-center mb-8">
           {isDhl ? (
             <h2 className="text-5xl font-black italic text-[#D40511] tracking-tighter drop-shadow-md">
@@ -54,13 +58,13 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
                 alt={`${country.name} flag`}
                 className="w-10 h-auto mr-4 rounded-sm shadow-md"
               />
-              <h2 className="text-2xl font-bold text-gray-800">
+              <h2 className="text-2xl font-bold text-[#0d1a2e] drop-shadow-sm">
                 {country.name}
               </h2>
             </>
           )}
         </div>
-        <p className={`mb-6 text-center font-bold ${isDhl ? 'text-[#D40511] drop-shadow-sm' : 'text-gray-600'}`}>
+        <p className={`mb-6 text-center font-bold ${isDhl ? 'text-[#D40511] drop-shadow-sm' : 'text-[#0d1a2e]'}`}>
           {t('selectClubPrompt')}
         </p>
 

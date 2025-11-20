@@ -148,6 +148,49 @@ const SERVER2_CAMERA_DATA: CameraData[] = [
   { id: 40, name: 'SF | DOMO INTERNO', ip: '192.168.2.197', manufacturer: 'Milesight', user: 'admin', password: 'ms1234', compression: 'H265' },
 ];
 
+const SERVER3_CAMERA_DATA: CameraData[] = [
+  { id: 1, name: 'OA | CCTV', ip: '192.168.2.190', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 2, name: 'PA | BAKERY HORNOS', ip: '192.168.2.180', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 3, name: 'OA | EDP', ip: '192.168.2.170', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 4, name: 'PK | FONDO 1', ip: '192.168.2.151', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 5, name: 'PK | INFERIOR ESCALERA', ip: '192.168.2.141', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 6, name: 'OA | KRONOS BAÑOS', ip: '192.168.2.205', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 7, name: 'PA | DECORACION', ip: '192.168.2.73', manufacturer: 'Generic', user: 'admin', password: 'mssg7509', compression: 'H265' },
+  { id: 8, name: 'OA | LOKERS MUJERES', ip: '192.168.2.179', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 9, name: 'OA | MPU 1', ip: '192.168.2.204', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 10, name: 'OA | OFICINA', ip: '192.168.2.232', manufacturer: 'Vivotek', user: 'root', password: 'red12345', compression: 'H265' },
+  { id: 11, name: 'PA | ROSTY', ip: '192.168.2.173', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 12, name: 'RA | RTV', ip: '192.168.2.104', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 13, name: 'OA | PASILLO LOCKERS', ip: '192.168.2.214', manufacturer: 'Generic', user: 'admin', password: 'mssg7509', compression: 'H265' },
+  { id: 14, name: 'TC | CENTRO DE LLANTAS', ip: '192.168.2.219', manufacturer: 'Vivotek', user: 'root', password: 'red12345', compression: 'H264' },
+  { id: 15, name: 'TC | TALLER', ip: '192.168.2.91', manufacturer: 'Vivotek', user: 'root', password: 'red12345', compression: 'H264' },
+  { id: 16, name: 'TC | TALLER LLANTAS', ip: '192.168.2.228', manufacturer: 'Vivotek', user: 'root', password: 'red12345', compression: 'H265' },
+  { id: 17, name: 'TC | TIRE CENTER', ip: '192.168.2.167', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 18, name: 'FC | SUB ESTACION ELECTRICA', ip: '192.168.2.92', manufacturer: 'Vivotek', user: 'root', password: 'red12345', compression: 'H265' },
+  { id: 19, name: 'OS | OVER STOCK FREZZER', ip: '192.168.2.130', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 20, name: 'OS | OVER STOCK PRODUCE', ip: '192.168.2.119', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 21, name: 'CG | NEVER CLICK & GO', ip: '192.168.2.231', manufacturer: 'Vivotek', user: 'root', password: 'red12345', compression: 'H265' },
+  { id: 22, name: 'CG | CLICK & GO', ip: '192.168.2.165', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 23, name: 'SF | CAJA RAPPI', ip: '192.168.2.172', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 24, name: 'SF | CANOPY', ip: '192.168.2.203', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 25, name: 'SF | PARED DROOP', ip: '192.168.2.201', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 26, name: 'SF | PARED HARDLINE', ip: '192.168.2.229', manufacturer: 'Generic', user: 'admin', password: 'Mssg7509', compression: 'H265' },
+  { id: 27, name: 'SF | VISUAL FLEX', ip: '192.168.2.101', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H264' },
+  { id: 28, name: 'OA | RECIBO', ip: '192.168.2.248', manufacturer: 'Generic', user: 'admin', password: 'mssg7509', compression: 'H265' },
+  { id: 29, name: 'OA | DESCANSO 1', ip: '192.168.2.249', manufacturer: 'Generic', user: 'admin', password: 'mssg7509', compression: 'H265' },
+  { id: 30, name: 'OA | DESCANSO 2', ip: '192.168.2.59', manufacturer: 'Generic', user: 'admin', password: 'mssg7509', compression: 'H265' },
+  { id: 31, name: 'OA | COLPATRIA', ip: '192.168.2.174', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H265' },
+  { id: 32, name: 'OA | OFICINA MEMBRESIA', ip: '192.168.2.63', manufacturer: 'Generic', user: 'admin', password: 'mssg7509', compression: 'H265' },
+  { id: 33, name: 'OA | RECURSOS HUMANOS 1', ip: '192.168.2.64', manufacturer: 'Generic', user: 'admin', password: 'mssg7509', compression: 'H265' },
+  { id: 34, name: 'PK / PTZ PARQUEADERO PISO DOS', ip: '192.168.2.155', manufacturer: 'Axis', user: 'root', password: 'root', compression: 'H264' },
+  { id: 35, name: 'OA | ADMINISTRACION', ip: '192.168.2.66', manufacturer: 'Generic', user: 'admin', password: 'mssg7509', compression: 'H265' },
+  { id: 36, name: 'PK | PLACAS', ip: '192.168.2.67', manufacturer: 'Generic', user: 'admin', password: 'mssg7509', compression: 'H265' },
+  { id: 37, name: 'OA | MPU', ip: '192.168.2.68', manufacturer: 'Generic', user: 'admin', password: 'mssg7509', compression: 'H265' },
+  { id: 38, name: 'PA | BAKERY', ip: '192.168.2.69', manufacturer: 'Generic', user: 'admin', password: 'mssg7509', compression: 'H265' },
+  { id: 39, name: 'PA | CARNES', ip: '192.168.2.71', manufacturer: 'Generic', user: 'admin', password: 'mssg7509', compression: 'H265' },
+  { id: 40, name: 'EX | EXTERNA 1', ip: '192.168.2.157', manufacturer: 'Generic', user: 'admin', password: 'ms1234', compression: 'H264' },
+];
+
 const serverData: ClubServerData = {
   'Oranjestad': {
     server1: { ip: '192.168.15.10', user: 'administrator', teamviewerId: '1 279 617 762', teamviewerPassword: '@l3ss21++' },
@@ -451,10 +494,11 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const [selectedServerKey, setSelectedServerKey] = useState<string | null>(null);
   
   // Store camera data for each server independently. 
-  // Initializes both servers with their respective default data lists.
+  // Initializes all servers with their respective default data lists.
   const [allServerCameras, setAllServerCameras] = useState<Record<string, CameraData[]>>({
     server1: SERVER1_CAMERA_DATA,
     server2: SERVER2_CAMERA_DATA,
+    server3: SERVER3_CAMERA_DATA,
   });
   
   const [tempCameras, setTempCameras] = useState<CameraData[]>([]);
@@ -485,9 +529,12 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
   const handleOpenModal = (serverKey: string) => {
       // Use existing data for this server, or fallback to initial data if not set yet
-      // We default to SERVER1 data if for some reason the key doesn't exist in our state map yet,
-      // but it should since we initialized it.
-      const currentData = allServerCameras[serverKey] || (serverKey === 'server2' ? SERVER2_CAMERA_DATA : SERVER1_CAMERA_DATA);
+      let defaultData = SERVER1_CAMERA_DATA;
+      if (serverKey === 'server2') defaultData = SERVER2_CAMERA_DATA;
+      if (serverKey === 'server3') defaultData = SERVER3_CAMERA_DATA;
+
+      const currentData = allServerCameras[serverKey] || defaultData;
+      
       setTempCameras(currentData);
       setSelectedServerKey(serverKey);
       setShowSaveSuccess(false);
@@ -524,6 +571,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const getModalTitle = () => {
       if (selectedServerKey === 'server1') return `Detalles del Servidor 01 - ${clubName}`;
       if (selectedServerKey === 'server2') return `Detalles del Servidor 02 - ${clubName}`;
+      if (selectedServerKey === 'server3') return `Detalles del Servidor 03 - ${clubName}`;
       return t('modalTitle');
   };
 
@@ -541,7 +589,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                 className="w-10 h-auto rounded-sm shadow-md"
             />
          )}
-        <h2 className={`text-3xl font-bold text-gray-800 ${isDhl ? 'text-5xl italic font-black text-[#D40511] tracking-tighter' : ''}`}>
+        <h2 className={`text-3xl font-bold text-gray-800 ${isDhl ? 'text-5xl italic font-black text-[#0d1a2e] tracking-tighter' : ''}`}>
              {clubName}
         </h2>
       </div>
@@ -549,8 +597,8 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
         {serverEntries.map(([key, info], index) => {
             const isFirst = index === 0;
-            // Check if this server card should be clickable (Server 1 or Server 2)
-            const isInteractive = key === 'server1' || key === 'server2';
+            // Check if this server card should be clickable (Server 1, Server 2, or Server 3)
+            const isInteractive = ['server1', 'server2', 'server3'].includes(key);
             
             // If odd number of servers, span the first one across 2 columns to center it (as seen in screenshot)
             const spanClass = (isOdd && isFirst) ? 'md:col-span-2' : '';
