@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Country } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { EyeIcon, EyeOffIcon, SearchIcon } from '../assets/icons';
@@ -506,6 +506,10 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({});
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
+  // Column widths state
+  const [columnWidths, setColumnWidths] = useState<number[]>([60, 250, 150, 140, 120, 160, 120]);
+  const activeResizeRef = useRef<{ index: number; startX: number; startWidth: number } | null>(null);
+
   const servers = serverData[clubName];
   const isDhl = country.code === 'dhl';
 
@@ -568,6 +572,49 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
           setTimeout(() => setShowSaveSuccess(false), 3000);
       }
   }
+
+  // Column resizing handlers
+  const handleMouseDown = (index: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    activeResizeRef.current = {
+      index,
+      startX: e.clientX,
+      startWidth: columnWidths[index],
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.body.style.cursor = 'col-resize';
+  };
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!activeResizeRef.current) return;
+    const { index, startX, startWidth } = activeResizeRef.current;
+    const diff = e.clientX - startX;
+    const newWidth = Math.max(50, startWidth + diff);
+
+    setColumnWidths((prev) => {
+      const newWidths = [...prev];
+      newWidths[index] = newWidth;
+      return newWidths;
+    });
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    activeResizeRef.current = null;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+    document.body.style.cursor = '';
+  }, [handleMouseMove]);
+
+  const Resizer = ({ index }: { index: number }) => (
+    <div
+      onMouseDown={(e) => handleMouseDown(index, e)}
+      className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-400 hover:opacity-50 z-10 transition-opacity"
+      title="Resize column"
+      style={{ touchAction: 'none' }}
+    />
+  );
 
   // Determine title for the modal based on selection
   const getModalTitle = () => {
@@ -717,22 +764,43 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
               </div>
 
               <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm bg-white">
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="min-w-full divide-y divide-gray-200 table-fixed">
                   <thead className="bg-gray-100">
                     <tr>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colIndex')}</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colName')}</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colIp')}</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colManufacturer')}</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colUser')}</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colPassword')}</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">{t('colCompression')}</th>
+                      <th className="relative px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider overflow-hidden" style={{ width: columnWidths[0] }}>
+                          {t('colIndex')}
+                          <Resizer index={0} />
+                      </th>
+                      <th className="relative px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider overflow-hidden" style={{ width: columnWidths[1] }}>
+                          {t('colName')}
+                          <Resizer index={1} />
+                      </th>
+                      <th className="relative px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider overflow-hidden" style={{ width: columnWidths[2] }}>
+                          {t('colIp')}
+                          <Resizer index={2} />
+                      </th>
+                      <th className="relative px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider overflow-hidden" style={{ width: columnWidths[3] }}>
+                          {t('colManufacturer')}
+                          <Resizer index={3} />
+                      </th>
+                      <th className="relative px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider overflow-hidden" style={{ width: columnWidths[4] }}>
+                          {t('colUser')}
+                          <Resizer index={4} />
+                      </th>
+                      <th className="relative px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider overflow-hidden" style={{ width: columnWidths[5] }}>
+                          {t('colPassword')}
+                          <Resizer index={5} />
+                      </th>
+                      <th className="relative px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider overflow-hidden" style={{ width: columnWidths[6] }}>
+                          {t('colCompression')}
+                          <Resizer index={6} />
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredCameras.map((cam) => (
                       <tr key={cam.id} className="hover:bg-blue-50 transition-colors group">
-                        <td className="px-4 py-3 text-sm text-gray-900 font-medium text-center">{cam.id}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 font-medium text-center truncate">{cam.id}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">
                             <input 
                                 type="text" 
