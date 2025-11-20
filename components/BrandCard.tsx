@@ -14,7 +14,8 @@ const BrandCard: React.FC<BrandCardProps> = ({ name, onClick, className }) => {
   let hoverBorderClass = 'hover:border-[#0d1a2e]';
   let fontStyling = 'font-bold text-2xl tracking-wide';
 
-  if (lowerCaseName === 'dhl') {
+  // Check if name is DHL or DHL GLOBAL
+  if (lowerCaseName.includes('dhl')) {
     backgroundClass = 'bg-[#FFCC00]';
     textClass = 'text-[#D40511]';
     hoverBorderClass = 'hover:border-[#D40511]';

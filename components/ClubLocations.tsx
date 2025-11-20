@@ -32,10 +32,11 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
                backgroundImage: `url('https://www.freightwaves.com/wp-content/uploads/2025/08/05/DHL-Post-EVs_1.jpg')`,
                backgroundSize: 'cover',
                backgroundPosition: 'center',
+               backgroundRepeat: 'no-repeat',
              }}
            />
-           {/* Overlay to ensure text readability. Removed blur and reduced opacity for sharpness */}
-           <div className="absolute inset-0 z-0 bg-white/80" />
+           {/* Overlay with very low opacity (20%) to keep the image sharp and clear */}
+           <div className="absolute inset-0 z-0 bg-white/20" />
         </>
       )}
 
@@ -43,7 +44,7 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
       <div className={`relative z-10 ${isDhl ? 'p-8 md:p-12' : 'p-4'}`}>
         <div className="flex justify-center items-center mb-8">
           {isDhl ? (
-            <h2 className="text-5xl font-black italic text-[#D40511] tracking-tighter">
+            <h2 className="text-5xl font-black italic text-[#D40511] tracking-tighter drop-shadow-md">
               {country.name}
             </h2>
           ) : (
@@ -59,7 +60,7 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
             </>
           )}
         </div>
-        <p className="text-gray-600 mb-6 text-center font-bold">
+        <p className={`mb-6 text-center font-bold ${isDhl ? 'text-[#D40511] drop-shadow-sm' : 'text-gray-600'}`}>
           {t('selectClubPrompt')}
         </p>
 
@@ -70,6 +71,7 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
                 name={clubName}
                 isSelected={selectedClub === clubName}
                 onClick={onClubSelect}
+                isDhl={isDhl}
               />
           ))}
         </div>
@@ -77,7 +79,7 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
         <div className="mt-8 text-center">
           <button
             onClick={onBack}
-            className="bg-[#0d1a2e] text-white font-semibold py-2 px-6 rounded-lg shadow-md hover:bg-[#1a2b4e] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0d1a2e]"
+            className={`${isDhl ? 'bg-[#D40511] hover:bg-[#b0040e] focus:ring-[#D40511]' : 'bg-[#0d1a2e] hover:bg-[#1a2b4e] focus:ring-[#0d1a2e]'} text-white font-semibold py-2 px-6 rounded-lg shadow-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2`}
           >
             {t('backButton')}
           </button>

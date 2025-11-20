@@ -1,3 +1,4 @@
+
 import { Country } from './types';
 
 // The list of countries to be displayed.
@@ -35,7 +36,7 @@ export const COUNTRIES: Country[] = [
 ];
 
 export const DHL_DATA: Country = {
-  name: 'DHL',
+  name: 'DHL GLOBAL',
   code: 'dhl', // Special code for DHL
   count: 5,
   clubs: ['Intexzona', 'San Carlos II', 'Easy', 'PLC', 'Rio Negro'],
