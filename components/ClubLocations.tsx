@@ -22,7 +22,7 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
   const isDhl = country.code === 'dhl';
 
   return (
-    <div className={`relative w-full ${isDhl ? 'rounded-xl overflow-hidden shadow-inner' : ''}`}>
+    <div className={`relative w-full ${isDhl ? 'rounded-xl overflow-hidden' : ''}`}>
       {/* Background Image for DHL */}
       {isDhl && (
         <>
@@ -39,8 +39,8 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
         </>
       )}
 
-      {/* Content */}
-      <div className="relative z-10 p-4">
+      {/* Content - Increased padding for DHL since parent padding is removed */}
+      <div className={`relative z-10 ${isDhl ? 'p-8 md:p-12' : 'p-4'}`}>
         <div className="flex justify-center items-center mb-8">
           {isDhl ? (
             <h2 className="text-5xl font-black italic text-[#D40511] tracking-tighter">

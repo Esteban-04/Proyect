@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Country } from './types';
 import { COUNTRIES, DHL_DATA } from './constants';
@@ -63,6 +64,9 @@ const App: React.FC = () => {
   const otherCountries = COUNTRIES.filter(c => c.code !== 'co');
 
   const showFinalSelection = !!selectedClub;
+  
+  // Check if we are currently in the DHL Location Selection view (Brand selected, but no specific club yet)
+  const isDhlLocationSelection = selectedBrand === 'dhl' && !selectedClub;
 
   if (!isAuthenticated) {
     return (
@@ -215,7 +219,7 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-grow flex items-center justify-center p-4">
-        <div className="w-full max-w-5xl mx-auto rounded-xl shadow-lg p-6 md:p-8 bg-white">
+        <div className={`w-full max-w-5xl mx-auto rounded-xl shadow-lg bg-white ${isDhlLocationSelection ? 'p-0 overflow-hidden' : 'p-6 md:p-8'}`}>
             {renderContent()}
         </div>
       </main>
