@@ -1,43 +1,22 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { UserIcon, EyeIcon, EyeOffIcon, LockClosedIcon } from '../assets/icons';
 import { SaltexLogo } from '../assets/saltex-logo';
 import { useLanguage } from '../context/LanguageContext';
+import { User } from '../types';
 
 interface LoginProps {
-  onLoginSuccess: () => void;
+  onLoginSuccess: (user: User, isSuperAdmin: boolean) => void;
+  users: User[];
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
 }
 
-// Define a type for our user object
-interface User {
-  username: string;
-  password: string;
-  name?: string;
-}
+type ErrorKey = 'loginErrorIncorrectCredentials' | 'registerErrorEmailExists' | 'loginErrorAccountDisabled';
 
-type ErrorKey = 'loginErrorIncorrectCredentials' | 'registerErrorEmailExists';
-
-const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
+const Login: React.FC<LoginProps> = ({ onLoginSuccess, users, setUsers }) => {
   const { language, setLanguage, t } = useLanguage();
   // State for different views
   const [view, setView] = useState<'login' | 'forgotPassword' | 'register'>('login');
-
-  // State to hold registered users, initialized from localStorage
-  const [users, setUsers] = useState<User[]>(() => {
-    try {
-      const savedUsers = localStorage.getItem('registeredUsers');
-      return savedUsers ? JSON.parse(savedUsers) : [];
-    } catch (error) {
-      console.error("Failed to parse users from localStorage", error);
-      return [];
-    }
-  });
-
-  // Effect to save users to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('registeredUsers', JSON.stringify(users));
-  }, [users]);
-
 
   // State for login form
   const [username, setUsername] = useState('');
@@ -59,16 +38,30 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const handleLoginSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     // Check for hardcoded admin user
-    const isAdmin = username === 'admin' && password === 'Pr1c3sm4rt2025!';
+    const isSuperAdmin = username === 'admin' && password === 'Pr1c3sm4rt2025!';
     
+    if (isSuperAdmin) {
+        setError(null);
+        // Create a temporary admin user object for session
+        const adminUser: User = { username: 'admin', password: '', name: 'Super Admin', role: 'admin', isDisabled: false };
+        onLoginSuccess(adminUser, true);
+        return;
+    }
+
     // Check for dynamically registered users
     const registeredUser = users.find(
         user => user.username === username && user.password === password
     );
 
-    if (isAdmin || registeredUser) {
-        setError(null);
-        onLoginSuccess();
+    if (registeredUser) {
+        if (registeredUser.isDisabled) {
+            setError('loginErrorAccountDisabled');
+        } else {
+            setError(null);
+            // Default role to user if undefined
+            const userWithRole = { ...registeredUser, role: registeredUser.role || 'user' };
+            onLoginSuccess(userWithRole, false);
+        }
     } else {
         setError('loginErrorIncorrectCredentials');
     }
@@ -91,7 +84,14 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     }
     
     // Add new user
-    const newUser: User = { name: registerName, username: registerEmail, password: registerPassword };
+    const newUser: User = { 
+        name: registerName, 
+        username: registerEmail, 
+        password: registerPassword,
+        isDisabled: false, // By default, users are enabled.
+        role: 'user', // Default role is user
+        allowedCountries: [] // Default no countries (or could be all, logic handled in App)
+    };
     setUsers(currentUsers => [...currentUsers, newUser]);
     
     setError(null); // Clear previous errors

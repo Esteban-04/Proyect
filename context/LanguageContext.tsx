@@ -16,6 +16,12 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   const t = (key: keyof Translations, ...args: any[]): string => {
     const stringOrFn = translations[language][key] || translations['es'][key];
+    
+    if (!stringOrFn) {
+        console.warn(`Translation key not found: ${String(key)}`);
+        return String(key);
+    }
+
     if (typeof stringOrFn === 'function') {
         // Fix for: A spread argument must either have a tuple type or be passed to a rest parameter.
         // Using .apply() to call the function with an array of arguments resolves this.

@@ -1,11 +1,14 @@
 
-import React, { useState } from 'react';
-import { Country } from './types';
+
+
+import React, { useState, useEffect } from 'react';
+import { Country, User } from './types';
 import { COUNTRIES, DHL_DATA } from './constants';
 import CountryCard from './components/CountryCard';
 import ClubLocations from './components/ClubLocations';
 import FinalSelection from './components/FinalSelection';
 import Login from './components/Login';
+import AdminDashboard from './components/AdminDashboard';
 import { useLanguage } from './context/LanguageContext';
 import CodeBackground from './components/CodeBackground';
 import BrandCard from './components/BrandCard';
@@ -13,20 +16,59 @@ import BrandCard from './components/BrandCard';
 // Main App Component
 const App: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
+  
+  // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false); // Track if super admin (hardcoded)
+  const [currentUser, setCurrentUser] = useState<User | null>(null); // Track currently logged in user
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false); // Toggle dashboard view
+
+  // User Data State (Moved from Login.tsx)
+  const [users, setUsers] = useState<User[]>(() => {
+    try {
+      const savedUsers = localStorage.getItem('registeredUsers');
+      return savedUsers ? JSON.parse(savedUsers) : [];
+    } catch (error) {
+      console.error("Failed to parse users from localStorage", error);
+      return [];
+    }
+  });
+
+  // Save users to local storage when updated
+  useEffect(() => {
+    localStorage.setItem('registeredUsers', JSON.stringify(users));
+  }, [users]);
+
+  // Navigation State
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [selectedClub, setSelectedClub] = useState<string | null>(null);
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = (user: User, isSuperAdmin: boolean) => {
     setIsAuthenticated(true);
+    setIsAdmin(isSuperAdmin);
+    setCurrentUser(user);
+    
+    // Determine if we should show dashboard immediately
+    // If super admin -> yes
+    // If normal admin user -> maybe, but for now let's stick to the explicit "Admin" button or initial logic
+    if (isSuperAdmin) {
+        setShowAdminDashboard(true);
+    }
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
+    setIsAdmin(false);
+    setCurrentUser(null);
+    setShowAdminDashboard(false);
     setSelectedBrand(null);
     setSelectedCountry(null);
     setSelectedClub(null);
+  };
+
+  const handleContinueToApp = () => {
+      setShowAdminDashboard(false);
   };
 
   const handleBrandSelect = (brand: string) => {
@@ -59,9 +101,32 @@ const App: React.FC = () => {
     setSelectedClub(null);
   }
 
+  // Filter Countries Logic based on Permissions
+  // If admin or super admin, show all.
+  // If normal user, filter based on allowedCountries.
+  const getFilteredCountries = () => {
+      const all = COUNTRIES;
+      
+      // If super admin or user has 'admin' role, show all
+      if (isAdmin || (currentUser && currentUser.role === 'admin')) {
+          return all;
+      }
+
+      // If normal user, filter
+      if (currentUser && currentUser.allowedCountries && currentUser.allowedCountries.length > 0) {
+          return all.filter(c => currentUser.allowedCountries!.includes(c.code));
+      }
+
+      // If no allowed countries specified for normal user, return empty (or decide default)
+      // Based on prompt, admin "activates" countries, so default is likely none.
+      return [];
+  };
+
+  const visibleCountries = getFilteredCountries();
+  
   // As per constants.ts, Colombia is handled specially in the layout.
-  const colombia = COUNTRIES.find(c => c.code === 'co');
-  const otherCountries = COUNTRIES.filter(c => c.code !== 'co');
+  const colombia = visibleCountries.find(c => c.code === 'co');
+  const otherCountries = visibleCountries.filter(c => c.code !== 'co');
 
   const showFinalSelection = !!selectedClub;
   
@@ -69,6 +134,11 @@ const App: React.FC = () => {
   // This applies ONLY to DHL now, as PriceSmart background was removed.
   const isClubSelectionView = (selectedBrand === 'dhl' && !selectedClub);
 
+  // Permission checks for Brands
+  const hasDhlAccess = isAdmin || (currentUser?.role === 'admin') || currentUser?.allowedCountries?.includes('dhl');
+  const hasPriceSmartAccess = visibleCountries.length > 0;
+
+  // --- 1. Not Authenticated ---
   if (!isAuthenticated) {
     return (
       <div 
@@ -76,24 +146,55 @@ const App: React.FC = () => {
         style={{ backgroundColor: '#0d1a2e' }}
       >
         <CodeBackground />
-        <Login onLoginSuccess={handleLoginSuccess} />
+        <Login 
+            onLoginSuccess={handleLoginSuccess} 
+            users={users} 
+            setUsers={setUsers}
+        />
       </div>
     );
   }
 
-  // --- Brand Selection View ---
+  // --- 2. Admin Dashboard (Only for Admin, before App) ---
+  if (showAdminDashboard) {
+      return (
+        <div 
+            className="min-h-screen font-sans flex items-center justify-center p-4 relative overflow-hidden bg-gray-100"
+        >
+             <AdminDashboard 
+                users={users} 
+                setUsers={setUsers} 
+                onContinue={handleContinueToApp}
+                onLogout={handleLogout}
+                currentUser={currentUser}
+             />
+        </div>
+      );
+  }
+
+  // --- 3. Main Application Views ---
+
   const brandSelectionView = (
     <div>
       <p className="text-gray-600 mb-8 text-center font-semibold text-xl">{t('selectBrandTitle')}</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-2xl mx-auto">
-        <BrandCard
-          name="PriceSmart"
-          onClick={() => handleBrandSelect('pricesmart')}
-        />
-        <BrandCard
-          name="DHL"
-          onClick={() => handleBrandSelect('dhl')}
-        />
+        {hasPriceSmartAccess && (
+            <BrandCard
+            name="PriceSmart"
+            onClick={() => handleBrandSelect('pricesmart')}
+            />
+        )}
+        {hasDhlAccess && (
+            <BrandCard
+            name="DHL"
+            onClick={() => handleBrandSelect('dhl')}
+            />
+        )}
+        {(!hasPriceSmartAccess && !hasDhlAccess) && (
+            <div className="col-span-1 md:col-span-2 text-center p-8 bg-gray-100 rounded-lg border border-gray-200">
+                <p className="text-gray-500 font-medium">{t('noAccessMessage')}</p>
+            </div>
+        )}
       </div>
     </div>
   );
@@ -103,26 +204,35 @@ const App: React.FC = () => {
     <div>
       <p className="text-gray-600 mb-8 text-center font-semibold text-xl">{t('allCountriesTitle')}</p>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {otherCountries.map((country) => (
-          <CountryCard
-            key={country.code}
-            country={country}
-            isSelected={selectedCountry?.code === country.code}
-            onSelect={handleCountrySelect}
-          />
-        ))}
-      </div>
-      {colombia && (
-         <div className="mt-4">
-            <CountryCard
-              key={colombia.code}
-              country={colombia}
-              isSelected={selectedCountry?.code === colombia.code}
-              onSelect={handleCountrySelect}
-            />
-         </div>
+      {visibleCountries.length === 0 ? (
+          <div className="text-center text-gray-500 py-8">
+              No countries assigned to your account.
+          </div>
+      ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {otherCountries.map((country) => (
+                <CountryCard
+                    key={country.code}
+                    country={country}
+                    isSelected={selectedCountry?.code === country.code}
+                    onSelect={handleCountrySelect}
+                />
+                ))}
+            </div>
+            {colombia && (
+                <div className="mt-4">
+                    <CountryCard
+                    key={colombia.code}
+                    country={colombia}
+                    isSelected={selectedCountry?.code === colombia.code}
+                    onSelect={handleCountrySelect}
+                    />
+                </div>
+            )}
+          </>
       )}
+      
       <div className="mt-8 text-center">
         <button
           onClick={handleBackToBrands}
@@ -190,7 +300,19 @@ const App: React.FC = () => {
        <header className="shadow-md" style={{ backgroundColor: '#0d1a2e' }}>
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
-                <h1 className="text-xl md:text-2xl font-bold text-white">SALTEX GROUP</h1>
+                <div className="flex items-center space-x-4">
+                     <h1 className="text-xl md:text-2xl font-bold text-white">SALTEX GROUP</h1>
+                     {/* Show Admin button if user is Super Admin OR has admin role */}
+                     {(isAdmin || (currentUser?.role === 'admin')) && !showAdminDashboard && (
+                         <button 
+                            onClick={() => setShowAdminDashboard(true)}
+                            className="ml-4 text-xs bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded border border-gray-500"
+                         >
+                             Admin
+                         </button>
+                     )}
+                </div>
+                
                 <div className="flex items-center space-x-4">
                     <div className="flex items-center text-white text-sm font-medium">
                        <button 

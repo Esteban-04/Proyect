@@ -322,14 +322,14 @@ const serverData: ClubServerData = {
   },
   'Barranquilla': {
     server1: { ip: '192.168.11.10', user: 'administrator', teamviewerId: '1 626 036 641', teamviewerPassword: '@l3ss21++' },
-    server2: { ip: '192.168.11.20', user: 'administrator', teamviewerId: '1 289 199 790', teamviewerPassword: '@l3ss21++' },
-    server3: { ip: '192.168.11.30', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
+    server2: { ip: '192.168.11.20', user: 'administrator', teamviewerId: '703 111 643', teamviewerPassword: '@l3ss21++' },
+    server3: { ip: '192.168.11.30', user: 'administrator', teamviewerId: '1 870 758 357', teamviewerPassword: '@l3ss21++' },
   },
   'Pereira': {
-    server1: { ip: '192.168.14.10', user: 'administrator', teamviewerId: '1 279 617 762', teamviewerPassword: '@l3ss21++' },
-    server2: { ip: '192.168.14.20', user: 'administrator', teamviewerId: '1 289 199 790', teamviewerPassword: '@l3ss21++' },
-    server3: { ip: '192.168.14.30', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
-    server4: { ip: '192.168.14.40', user: 'administrator', teamviewerId: 'N/A', teamviewerPassword: '@l3ss21++' },
+    server1: { ip: '192.168.14.10', user: 'administrator', teamviewerId: '281 044 494', teamviewerPassword: '@l3ss21++' },
+    server2: { ip: '192.168.14.20', user: 'administrator', teamviewerId: '1 341 818 303', teamviewerPassword: '@l3ss21++' },
+    server3: { ip: '192.168.14.30', user: 'administrator', teamviewerId: '606 342 322', teamviewerPassword: '@l3ss21++' },
+    server4: { ip: '192.168.14.40', user: 'administrator', teamviewerId: '1 183 061 146', teamviewerPassword: '@l3ss21++' },
   },
   'Bogotá - Salitre': {
     server1: { ip: '192.168.15.10', user: 'administrator', teamviewerId: '1 279 617 762', teamviewerPassword: '@l3ss21++' },
