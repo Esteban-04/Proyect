@@ -482,6 +482,8 @@ const serverData: ClubServerData = {
 
 // --- FinalSelection Component ---
 
+const CAMERA_DATA_KEY = 'saltex_camera_data_v1';
+
 interface FinalSelectionProps {
   country: Country;
   clubName: string;
@@ -496,10 +498,23 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   
   // Store camera data for each server independently. 
   // Initializes all servers with their respective default data lists.
-  const [allServerCameras, setAllServerCameras] = useState<Record<string, CameraData[]>>({
-    server1: SERVER1_CAMERA_DATA,
-    server2: SERVER2_CAMERA_DATA,
-    server3: SERVER3_CAMERA_DATA,
+  const [allServerCameras, setAllServerCameras] = useState<Record<string, CameraData[]>>(() => {
+    // Try to load from local storage first
+    try {
+        const savedData = localStorage.getItem(CAMERA_DATA_KEY);
+        if (savedData) {
+            return JSON.parse(savedData);
+        }
+    } catch (e) {
+        console.error("Failed to load camera data from local storage", e);
+    }
+
+    // Fallback to default constants
+    return {
+        server1: SERVER1_CAMERA_DATA,
+        server2: SERVER2_CAMERA_DATA,
+        server3: SERVER3_CAMERA_DATA,
+    };
   });
   
   const [tempCameras, setTempCameras] = useState<CameraData[]>([]);
@@ -564,10 +579,15 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
   const handleSave = () => {
       if (selectedServerKey) {
-          setAllServerCameras(prev => ({
-              ...prev,
+          const updatedCameras = {
+              ...allServerCameras,
               [selectedServerKey]: tempCameras
-          }));
+          };
+          setAllServerCameras(updatedCameras);
+          
+          // Persist changes to local storage
+          localStorage.setItem(CAMERA_DATA_KEY, JSON.stringify(updatedCameras));
+
           setShowSaveSuccess(true);
           setTimeout(() => setShowSaveSuccess(false), 3000);
       }

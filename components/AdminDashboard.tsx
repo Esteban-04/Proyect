@@ -1,9 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { EyeIcon, EyeOffIcon, PlusIcon, TrashIcon, GlobeIcon, UserIcon, LockClosedIcon, KeyIcon } from '../assets/icons';
-import { COUNTRIES, DHL_DATA } from '../constants';
+import { EyeIcon, EyeOffIcon, PlusIcon, TrashIcon, GlobeIcon, UserIcon, LockClosedIcon, KeyIcon, PencilIcon, SaveIcon } from '../assets/icons';
+import { COUNTRIES, DHL_DATA, USER_STORAGE_KEY } from '../constants';
 import { translations } from '../lib/i18n';
 
 interface AdminDashboardProps {
@@ -21,6 +21,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
   
   // State for password visibility (map of username -> boolean)
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   // State for Permissions Modal
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
@@ -29,13 +30,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
 
   // State for Add User Modal
   const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', username: '', password: '' });
+  const [newUser, setNewUser] = useState<{name: string, username: string, password: string, role: 'admin' | 'user'}>({ name: '', username: '', password: '', role: 'user' });
   const [newUserError, setNewUserError] = useState<TranslationKey | ''>('');
 
   // State for Change Password Modal
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordEditingUser, setPasswordEditingUser] = useState<string | null>(null);
   const [newPasswordValue, setNewPasswordValue] = useState('');
+
+  // State for Edit User Info Modal
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [editUserData, setEditUserData] = useState<{ originalUsername: string, name: string, username: string } | null>(null);
+  const [editUserError, setEditUserError] = useState<TranslationKey | ''>('');
 
   // Hardcoded Super Admin
   const SUPER_ADMIN: User = {
@@ -50,6 +56,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
   // Combine Super Admin with registered users for display
   // Filter out any registered user named 'admin' to avoid duplicates if one was created manually
   const displayUsers = [SUPER_ADMIN, ...users.filter(u => u.username !== 'admin')];
+
+  const showSuccess = (message: string) => {
+      setSuccessMessage(message);
+      setTimeout(() => setSuccessMessage(null), 3000);
+  };
 
   const toggleUserStatus = (username: string) => {
     if (username === 'admin') return; // Prevent disabling super admin
@@ -70,21 +81,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
   };
 
   const changeUserRole = (username: string, newRole: 'admin' | 'user') => {
-      if (username === 'admin') return; // Prevent changing super admin role
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
-            user.username === username
-            ? { ...user, role: newRole }
-            : user
-        )
-      );
+    if (username === 'admin') return; // Prevent changing super admin
+    setUsers(prevUsers => 
+      prevUsers.map(user => 
+        user.username === username 
+          ? { ...user, role: newRole } 
+          : user
+      )
+    );
   };
 
-  const deleteUser = (username: string) => {
+  const deleteUser = (username: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Stop propagation to prevent weird UI issues
     if (username === 'admin') return; // Prevent deleting super admin
+    
     if (window.confirm(t('confirmDeleteUser'))) {
       setUsers(prevUsers => prevUsers.filter(user => user.username !== username));
+      showSuccess(t('userDeleteSuccess'));
     }
+  };
+
+  // --- Global Save Handler ---
+  const handleGlobalSave = () => {
+      // Explicitly write to the same standardized key used in App.tsx
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users));
+      showSuccess(t('globalSaveSuccess'));
   };
 
   // --- Permissions Modal Logic ---
@@ -158,7 +179,47 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
           setShowPasswordModal(false);
           setPasswordEditingUser(null);
           setNewPasswordValue('');
+          showSuccess(t('passwordUpdateSuccess'));
       }
+  };
+
+  // --- Edit User Modal Logic ---
+  const openEditUserModal = (username: string) => {
+      const user = users.find(u => u.username === username);
+      if (user) {
+          setEditUserData({ 
+              originalUsername: username, 
+              name: user.name || '', 
+              username: user.username,
+          });
+          setShowEditUserModal(true);
+          setEditUserError('');
+      }
+  };
+
+  const handleUpdateUser = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!editUserData) return;
+
+      // Check if username changed and if it conflicts
+      if (editUserData.username !== editUserData.originalUsername) {
+          if (editUserData.username === 'admin' || users.some(u => u.username === editUserData.username)) {
+              setEditUserError('registerErrorUserExists');
+              return;
+          }
+      }
+
+      setUsers(prevUsers => 
+          prevUsers.map(user => 
+              user.username === editUserData.originalUsername
+              ? { ...user, name: editUserData.name, username: editUserData.username }
+              : user
+          )
+      );
+      
+      setShowEditUserModal(false);
+      setEditUserData(null);
+      showSuccess(t('userUpdateSuccess'));
   };
 
 
@@ -178,7 +239,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
       const userToAdd: User = {
           ...newUser,
           isDisabled: false,
-          role: 'user',
+          // role is taken from newUser state
           allowedCountries: []
       };
 
@@ -186,12 +247,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
       setUsers(prevUsers => [...prevUsers, userToAdd]);
       
       setShowAddUserModal(false);
-      setNewUser({ name: '', username: '', password: '' });
+      setNewUser({ name: '', username: '', password: '', role: 'user' });
       setNewUserError('');
+      showSuccess(t('userCreateSuccess')); // Ensure distinct success message
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="w-full max-w-7xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] relative">
+      
+      {/* Toast Notification */}
+      {successMessage && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg font-semibold transition-all duration-500 ease-in-out animate-bounce">
+            {successMessage}
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-[#0d1a2e] px-8 py-6 flex justify-between items-center">
         <div>
@@ -221,6 +291,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                  EN
                </button>
             </div>
+
+            <button
+              onClick={handleGlobalSave}
+              className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition-colors flex items-center text-sm"
+            >
+              <SaveIcon className="w-5 h-5 mr-2" />
+              {t('globalSaveButton')}
+            </button>
 
             <button
               onClick={() => setShowAddUserModal(true)}
@@ -278,6 +356,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
               ) : (
                 displayUsers.map((user) => {
                   const isSuperAdmin = user.username === 'admin';
+                  
                   return (
                     <tr key={user.username} className="hover:bg-gray-50 transition-colors">
                         {/* Status Toggle */}
@@ -320,7 +399,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                                     onClick={() => togglePasswordVisibility(user.username)}
                                     className="text-gray-400 hover:text-gray-600 focus:outline-none"
                                 >
-                                    {visiblePasswords[user.username] ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                                    {visiblePasswords[user.username] ? <EyeOffIcon className="w-4 h-4 pointer-events-none" /> : <EyeIcon className="w-4 h-4 pointer-events-none" />}
                                 </button>
                             </div>
                         </td>
@@ -333,7 +412,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                                         value={user.role || 'user'}
                                         onChange={(e) => changeUserRole(user.username, e.target.value as 'admin' | 'user')}
                                         disabled={isSuperAdmin}
-                                        className={`block w-32 pl-3 pr-8 py-1 text-sm text-gray-900 border-gray-300 focus:outline-none focus:ring-[#0d1a2e] focus:border-[#0d1a2e] sm:text-sm rounded-md bg-gray-50 ${isSuperAdmin ? 'cursor-not-allowed text-gray-500 bg-gray-100' : 'cursor-pointer'}`}
+                                        className={`block w-32 pl-3 pr-8 py-1.5 text-sm border border-gray-300 focus:outline-none focus:ring-[#0d1a2e] focus:border-[#0d1a2e] rounded-md shadow-sm ${isSuperAdmin ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'text-gray-900 bg-white'}`}
                                     >
                                         <option value="user">{t('roleUser')}</option>
                                         <option value="admin">{t('roleAdmin')}</option>
@@ -342,10 +421,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                                     {user.role !== 'admin' && !isSuperAdmin && (
                                         <button
                                             onClick={() => openPermissionsModal(user.username)}
-                                            className="text-[#0d1a2e] hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-1.5 rounded-md transition-colors"
+                                            className="text-[#0d1a2e] hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-1.5 rounded-md transition-colors border border-blue-200"
                                             title={t('modalPermissionsTitle')}
                                         >
-                                            <GlobeIcon className="w-5 h-5" />
+                                            <GlobeIcon className="w-5 h-5 pointer-events-none" />
                                         </button>
                                     )}
                                 </div>
@@ -353,19 +432,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                                 {!isSuperAdmin && (
                                     <div className="flex items-center space-x-2 ml-4">
                                         <button
+                                            onClick={() => openEditUserModal(user.username)}
+                                            className="text-gray-600 hover:text-blue-600 p-1.5 bg-gray-50 hover:bg-gray-200 rounded-md transition-colors"
+                                            title={t('editUserTooltip')}
+                                        >
+                                            <PencilIcon className="w-5 h-5 pointer-events-none" />
+                                        </button>
+
+                                        <button
                                             onClick={() => openPasswordModal(user.username)}
                                             className="text-amber-600 hover:text-amber-800 p-1.5 bg-amber-50 hover:bg-amber-100 rounded-md transition-colors"
                                             title={t('changePasswordTooltip')}
                                         >
-                                            <KeyIcon className="w-5 h-5" />
+                                            <KeyIcon className="w-5 h-5 pointer-events-none" />
                                         </button>
 
                                         <button
-                                            onClick={() => deleteUser(user.username)}
+                                            onClick={(e) => deleteUser(user.username, e)}
                                             className="text-gray-400 hover:text-red-600 p-1.5 transition-colors"
                                             title={t('actionDelete')}
                                         >
-                                            <TrashIcon className="w-5 h-5" />
+                                            <TrashIcon className="w-5 h-5 pointer-events-none" />
                                         </button>
                                     </div>
                                 )}
@@ -478,7 +565,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                <h3 className="text-lg font-bold text-gray-800">{t('addUserTitle')}</h3>
             </div>
             <form onSubmit={handleAddUser} className="p-6 space-y-4">
-                {newUserError && <p className="text-red-600 text-sm">{t(newUserError)}</p>}
+                {newUserError !== '' && <p className="text-red-600 text-sm">{t(newUserError as TranslationKey)}</p>}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('fullNamePlaceholder')}</label>
                     <div className="relative">
@@ -527,6 +614,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                         </div>
                     </div>
                 </div>
+                <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('roleLabel')}</label>
+                     <select
+                        value={newUser.role}
+                        onChange={(e) => setNewUser({...newUser, role: e.target.value as 'admin' | 'user'})}
+                        className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-[#0d1a2e] focus:border-[#0d1a2e] sm:text-sm rounded-md"
+                    >
+                        <option value="user">{t('roleUser')}</option>
+                        <option value="admin">{t('roleAdmin')}</option>
+                    </select>
+                </div>
                 <div className="flex justify-end space-x-3 pt-2">
                     <button 
                         type="button"
@@ -540,6 +638,66 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md"
                     >
                         {t('createButton')}
+                    </button>
+                </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditUserModal && editUserData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col">
+            <div className="bg-gray-100 px-6 py-4 rounded-t-xl border-b border-gray-200">
+               <h3 className="text-lg font-bold text-gray-800">{t('editUserTitle')}</h3>
+            </div>
+            <form onSubmit={handleUpdateUser} className="p-6 space-y-4">
+                {editUserError !== '' && <p className="text-red-600 text-sm">{t(editUserError as TranslationKey)}</p>}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('fullNamePlaceholder')}</label>
+                    <div className="relative">
+                        <input
+                            type="text"
+                            required
+                            value={editUserData.name}
+                            onChange={(e) => setEditUserData({...editUserData, name: e.target.value})}
+                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-[#0d1a2e] focus:border-[#0d1a2e]"
+                        />
+                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <UserIcon className="h-5 w-5 text-gray-400" />
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('usernamePlaceholder')}</label>
+                    <div className="relative">
+                        <input
+                            type="text"
+                            required
+                            value={editUserData.username}
+                            onChange={(e) => setEditUserData({...editUserData, username: e.target.value})}
+                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-[#0d1a2e] focus:border-[#0d1a2e]"
+                        />
+                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <UserIcon className="h-5 w-5 text-gray-400" />
+                        </div>
+                    </div>
+                </div>
+                {/* Role Selection Removed from here as per request */}
+                <div className="flex justify-end space-x-3 pt-2">
+                    <button 
+                        type="button"
+                        onClick={() => setShowEditUserModal(false)}
+                        className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium shadow-sm"
+                    >
+                        {t('cancelButton')}
+                    </button>
+                    <button 
+                        type="submit"
+                        className="px-4 py-2 bg-[#0d1a2e] text-white rounded-lg hover:bg-[#1a2b4e] font-medium shadow-md"
+                    >
+                        {t('updateButton')}
                     </button>
                 </div>
             </form>

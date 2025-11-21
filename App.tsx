@@ -1,9 +1,7 @@
 
-
-
 import React, { useState, useEffect } from 'react';
 import { Country, User } from './types';
-import { COUNTRIES, DHL_DATA } from './constants';
+import { COUNTRIES, DHL_DATA, USER_STORAGE_KEY } from './constants';
 import CountryCard from './components/CountryCard';
 import ClubLocations from './components/ClubLocations';
 import FinalSelection from './components/FinalSelection';
@@ -25,18 +23,84 @@ const App: React.FC = () => {
 
   // User Data State (Moved from Login.tsx)
   const [users, setUsers] = useState<User[]>(() => {
+    // Define the required users as per request
+    const requiredUsers: User[] = [
+        {
+            name: 'Cesar Correa',
+            username: 'cesar',
+            password: 'S@ltex7509!',
+            role: 'user',
+            isDisabled: false,
+            allowedCountries: []
+        },
+        {
+            name: 'Nick Pineda',
+            username: 'nick',
+            password: 'S@ltex7509!',
+            role: 'user',
+            isDisabled: false,
+            allowedCountries: []
+        },
+        {
+            name: 'Gio Vanegas',
+            username: 'gio',
+            password: 'S@ltex7509!',
+            role: 'user',
+            isDisabled: false,
+            allowedCountries: []
+        }
+    ];
+
     try {
-      const savedUsers = localStorage.getItem('registeredUsers');
-      return savedUsers ? JSON.parse(savedUsers) : [];
+      // Use shared constant key to ensure consistency
+      const savedUsers = localStorage.getItem(USER_STORAGE_KEY);
+      let initialUsers: User[] = [];
+
+      if (savedUsers) {
+         const parsed = JSON.parse(savedUsers);
+         if (Array.isArray(parsed)) {
+             initialUsers = parsed;
+         }
+      }
+
+      // Data Sanitization: Ensure all users have a valid role
+      initialUsers = initialUsers.map(u => ({
+          ...u,
+          role: u.role || 'user', // Default to 'user' if undefined
+          isDisabled: u.isDisabled || false,
+          allowedCountries: u.allowedCountries || []
+      }));
+
+      // Merge required users into initialUsers
+      requiredUsers.forEach(reqUser => {
+          const index = initialUsers.findIndex(u => u.username === reqUser.username);
+          
+          if (index !== -1) {
+              // User exists: Update credentials and role to match request
+              initialUsers[index] = {
+                  ...initialUsers[index],
+                  name: reqUser.name,
+                  password: reqUser.password,
+                  role: reqUser.role
+              };
+          } else {
+              // User does not exist: Add them
+              initialUsers.push(reqUser);
+          }
+      });
+
+      return initialUsers.length > 0 ? initialUsers : requiredUsers;
+
     } catch (error) {
       console.error("Failed to parse users from localStorage", error);
-      return [];
+      // Fallback with required users
+      return requiredUsers;
     }
   });
 
   // Save users to local storage when updated
   useEffect(() => {
-    localStorage.setItem('registeredUsers', JSON.stringify(users));
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users));
   }, [users]);
 
   // Navigation State
@@ -173,11 +237,16 @@ const App: React.FC = () => {
   }
 
   // --- 3. Main Application Views ---
+  
+  // Determine layout for brand selection
+  // If both brands are available, use 2 columns. If only one, use 1 column centered.
+  const showBothBrands = hasPriceSmartAccess && hasDhlAccess;
+  const brandGridClass = showBothBrands ? 'grid-cols-1 md:grid-cols-2 max-w-2xl' : 'grid-cols-1 max-w-md';
 
   const brandSelectionView = (
     <div>
       <p className="text-gray-600 mb-8 text-center font-semibold text-xl">{t('selectBrandTitle')}</p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-2xl mx-auto">
+      <div className={`grid ${brandGridClass} gap-8 mx-auto transition-all duration-300`}>
         {hasPriceSmartAccess && (
             <BrandCard
             name="PriceSmart"
@@ -191,7 +260,7 @@ const App: React.FC = () => {
             />
         )}
         {(!hasPriceSmartAccess && !hasDhlAccess) && (
-            <div className="col-span-1 md:col-span-2 text-center p-8 bg-gray-100 rounded-lg border border-gray-200">
+            <div className="col-span-1 text-center p-8 bg-gray-100 rounded-lg border border-gray-200">
                 <p className="text-gray-500 font-medium">{t('noAccessMessage')}</p>
             </div>
         )}

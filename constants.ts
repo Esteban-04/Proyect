@@ -1,6 +1,8 @@
 
 import { Country } from './types';
 
+export const USER_STORAGE_KEY = 'saltex_users_v2';
+
 // The list of countries to be displayed.
 // Note: Colombia is placed at the end to be handled specially in the UI layout.
 export const COUNTRIES: Country[] = [

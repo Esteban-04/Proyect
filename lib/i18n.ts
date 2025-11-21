@@ -1,4 +1,6 @@
 
+
+
 export const translations = {
   es: {
     // Login & Register & Reset
@@ -42,8 +44,10 @@ export const translations = {
     statusDisabled: 'Inactivo',
     roleAdmin: 'Admin',
     roleUser: 'Usuario',
+    roleLabel: 'Rol',
     btnManageCountries: 'Países',
     actionDelete: 'Eliminar',
+    userDeleteSuccess: 'Usuario eliminado con éxito.',
     modalPermissionsTitle: 'Asignar Países Permitidos',
     selectAll: 'Seleccionar Todos',
     savePermissions: 'Guardar Permisos',
@@ -58,6 +62,13 @@ export const translations = {
     newPasswordLabel: 'Nueva Contraseña',
     updateButton: 'Actualizar',
     changePasswordTooltip: 'Cambiar Contraseña',
+    passwordUpdateSuccess: 'Contraseña actualizada con éxito.',
+    userUpdateSuccess: 'Usuario actualizado con éxito.',
+    userCreateSuccess: 'Usuario creado con éxito.',
+    editUserTitle: 'Editar Usuario',
+    editUserTooltip: 'Editar Usuario',
+    globalSaveButton: 'Guardar Cambios',
+    globalSaveSuccess: 'Todos los cambios han sido guardados correctamente.',
 
     // Main App
     logoutButton: 'Cerrar Sesión',
@@ -131,8 +142,10 @@ export const translations = {
     statusDisabled: 'Inactive',
     roleAdmin: 'Admin',
     roleUser: 'User',
+    roleLabel: 'Role',
     btnManageCountries: 'Countries',
     actionDelete: 'Delete',
+    userDeleteSuccess: 'User deleted successfully.',
     modalPermissionsTitle: 'Assign Allowed Countries',
     selectAll: 'Select All',
     savePermissions: 'Save Permissions',
@@ -147,6 +160,13 @@ export const translations = {
     newPasswordLabel: 'New Password',
     updateButton: 'Update',
     changePasswordTooltip: 'Change Password',
+    passwordUpdateSuccess: 'Password updated successfully.',
+    userUpdateSuccess: 'User updated successfully.',
+    userCreateSuccess: 'User created successfully.',
+    editUserTitle: 'Edit User',
+    editUserTooltip: 'Edit User',
+    globalSaveButton: 'Save Changes',
+    globalSaveSuccess: 'All changes have been saved successfully.',
 
     // Main App
     logoutButton: 'Logout',
