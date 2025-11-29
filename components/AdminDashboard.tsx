@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { EyeIcon, EyeOffIcon, PlusIcon, GlobeIcon, UserIcon, LockClosedIcon, KeyIcon, PencilIcon, SaveIcon } from '../assets/icons';
+import { EyeIcon, EyeOffIcon, PlusIcon, GlobeIcon, UserIcon, LockClosedIcon, KeyIcon, PencilIcon, SaveIcon, TrashIcon } from '../assets/icons';
 import { COUNTRIES, DHL_DATA, USER_STORAGE_KEY } from '../constants';
 import { translations } from '../lib/i18n';
 
@@ -98,6 +98,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
       showSuccess(t('globalSaveSuccess'));
   };
 
+  const deleteUser = (username: string) => {
+      if (username === 'admin') return;
+      
+      const user = users.find(u => u.username === username);
+      if (!user) return;
+
+      if (!user.isDisabled) {
+          alert(t('deleteActiveUserError'));
+          return;
+      }
+
+      if (window.confirm(t('confirmDeleteUser'))) {
+          const updatedUsers = users.filter(u => u.username !== username);
+          setUsers(updatedUsers);
+          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUsers));
+          showSuccess(t('userDeleteSuccess'));
+      }
+  };
+
   // --- Permissions Modal Logic ---
   const openPermissionsModal = (username: string) => {
       const user = displayUsers.find(u => u.username === username);
@@ -135,15 +154,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
              return;
           }
 
-          setUsers(prevUsers => 
-            prevUsers.map(user => 
+          // Calculate new state explicitly
+          const updatedUsers = users.map(user => 
                 user.username === editingUser
                 ? { ...user, allowedCountries: tempAllowedCountries }
                 : user
-            )
-          );
+            );
+
+          // Update parent state
+          setUsers(updatedUsers);
           
-          // Trigger local storage save immediately (handled by useEffect in App, but visual feedback helps)
+          // Force immediate save to localStorage to ensure persistence
+          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUsers));
+          
           showSuccess(t('globalSaveSuccess'));
           
           setShowPermissionsModal(false);
@@ -163,13 +186,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
       if (passwordEditingUser && newPasswordValue) {
           if (passwordEditingUser === 'admin') return; // Security check
 
-          setUsers(prevUsers => 
-            prevUsers.map(user => 
+          const updatedUsers = users.map(user => 
                 user.username === passwordEditingUser
                 ? { ...user, password: newPasswordValue }
                 : user
-            )
-          );
+            );
+            
+          setUsers(updatedUsers);
+          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUsers));
+
           setShowPasswordModal(false);
           setPasswordEditingUser(null);
           setNewPasswordValue('');
@@ -203,13 +228,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
           }
       }
 
-      setUsers(prevUsers => 
-          prevUsers.map(user => 
+      const updatedUsers = users.map(user => 
               user.username === editUserData.originalUsername
               ? { ...user, name: editUserData.name, username: editUserData.username }
               : user
-          )
-      );
+          );
+
+      setUsers(updatedUsers);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUsers));
       
       setShowEditUserModal(false);
       setEditUserData(null);
@@ -237,8 +263,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
           allowedCountries: []
       };
 
-      // Use functional update to ensure we append to the latest state
-      setUsers(prevUsers => [...prevUsers, userToAdd]);
+      const updatedUsers = [...users, userToAdd];
+      setUsers(updatedUsers);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUsers));
       
       setShowAddUserModal(false);
       setNewUser({ name: '', username: '', password: '', role: 'user' });
@@ -428,6 +455,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                             <KeyIcon className="w-4 h-4 mr-1" />
                             Pass
                         </button>
+                        
+                        <button
+                            type="button"
+                            onClick={() => deleteUser(user.username)}
+                            disabled={isSuperAdmin}
+                            className={`text-red-600 hover:text-red-800 flex items-center text-sm font-medium ${isSuperAdmin ? 'opacity-30 cursor-not-allowed' : ''}`}
+                        >
+                            <TrashIcon className="w-4 h-4 mr-1" />
+                            {t('actionDelete')}
+                        </button>
                   </div>
                 </div>
               );
@@ -566,6 +603,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                                         title={t('changePasswordTooltip')}
                                     >
                                         <KeyIcon className="w-5 h-5" />
+                                    </button>
+
+                                     {/* Delete Button */}
+                                     <button
+                                        type="button"
+                                        onClick={() => deleteUser(user.username)}
+                                        disabled={isSuperAdmin}
+                                        className={`text-red-600 hover:text-red-900 p-1 ${isSuperAdmin ? 'opacity-0 cursor-default' : ''}`}
+                                        title={t('actionDelete')}
+                                    >
+                                        <TrashIcon className="w-5 h-5" />
                                     </button>
                                 </div>
                             </div>
