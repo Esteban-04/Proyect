@@ -29,6 +29,7 @@ interface FinalSelectionProps {
   country: Country;
   clubName: string;
   onBack: () => void;
+  canEdit: boolean;
 }
 
 // --- Icons ---
@@ -48,7 +49,7 @@ const TeamViewerIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 // --- Data ---
 
-const CLUB_SERVERS: ServerDetails[] = [
+const ALL_AVAILABLE_SERVERS: ServerDetails[] = [
   {
     id: 1,
     name: 'SERVER_01',
@@ -75,8 +76,40 @@ const CLUB_SERVERS: ServerDetails[] = [
     password: 'Completeview!',
     teamviewerId: 'N/A',
     teamviewerPassword: '@l3ss21++'
+  },
+  {
+    id: 4,
+    name: 'SERVER_04',
+    ip: '192.168.11.40',
+    user: 'administrator',
+    password: 'Completeview!',
+    teamviewerId: 'N/A',
+    teamviewerPassword: '@l3ss21++'
+  },
+  {
+    id: 5,
+    name: 'SERVER_05',
+    ip: '192.168.11.50',
+    user: 'administrator',
+    password: 'Completeview!',
+    teamviewerId: 'N/A',
+    teamviewerPassword: '@l3ss21++'
   }
 ];
+
+// Configuration for number of servers per club
+const CLUB_SERVER_COUNTS: Record<string, number> = {
+  'Barranquilla': 3,
+  'Cali - Cañas Gordas': 2,
+  'Cali - Menga': 2,
+  'Pereira': 3,
+  'Bogotá - Salitre': 3,
+  'Medellín - Las Américas': 2,
+  'Chía': 5,
+  'Bogotá - Usaquén': 3,
+  'Bucaramanga - Floridablanca': 3,
+  'Medellín - El Poblado': 2,
+};
 
 // Updated camera data to match the screenshot
 const SERVER_CAMERA_DATA: CameraData[] = [
@@ -89,26 +122,90 @@ const SERVER_CAMERA_DATA: CameraData[] = [
   { id: 7, name: 'FE | FACIAL', ip: '192.168.2.224', manufacturer: 'Vivotek', user: 'root', password: 'password123', compression: 'H264' },
 ];
 
-const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBack }) => {
+const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBack, canEdit }) => {
   const { t } = useLanguage();
   const [selectedServer, setSelectedServer] = useState<ServerDetails | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({});
   
-  // State for editable camera data
-  const [cameras, setCameras] = useState<CameraData[]>(SERVER_CAMERA_DATA);
+  // State for password visibility inside the modal table
+  const [visibleTablePasswords, setVisibleTablePasswords] = useState<Record<number, boolean>>({});
+  
+  // State for password visibility on the server cards
+  const [visibleCardPasswords, setVisibleCardPasswords] = useState<Record<number, boolean>>({});
 
-  const togglePassword = (id: number) => {
-    setVisiblePasswords(prev => ({ ...prev, [id]: !prev[id] }));
+  // Helper to generate a unique storage key for this specific club
+  const getStorageKey = (type: 'servers' | 'cameras') => {
+      const safeClub = clubName.replace(/[^a-zA-Z0-9]/g, '_');
+      return `config_${country.code}_${safeClub}_${type}`;
+  };
+
+  // Initialize servers state based on club configuration AND local storage
+  const [servers, setServers] = useState<ServerDetails[]>(() => {
+    try {
+        const key = getStorageKey('servers');
+        const saved = localStorage.getItem(key);
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                return parsed;
+            }
+        }
+    } catch (e) {
+        console.error("Error loading saved servers:", e);
+    }
+
+    // Default fallback if no saved data exists
+    const serverCount = CLUB_SERVER_COUNTS[clubName] || 3;
+    return ALL_AVAILABLE_SERVERS.slice(0, serverCount).map(s => ({ ...s }));
+  });
+
+  // State for editable camera data, also loaded from storage
+  const [cameras, setCameras] = useState<CameraData[]>(() => {
+      try {
+          const key = getStorageKey('cameras');
+          const saved = localStorage.getItem(key);
+          if (saved) {
+              const parsed = JSON.parse(saved);
+              if (Array.isArray(parsed)) {
+                  return parsed;
+              }
+          }
+      } catch (e) {
+          console.error("Error loading saved cameras:", e);
+      }
+      return SERVER_CAMERA_DATA;
+  });
+
+  const toggleTablePassword = (id: number) => {
+    setVisibleTablePasswords(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const toggleCardPassword = (e: React.MouseEvent, id: number) => {
+    e.stopPropagation(); // Prevent opening modal
+    setVisibleCardPasswords(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   const handleCameraChange = (id: number, field: keyof CameraData, value: string) => {
+      if (!canEdit) return;
       setCameras(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
+  };
+
+  const handleServerChange = (id: number, field: keyof ServerDetails, value: string) => {
+      if (!canEdit) return;
+      setServers(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
   };
   
   const handleSave = () => {
-      // In a real application, you would save this data to a backend or context
-      alert(t('saveSuccess'));
+      if (!canEdit) return;
+      try {
+          // Save both servers and cameras to localStorage specific to this club
+          localStorage.setItem(getStorageKey('servers'), JSON.stringify(servers));
+          localStorage.setItem(getStorageKey('cameras'), JSON.stringify(cameras));
+          alert(t('saveSuccess'));
+      } catch (e) {
+          console.error("Error saving data:", e);
+          alert("Error al guardar los datos.");
+      }
   };
 
   // If a server is selected, show the detailed table modal
@@ -188,39 +285,43 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                        <input 
                          type="text" 
                          value={camera.ip} 
+                         readOnly={!canEdit}
                          onChange={(e) => handleCameraChange(camera.id, 'ip', e.target.value)}
-                         className="w-full bg-transparent border-none focus:ring-0 sm:text-sm font-mono py-1 px-0 text-center text-gray-500"
+                         className={`w-full bg-transparent border-none sm:text-sm font-mono py-1 px-0 text-center ${canEdit ? 'focus:ring-0 text-gray-700' : 'text-gray-500 cursor-default'}`}
                        />
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                       <input 
                          type="text" 
                          value={camera.manufacturer} 
+                         readOnly={!canEdit}
                          onChange={(e) => handleCameraChange(camera.id, 'manufacturer', e.target.value)}
-                         className="w-full bg-transparent border-none focus:ring-0 sm:text-sm py-1 px-0 text-center text-gray-500"
+                         className={`w-full bg-transparent border-none sm:text-sm py-1 px-0 text-center ${canEdit ? 'focus:ring-0 text-gray-700' : 'text-gray-500 cursor-default'}`}
                        />
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                       <input 
                          type="text" 
                          value={camera.user} 
+                         readOnly={!canEdit}
                          onChange={(e) => handleCameraChange(camera.id, 'user', e.target.value)}
-                         className="w-full bg-transparent border-none focus:ring-0 sm:text-sm py-1 px-0 text-center text-gray-500"
+                         className={`w-full bg-transparent border-none sm:text-sm py-1 px-0 text-center ${canEdit ? 'focus:ring-0 text-gray-700' : 'text-gray-500 cursor-default'}`}
                        />
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                         <div className="flex items-center space-x-2 justify-center">
                              <input 
-                                type={visiblePasswords[camera.id] ? 'text' : 'password'}
+                                type={visibleTablePasswords[camera.id] ? 'text' : 'password'}
                                 value={camera.password} 
+                                readOnly={!canEdit}
                                 onChange={(e) => handleCameraChange(camera.id, 'password', e.target.value)}
-                                className="w-full bg-transparent border-none focus:ring-0 sm:text-sm font-mono py-1 px-0 text-center text-gray-500"
+                                className={`w-full bg-transparent border-none sm:text-sm font-mono py-1 px-0 text-center ${canEdit ? 'focus:ring-0 text-gray-700' : 'text-gray-500 cursor-default'}`}
                              />
                             <button 
-                                onClick={() => togglePassword(camera.id)}
+                                onClick={() => toggleTablePassword(camera.id)}
                                 className="text-gray-400 hover:text-gray-600 focus:outline-none flex-shrink-0"
                             >
-                                {visiblePasswords[camera.id] ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                                {visibleTablePasswords[camera.id] ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
                             </button>
                         </div>
                     </td>
@@ -228,8 +329,9 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                       <input 
                          type="text" 
                          value={camera.compression} 
+                         readOnly={!canEdit}
                          onChange={(e) => handleCameraChange(camera.id, 'compression', e.target.value)}
-                         className="w-full bg-transparent border-none focus:ring-0 sm:text-sm py-1 px-0 text-center text-gray-500"
+                         className={`w-full bg-transparent border-none sm:text-sm py-1 px-0 text-center ${canEdit ? 'focus:ring-0 text-gray-700' : 'text-gray-500 cursor-default'}`}
                        />
                     </td>
                   </tr>
@@ -245,13 +347,15 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
             >
               {t('closeButton')}
             </button>
-            <button
-              onClick={handleSave}
-              className="bg-[#0d1a2e] text-white px-4 py-2 rounded-md hover:bg-[#1a2b4e] flex items-center shadow-md font-medium"
-            >
-              <SaveIcon className="w-4 h-4 mr-2" />
-              {t('saveButton')}
-            </button>
+            {canEdit && (
+                <button
+                onClick={handleSave}
+                className="bg-[#0d1a2e] text-white px-4 py-2 rounded-md hover:bg-[#1a2b4e] flex items-center shadow-md font-medium"
+                >
+                <SaveIcon className="w-4 h-4 mr-2" />
+                {t('saveButton')}
+                </button>
+            )}
           </div>
         </div>
       </div>
@@ -277,148 +381,135 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       {/* Grid Layout */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-5xl">
         
-        {/* Server 01 - Full Width */}
-        <div 
-          onClick={() => setSelectedServer(CLUB_SERVERS[0])}
-          className="col-span-1 md:col-span-2 bg-[#0d1a2e] rounded-lg p-6 text-white shadow-xl cursor-pointer hover:shadow-2xl transition-all border border-[#1a2b4e] relative"
-        >
-            <div className="text-center border-b border-gray-600 pb-2 mb-4">
-                <h3 className="text-xl font-bold uppercase tracking-wider">{CLUB_SERVERS[0].name}</h3>
-            </div>
-            
-            <div className="flex flex-col space-y-6 px-4">
-                {/* Remote Desktop Section */}
-                <div>
-                    <div className="flex items-center mb-1">
-                        <RemoteDesktopIcon className="w-5 h-5 mr-2" />
-                        <span className="text-gray-300 text-sm font-medium">Escritorio Remoto:</span>
-                    </div>
-                    <div className="pl-7">
-                        <div className="text-2xl font-bold mb-1">{CLUB_SERVERS[0].ip}</div>
-                        <div className="text-sm text-gray-400">
-                            Usuario: <span className="text-white font-medium">{CLUB_SERVERS[0].user}</span>
-                        </div>
-                        <div className="text-sm text-gray-400">
-                            Contraseña: <span className="text-white font-medium">{CLUB_SERVERS[0].password}</span>
-                        </div>
-                    </div>
-                </div>
+        {servers.map((server, index) => {
+             // If total servers is odd (e.g. 3 or 5), make the first one span full width on desktop for balance
+             const isOddTotal = servers.length % 2 !== 0;
+             const isFirst = index === 0;
+             const spanClass = (isOddTotal && isFirst) ? 'md:col-span-2' : 'col-span-1';
 
-                {/* TeamViewer Section */}
-                <div>
-                     <div className="flex items-center mb-1">
-                         <div className="bg-gray-600 rounded-full p-0.5 mr-2">
-                            <TeamViewerIcon className="w-3 h-3 text-white" />
-                         </div>
-                        <span className="text-gray-300 text-sm font-medium">TeamViewer:</span>
+             return (
+                <div 
+                    key={server.id}
+                    onClick={() => setSelectedServer(server)}
+                    className={`${spanClass} bg-[#0d1a2e] rounded-lg p-6 text-white shadow-xl cursor-pointer hover:shadow-2xl transition-all border border-[#1a2b4e] relative group`}
+                >
+                    <div className="text-center border-b border-gray-600 pb-2 mb-4">
+                        <h3 className="text-xl font-bold uppercase tracking-wider">{server.name}</h3>
                     </div>
-                    <div className="pl-7">
-                        <div className="text-xl font-bold mb-1">ID: {CLUB_SERVERS[0].teamviewerId}</div>
-                        <div className="text-sm text-gray-400">
-                            Contraseña: <span className="text-white font-medium">{CLUB_SERVERS[0].teamviewerPassword}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    
+                    <div className="flex flex-col space-y-6 px-4">
+                        {/* Remote Desktop Section */}
+                        <div>
+                            <div className="flex items-center mb-1">
+                                <RemoteDesktopIcon className="w-5 h-5 mr-2" />
+                                <span className="text-gray-300 text-sm font-medium">Escritorio Remoto:</span>
+                            </div>
+                            <div className="pl-7">
+                                {/* IP Input */}
+                                <input
+                                    type="text"
+                                    value={server.ip}
+                                    readOnly={!canEdit}
+                                    onChange={(e) => handleServerChange(server.id, 'ip', e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={`text-2xl font-bold mb-1 bg-transparent border-b hover:border-gray-400 focus:border-white focus:outline-none w-full ${!canEdit ? 'border-transparent cursor-default' : 'border-transparent'}`}
+                                />
+                                
+                                {/* User Input */}
+                                <div className="flex items-center text-sm text-gray-400">
+                                    <span className="mr-2">Usuario:</span>
+                                    <input
+                                        type="text"
+                                        value={server.user}
+                                        readOnly={!canEdit}
+                                        onChange={(e) => handleServerChange(server.id, 'user', e.target.value)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className={`text-white font-medium bg-transparent border-b hover:border-gray-400 focus:border-white focus:outline-none flex-grow ${!canEdit ? 'border-transparent cursor-default' : 'border-transparent'}`}
+                                    />
+                                </div>
 
-        {/* Server 02 */}
-        <div 
-           onClick={() => setSelectedServer(CLUB_SERVERS[1])}
-           className="bg-[#0d1a2e] rounded-lg p-6 text-white shadow-xl cursor-pointer hover:shadow-2xl transition-all border border-[#1a2b4e]"
-        >
-            <div className="text-center border-b border-gray-600 pb-2 mb-4">
-                <h3 className="text-xl font-bold uppercase tracking-wider">{CLUB_SERVERS[1].name}</h3>
-            </div>
-             <div className="flex flex-col space-y-6 px-2">
-                {/* Remote Desktop Section */}
-                <div>
-                    <div className="flex items-center mb-1">
-                        <RemoteDesktopIcon className="w-5 h-5 mr-2" />
-                        <span className="text-gray-300 text-sm font-medium">Escritorio Remoto:</span>
-                    </div>
-                    <div className="pl-7">
-                        <div className="text-2xl font-bold mb-1">{CLUB_SERVERS[1].ip}</div>
-                        <div className="text-sm text-gray-400">
-                            Usuario: <span className="text-white font-medium">{CLUB_SERVERS[1].user}</span>
+                                {/* Password Input */}
+                                <div className="flex items-center text-sm text-gray-400 mt-1">
+                                    <span className="mr-2">Contraseña:</span>
+                                    <div className="flex items-center flex-grow">
+                                        <input
+                                            type={visibleCardPasswords[server.id] ? 'text' : 'password'}
+                                            value={server.password}
+                                            readOnly={!canEdit}
+                                            onChange={(e) => handleServerChange(server.id, 'password', e.target.value)}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className={`text-white font-medium bg-transparent border-b hover:border-gray-400 focus:border-white focus:outline-none w-full ${!canEdit ? 'border-transparent cursor-default' : 'border-transparent'}`}
+                                        />
+                                        <button 
+                                            onClick={(e) => toggleCardPassword(e, server.id)}
+                                            className="ml-2 text-gray-400 hover:text-white focus:outline-none"
+                                        >
+                                            {visibleCardPasswords[server.id] ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="text-sm text-gray-400">
-                            Contraseña: <span className="text-white font-medium">{CLUB_SERVERS[1].password}</span>
-                        </div>
-                    </div>
-                </div>
 
-                {/* TeamViewer Section */}
-                <div>
-                     <div className="flex items-center mb-1">
-                         <div className="bg-gray-600 rounded-full p-0.5 mr-2">
-                            <TeamViewerIcon className="w-3 h-3 text-white" />
-                         </div>
-                        <span className="text-gray-300 text-sm font-medium">TeamViewer:</span>
-                    </div>
-                    <div className="pl-7">
-                        <div className="text-xl font-bold mb-1">ID: {CLUB_SERVERS[1].teamviewerId}</div>
-                        <div className="text-sm text-gray-400">
-                            Contraseña: <span className="text-white font-medium">{CLUB_SERVERS[1].teamviewerPassword}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                        {/* TeamViewer Section */}
+                        <div>
+                            <div className="flex items-center mb-1">
+                                <div className="bg-gray-600 rounded-full p-0.5 mr-2">
+                                    <TeamViewerIcon className="w-3 h-3 text-white" />
+                                </div>
+                                <span className="text-gray-300 text-sm font-medium">TeamViewer:</span>
+                            </div>
+                            <div className="pl-7">
+                                {/* TeamViewer ID Input */}
+                                <div className="flex items-center text-xl font-bold mb-1">
+                                    <span className="mr-2 text-gray-400 text-base font-normal">ID:</span>
+                                    <input
+                                        type="text"
+                                        value={server.teamviewerId}
+                                        readOnly={!canEdit}
+                                        onChange={(e) => handleServerChange(server.id, 'teamviewerId', e.target.value)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className={`bg-transparent border-b hover:border-gray-400 focus:border-white focus:outline-none w-full ${!canEdit ? 'border-transparent cursor-default' : 'border-transparent'}`}
+                                    />
+                                </div>
 
-        {/* Server 03 */}
-        <div 
-           onClick={() => setSelectedServer(CLUB_SERVERS[2])}
-           className="bg-[#0d1a2e] rounded-lg p-6 text-white shadow-xl cursor-pointer hover:shadow-2xl transition-all border border-[#1a2b4e]"
-        >
-            <div className="text-center border-b border-gray-600 pb-2 mb-4">
-                <h3 className="text-xl font-bold uppercase tracking-wider">{CLUB_SERVERS[2].name}</h3>
-            </div>
-             <div className="flex flex-col space-y-6 px-2">
-                {/* Remote Desktop Section */}
-                <div>
-                    <div className="flex items-center mb-1">
-                        <RemoteDesktopIcon className="w-5 h-5 mr-2" />
-                        <span className="text-gray-300 text-sm font-medium">Escritorio Remoto:</span>
-                    </div>
-                    <div className="pl-7">
-                        <div className="text-2xl font-bold mb-1">{CLUB_SERVERS[2].ip}</div>
-                        <div className="text-sm text-gray-400">
-                            Usuario: <span className="text-white font-medium">{CLUB_SERVERS[2].user}</span>
-                        </div>
-                        <div className="text-sm text-gray-400">
-                            Contraseña: <span className="text-white font-medium">{CLUB_SERVERS[2].password}</span>
+                                {/* TeamViewer Password Input */}
+                                <div className="flex items-center text-sm text-gray-400">
+                                    <span className="mr-2">Contraseña:</span>
+                                    <input
+                                        type="text"
+                                        value={server.teamviewerPassword}
+                                        readOnly={!canEdit}
+                                        onChange={(e) => handleServerChange(server.id, 'teamviewerPassword', e.target.value)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className={`text-white font-medium bg-transparent border-b hover:border-gray-400 focus:border-white focus:outline-none flex-grow ${!canEdit ? 'border-transparent cursor-default' : 'border-transparent'}`}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-
-                {/* TeamViewer Section */}
-                <div>
-                     <div className="flex items-center mb-1">
-                         <div className="bg-gray-600 rounded-full p-0.5 mr-2">
-                            <TeamViewerIcon className="w-3 h-3 text-white" />
-                         </div>
-                        <span className="text-gray-300 text-sm font-medium">TeamViewer:</span>
-                    </div>
-                    <div className="pl-7">
-                        <div className="text-xl font-bold mb-1">ID: {CLUB_SERVERS[2].teamviewerId}</div>
-                        <div className="text-sm text-gray-400">
-                            Contraseña: <span className="text-white font-medium">{CLUB_SERVERS[2].teamviewerPassword}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+             );
+        })}
 
       </div>
 
-      <div className="mt-12 mb-4">
+      <div className="mt-12 mb-4 flex flex-col sm:flex-row gap-4">
         <button
           onClick={onBack}
-          className="bg-[#0d1a2e] text-white font-bold py-2 px-8 rounded-lg shadow-lg hover:bg-[#1a2b4e] transition-colors duration-200"
+           className="bg-white text-[#0d1a2e] border border-[#0d1a2e] font-bold py-2 px-8 rounded-lg shadow-md hover:bg-gray-100 transition-colors duration-200"
         >
           Volver
         </button>
+        {canEdit && (
+            <button
+            onClick={handleSave}
+            className="bg-[#0d1a2e] text-white font-bold py-2 px-8 rounded-lg shadow-lg hover:bg-[#1a2b4e] transition-colors duration-200 flex items-center justify-center"
+            >
+            <SaveIcon className="w-5 h-5 mr-2" />
+            Guardar Cambios
+            </button>
+        )}
       </div>
 
     </div>

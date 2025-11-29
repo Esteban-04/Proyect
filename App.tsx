@@ -202,6 +202,9 @@ const App: React.FC = () => {
   const hasDhlAccess = isAdmin || (currentUser?.role === 'admin') || currentUser?.allowedCountries?.includes('dhl');
   const hasPriceSmartAccess = visibleCountries.length > 0;
 
+  // Determine if the current user has edit permissions (Super Admin or 'admin' role)
+  const canEditServers = isAdmin || (currentUser?.role === 'admin');
+
   // --- 1. Not Authenticated ---
   if (!isAuthenticated) {
     return (
@@ -337,6 +340,7 @@ const App: React.FC = () => {
           country={selectedCountry}
           clubName={selectedClub}
           onBack={handleBackToClubs}
+          canEdit={canEditServers}
         />
       );
     }
@@ -357,6 +361,7 @@ const App: React.FC = () => {
           country={DHL_DATA}
           clubName={selectedClub}
           onBack={handleBackToClubs}
+          canEdit={canEditServers}
         />
       );
     }
