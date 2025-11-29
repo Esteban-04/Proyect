@@ -223,7 +223,7 @@ const App: React.FC = () => {
   if (showAdminDashboard) {
       return (
         <div 
-            className="min-h-screen font-sans flex items-center justify-center p-4 relative overflow-hidden bg-gray-100"
+            className="min-h-screen font-sans flex items-center justify-center p-2 sm:p-4 relative overflow-hidden bg-gray-100"
         >
              <AdminDashboard 
                 users={users} 
@@ -246,7 +246,7 @@ const App: React.FC = () => {
   const brandSelectionView = (
     <div>
       <p className="text-gray-600 mb-8 text-center font-semibold text-xl">{t('selectBrandTitle')}</p>
-      <div className={`grid ${brandGridClass} gap-8 mx-auto transition-all duration-300`}>
+      <div className={`grid ${brandGridClass} gap-6 sm:gap-8 mx-auto transition-all duration-300`}>
         {hasPriceSmartAccess && (
             <BrandCard
             name="PriceSmart"
@@ -366,24 +366,25 @@ const App: React.FC = () => {
   
   return (
     <div className="bg-gray-50 min-h-screen font-sans flex flex-col">
-       <header className="shadow-md" style={{ backgroundColor: '#0d1a2e' }}>
+       {/* Updated Header for Responsiveness */}
+       <header className="shadow-md py-3" style={{ backgroundColor: '#0d1a2e' }}>
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-                <div className="flex items-center space-x-4">
-                     <h1 className="text-xl md:text-2xl font-bold text-white">SALTEX GROUP</h1>
+            <div className="flex flex-col md:flex-row justify-between items-center gap-3 md:gap-0">
+                <div className="flex flex-wrap justify-center md:justify-start items-center gap-3">
+                     <h1 className="text-xl md:text-2xl font-bold text-white whitespace-nowrap">SALTEX GROUP</h1>
                      {/* Show Admin button if user is Super Admin OR has admin role */}
                      {(isAdmin || (currentUser?.role === 'admin')) && !showAdminDashboard && (
                          <button 
                             onClick={() => setShowAdminDashboard(true)}
-                            className="ml-4 text-xs bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded border border-gray-500"
+                            className="text-xs bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded border border-gray-500"
                          >
                              Admin
                          </button>
                      )}
                 </div>
                 
-                <div className="flex items-center space-x-4">
-                    <div className="flex items-center text-white text-sm font-medium">
+                <div className="flex items-center space-x-3 sm:space-x-4">
+                    <div className="flex items-center text-white text-xs sm:text-sm font-medium">
                        <button 
                          onClick={() => setLanguage('es')}
                          className={`px-2 py-1 rounded-md transition-colors duration-200 ${language === 'es' ? 'bg-white text-[#0d1a2e]' : 'hover:bg-gray-700'}`}
@@ -400,7 +401,7 @@ const App: React.FC = () => {
                     </div>
                     <button
                         onClick={handleLogout}
-                        className="bg-white text-[#0d1a2e] font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0d1a2e] focus:ring-white text-sm"
+                        className="bg-white text-[#0d1a2e] font-semibold py-1.5 px-3 sm:px-4 rounded-lg shadow-md hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0d1a2e] focus:ring-white text-xs sm:text-sm whitespace-nowrap"
                     >
                         {t('logoutButton')}
                     </button>
@@ -409,8 +410,8 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="flex-grow flex items-center justify-center p-4">
-        <div className={`w-full max-w-5xl mx-auto rounded-xl shadow-lg bg-white ${isClubSelectionView ? 'p-0 overflow-hidden' : 'p-6 md:p-8'}`}>
+      <main className="flex-grow flex items-center justify-center p-2 sm:p-4">
+        <div className={`w-full max-w-5xl mx-auto rounded-xl shadow-lg bg-white ${isClubSelectionView ? 'p-0 overflow-hidden' : 'p-4 sm:p-6 md:p-8'}`}>
             {renderContent()}
         </div>
       </main>

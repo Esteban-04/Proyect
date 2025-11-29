@@ -23,7 +23,8 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
 
   // Use full bleed layout ONLY for DHL
   const containerClass = isDhl ? 'rounded-xl overflow-hidden' : '';
-  const paddingClass = isDhl ? 'p-8 md:p-12' : '';
+  // Responsive padding: smaller on mobile
+  const paddingClass = isDhl ? 'p-4 sm:p-8 md:p-12' : '';
 
   return (
     <div className={`relative w-full ${containerClass}`}>
@@ -48,7 +49,7 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
       <div className={`relative z-10 ${paddingClass}`}>
         <div className="flex justify-center items-center mb-8">
           {isDhl ? (
-            <h2 className="text-5xl font-black italic text-[#D40511] tracking-tighter drop-shadow-md">
+            <h2 className="text-2xl sm:text-3xl md:text-5xl font-black italic text-[#D40511] tracking-tighter drop-shadow-md text-center">
               {country.name}
             </h2>
           ) : (
@@ -56,9 +57,9 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
               <img
                 src={`https://flagcdn.com/w40/${country.code}.png`}
                 alt={`${country.name} flag`}
-                className="w-10 h-auto mr-4 rounded-sm shadow-md"
+                className="w-8 h-auto md:w-10 mr-3 md:mr-4 rounded-sm shadow-md"
               />
-              <h2 className="text-2xl font-bold text-[#0d1a2e] drop-shadow-sm">
+              <h2 className="text-xl sm:text-2xl md:text-2xl font-bold text-[#0d1a2e] drop-shadow-sm">
                 {country.name}
               </h2>
             </>

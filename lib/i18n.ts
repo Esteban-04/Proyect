@@ -1,6 +1,3 @@
-
-
-
 export const translations = {
   es: {
     // Login & Register & Reset
@@ -86,7 +83,7 @@ export const translations = {
     idLabel: 'ID:',
     
     // Modal Details
-    modalTitle: 'Detalles del Servidor 01 - Barranquilla',
+    modalTitle: (serverName: string, city: string) => `Detalles del ${serverName} - ${city}`,
     colIndex: '#',
     colName: 'Nombre',
     colIp: 'Dirección IP',
@@ -184,7 +181,7 @@ export const translations = {
     idLabel: 'ID:',
 
     // Modal Details
-    modalTitle: 'Server 01 Details - Barranquilla',
+    modalTitle: (serverName: string, city: string) => `${serverName} Details - ${city}`,
     colIndex: '#',
     colName: 'Name',
     colIp: 'IP Address',
