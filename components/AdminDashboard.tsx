@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { EyeIcon, EyeOffIcon, PlusIcon, TrashIcon, GlobeIcon, UserIcon, LockClosedIcon, KeyIcon, PencilIcon, SaveIcon } from '../assets/icons';
+import { EyeIcon, EyeOffIcon, PlusIcon, GlobeIcon, UserIcon, LockClosedIcon, KeyIcon, PencilIcon, SaveIcon } from '../assets/icons';
 import { COUNTRIES, DHL_DATA, USER_STORAGE_KEY } from '../constants';
 import { translations } from '../lib/i18n';
 
@@ -91,16 +91,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
     );
   };
 
-  const deleteUser = (username: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Stop propagation to prevent weird UI issues
-    if (username === 'admin') return; // Prevent deleting super admin
-    
-    if (window.confirm(t('confirmDeleteUser'))) {
-      setUsers(prevUsers => prevUsers.filter(user => user.username !== username));
-      showSuccess(t('userDeleteSuccess'));
-    }
-  };
-
   // --- Global Save Handler ---
   const handleGlobalSave = () => {
       // Explicitly write to the same standardized key used in App.tsx
@@ -152,6 +142,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                 : user
             )
           );
+          
+          // Trigger local storage save immediately (handled by useEffect in App, but visual feedback helps)
+          showSuccess(t('globalSaveSuccess'));
+          
           setShowPermissionsModal(false);
           setEditingUser(null);
       }
@@ -278,6 +272,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
              {/* Language Switcher */}
              <div className="flex items-center text-white text-sm font-medium border-r border-gray-600 pr-2 sm:pr-4 mr-1 sm:mr-2">
                <button 
+                 type="button"
                  onClick={() => setLanguage('es')}
                  className={`px-2 py-1 rounded-md transition-colors duration-200 ${language === 'es' ? 'bg-white text-[#0d1a2e]' : 'hover:bg-gray-700 text-gray-300'}`}
                >
@@ -285,6 +280,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                </button>
                <span className="mx-1 text-gray-500">|</span>
                <button
+                 type="button"
                  onClick={() => setLanguage('en')}
                  className={`px-2 py-1 rounded-md transition-colors duration-200 ${language === 'en' ? 'bg-white text-[#0d1a2e]' : 'hover:bg-gray-700 text-gray-300'}`}
                >
@@ -293,6 +289,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
             </div>
 
             <button
+              type="button"
               onClick={handleGlobalSave}
               className="bg-green-600 text-white font-bold py-1.5 px-3 sm:py-2 sm:px-4 rounded-lg shadow-md hover:bg-green-700 transition-colors flex items-center text-xs sm:text-sm"
             >
@@ -302,6 +299,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
             </button>
 
             <button
+              type="button"
               onClick={() => setShowAddUserModal(true)}
               className="bg-blue-600 text-white font-bold py-1.5 px-3 sm:py-2 sm:px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors flex items-center text-xs sm:text-sm"
             >
@@ -311,12 +309,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
             </button>
 
              <button
+                type="button"
                 onClick={onLogout}
                 className="bg-red-600 text-white font-semibold py-1.5 px-3 sm:py-2 sm:px-4 rounded-lg shadow-md hover:bg-red-700 transition-colors text-xs sm:text-sm"
               >
                 {t('logoutButton')}
               </button>
               <button
+                type="button"
                 onClick={onContinue}
                 className="bg-white text-[#0d1a2e] font-bold py-1.5 px-3 sm:py-2 sm:px-6 rounded-lg shadow-md hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white text-xs sm:text-sm"
               >
@@ -347,6 +347,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                       </div>
                     </div>
                      <button
+                        type="button"
                         onClick={() => toggleUserStatus(user.username)}
                         disabled={isSuperAdmin}
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0d1a2e] flex-shrink-0 ${
@@ -369,6 +370,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                               {visiblePasswords[user.username] ? user.password : t('passwordHidden')}
                           </span>
                           <button 
+                              type="button"
                               onClick={() => togglePasswordVisibility(user.username)}
                               className="text-gray-400 hover:text-gray-600 focus:outline-none p-1"
                           >
@@ -394,6 +396,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                       {/* Permissions Icon */}
                       {(!user.role || user.role === 'user') && (
                           <button
+                            type="button"
                             onClick={() => openPermissionsModal(user.username)}
                             disabled={isSuperAdmin}
                             className={`ml-2 text-gray-500 hover:text-[#0d1a2e] p-2 rounded-full hover:bg-gray-100 ${isSuperAdmin ? 'invisible' : ''}`}
@@ -407,6 +410,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                   {/* Actions Footer */}
                   <div className="border-t border-gray-100 pt-3 flex justify-end space-x-4">
                         <button
+                            type="button"
                             onClick={() => openEditUserModal(user.username)}
                             disabled={isSuperAdmin}
                             className={`text-blue-600 hover:text-blue-800 flex items-center text-sm font-medium ${isSuperAdmin ? 'opacity-30 cursor-not-allowed' : ''}`}
@@ -416,21 +420,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                         </button>
 
                         <button
+                            type="button"
                             onClick={() => openPasswordModal(user.username)}
                             disabled={isSuperAdmin}
                             className={`text-amber-600 hover:text-amber-800 flex items-center text-sm font-medium ${isSuperAdmin ? 'opacity-30 cursor-not-allowed' : ''}`}
                         >
                             <KeyIcon className="w-4 h-4 mr-1" />
                             Pass
-                        </button>
-
-                        <button
-                            onClick={(e) => deleteUser(user.username, e)}
-                            disabled={isSuperAdmin}
-                            className={`text-red-600 hover:text-red-800 flex items-center text-sm font-medium ${isSuperAdmin ? 'opacity-30 cursor-not-allowed' : ''}`}
-                        >
-                            <TrashIcon className="w-4 h-4 mr-1" />
-                            Borrar
                         </button>
                   </div>
                 </div>
@@ -477,6 +473,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                         {/* Status Toggle */}
                         <td className="px-3 py-3 sm:px-6 whitespace-nowrap">
                         <button
+                            type="button"
                             onClick={() => toggleUserStatus(user.username)}
                             disabled={isSuperAdmin}
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0d1a2e] ${
@@ -511,6 +508,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                                     {visiblePasswords[user.username] ? user.password : t('passwordHidden')}
                                 </span>
                                 <button 
+                                    type="button"
                                     onClick={() => togglePasswordVisibility(user.username)}
                                     className="text-gray-400 hover:text-gray-600 focus:outline-none"
                                 >
@@ -536,6 +534,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                                     {/* Only show manage countries for non-admin users or if user is being edited */}
                                     {(!user.role || user.role === 'user') && (
                                          <button
+                                            type="button"
                                             onClick={() => openPermissionsModal(user.username)}
                                             disabled={isSuperAdmin}
                                             className={`text-gray-400 hover:text-[#0d1a2e] p-1 ${isSuperAdmin ? 'opacity-0 cursor-default' : ''}`}
@@ -549,6 +548,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                                 <div className="flex items-center space-x-2 ml-4">
                                     {/* Edit User Info Button */}
                                     <button
+                                        type="button"
                                         onClick={() => openEditUserModal(user.username)}
                                         disabled={isSuperAdmin}
                                         className={`text-blue-600 hover:text-blue-900 p-1 ${isSuperAdmin ? 'opacity-0 cursor-default' : ''}`}
@@ -559,22 +559,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
 
                                     {/* Change Password Button */}
                                     <button
+                                        type="button"
                                         onClick={() => openPasswordModal(user.username)}
                                         disabled={isSuperAdmin}
                                         className={`text-amber-600 hover:text-amber-900 p-1 ${isSuperAdmin ? 'opacity-0 cursor-default' : ''}`}
                                         title={t('changePasswordTooltip')}
                                     >
                                         <KeyIcon className="w-5 h-5" />
-                                    </button>
-
-                                    {/* Delete User Button */}
-                                    <button
-                                        onClick={(e) => deleteUser(user.username, e)}
-                                        disabled={isSuperAdmin}
-                                        className={`text-red-600 hover:text-red-900 p-1 ${isSuperAdmin ? 'opacity-0 cursor-default' : ''}`}
-                                        title={t('actionDelete')}
-                                    >
-                                        <TrashIcon className="w-5 h-5 pointer-events-none" />
                                     </button>
                                 </div>
                             </div>
@@ -669,6 +660,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('modalPermissionsTitle')}</h3>
                   <div className="mb-4 flex justify-end">
                       <button 
+                        type="button"
                         onClick={toggleSelectAllCountries}
                         className="text-sm text-[#0d1a2e] hover:underline font-medium"
                       >
@@ -680,16 +672,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                          {/* PriceSmart Section */}
                          <div>
                             <h4 className="text-sm font-bold text-gray-700 uppercase mb-2 tracking-wide border-b pb-1">PriceSmart</h4>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 {COUNTRIES.map((country) => (
-                                    <label key={country.code} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                                    <label key={country.code} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded border border-transparent hover:border-gray-200 transition-colors">
                                         <input
                                             type="checkbox"
                                             checked={tempAllowedCountries.includes(country.code)}
                                             onChange={() => toggleCountryPermission(country.code)}
-                                            className="rounded text-[#0d1a2e] focus:ring-[#0d1a2e] h-4 w-4 border-gray-300"
+                                            className="rounded text-[#0d1a2e] focus:ring-[#0d1a2e] h-4 w-4 border-gray-300 flex-shrink-0"
                                         />
-                                        <span className="text-sm text-gray-700">{country.name}</span>
+                                        <img
+                                            src={`https://flagcdn.com/w40/${country.code}.png`}
+                                            alt={`${country.name} flag`}
+                                            className="w-6 h-auto rounded-sm shadow-sm flex-shrink-0"
+                                        />
+                                        <span className="text-sm text-gray-700 font-medium truncate">{country.name}</span>
                                     </label>
                                 ))}
                             </div>
@@ -698,15 +695,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                          {/* DHL Section */}
                          <div>
                             <h4 className="text-sm font-bold text-gray-700 uppercase mb-2 tracking-wide border-b pb-1">DHL</h4>
-                            <div className="grid grid-cols-2 gap-3">
-                                <label key={DHL_DATA.code} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <label key={DHL_DATA.code} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded border border-transparent hover:border-gray-200 transition-colors">
                                     <input
                                         type="checkbox"
                                         checked={tempAllowedCountries.includes(DHL_DATA.code)}
                                         onChange={() => toggleCountryPermission(DHL_DATA.code)}
-                                        className="rounded text-[#0d1a2e] focus:ring-[#0d1a2e] h-4 w-4 border-gray-300"
+                                        className="rounded text-[#0d1a2e] focus:ring-[#0d1a2e] h-4 w-4 border-gray-300 flex-shrink-0"
                                     />
-                                    <span className="text-sm text-gray-700">{DHL_DATA.name}</span>
+                                    <img 
+                                      src="https://www.dhl.com/content/dam/dhl/global/core/images/logos/dhl-logo.svg" 
+                                      alt="DHL Logo" 
+                                      className="w-12 h-auto flex-shrink-0"
+                                    />
+                                    {/* <span className="text-sm text-gray-700 font-medium">{DHL_DATA.name}</span> */}
                                 </label>
                             </div>
                          </div>
@@ -714,12 +716,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                   </div>
                   <div className="flex justify-end space-x-3 mt-6">
                       <button
+                        type="button"
                         onClick={() => setShowPermissionsModal(false)}
                         className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-sm font-medium"
                       >
                           {t('cancelButton')}
                       </button>
                       <button
+                        type="button"
                         onClick={savePermissions}
                         className="bg-[#0d1a2e] text-white px-4 py-2 rounded-md hover:bg-[#1a2b4e] text-sm font-medium"
                       >

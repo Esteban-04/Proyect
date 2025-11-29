@@ -1,3 +1,4 @@
+
 export const translations = {
   es: {
     // Login & Register & Reset
@@ -50,6 +51,7 @@ export const translations = {
     savePermissions: 'Guardar Permisos',
     noRegisteredUsers: 'No hay usuarios registrados.',
     confirmDeleteUser: '¿Está seguro que desea eliminar este usuario?',
+    deleteActiveUserError: 'Debe desactivar el usuario antes de eliminarlo.',
     passwordHidden: '••••••',
     addUserButton: 'Agregar Usuario',
     addUserTitle: 'Agregar Nuevo Usuario',
@@ -148,6 +150,7 @@ export const translations = {
     savePermissions: 'Save Permissions',
     noRegisteredUsers: 'No registered users found.',
     confirmDeleteUser: 'Are you sure you want to delete this user?',
+    deleteActiveUserError: 'You must deactivate the user before deleting.',
     passwordHidden: '••••••',
     addUserButton: 'Add User',
     addUserTitle: 'Add New User',
