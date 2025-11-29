@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Country } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -130,8 +131,11 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   // State for password visibility inside the modal table
   const [visibleTablePasswords, setVisibleTablePasswords] = useState<Record<number, boolean>>({});
   
-  // State for password visibility on the server cards
+  // State for password visibility on the server cards (User Password)
   const [visibleCardPasswords, setVisibleCardPasswords] = useState<Record<number, boolean>>({});
+
+  // State for password visibility on the server cards (TeamViewer Password)
+  const [visibleTvPasswords, setVisibleTvPasswords] = useState<Record<number, boolean>>({});
 
   // Helper to generate a unique storage key for this specific club
   const getStorageKey = (type: 'servers' | 'cameras') => {
@@ -183,6 +187,11 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const toggleCardPassword = (e: React.MouseEvent, id: number) => {
     e.stopPropagation(); // Prevent opening modal
     setVisibleCardPasswords(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const toggleTvPassword = (e: React.MouseEvent, id: number) => {
+    e.stopPropagation(); // Prevent opening modal
+    setVisibleTvPasswords(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   const handleCameraChange = (id: number, field: keyof CameraData, value: string) => {
@@ -476,14 +485,22 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                                 {/* TeamViewer Password Input */}
                                 <div className="flex items-center text-sm text-gray-400">
                                     <span className="mr-2">Contraseña:</span>
-                                    <input
-                                        type="text"
-                                        value={server.teamviewerPassword}
-                                        readOnly={!canEdit}
-                                        onChange={(e) => handleServerChange(server.id, 'teamviewerPassword', e.target.value)}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className={`text-white font-medium bg-transparent border-b hover:border-gray-400 focus:border-white focus:outline-none flex-grow ${!canEdit ? 'border-transparent cursor-default' : 'border-transparent'}`}
-                                    />
+                                    <div className="flex items-center flex-grow">
+                                        <input
+                                            type={visibleTvPasswords[server.id] ? 'text' : 'password'}
+                                            value={server.teamviewerPassword || ''}
+                                            readOnly={!canEdit}
+                                            onChange={(e) => handleServerChange(server.id, 'teamviewerPassword', e.target.value)}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className={`text-white font-medium bg-transparent border-b hover:border-gray-400 focus:border-white focus:outline-none w-full ${!canEdit ? 'border-transparent cursor-default' : 'border-transparent'}`}
+                                        />
+                                        <button 
+                                            onClick={(e) => toggleTvPassword(e, server.id)}
+                                            className="ml-2 text-gray-400 hover:text-white focus:outline-none"
+                                        >
+                                            {visibleTvPasswords[server.id] ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
