@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Country } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { XIcon, SearchIcon, EyeIcon, EyeOffIcon, SaveIcon } from '../assets/icons';
+import { XIcon, SearchIcon, EyeIcon, EyeOffIcon, SaveIcon, PlusIcon, TrashIcon } from '../assets/icons';
 
 // --- Interfaces ---
 
@@ -160,7 +160,9 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
     // Default fallback if no saved data exists
     const serverCount = CLUB_SERVER_COUNTS[clubName] || 3;
-    return ALL_AVAILABLE_SERVERS.slice(0, serverCount).map(s => ({ ...s }));
+    const baseServers = ALL_AVAILABLE_SERVERS.slice(0, serverCount);
+
+    return baseServers.map(s => ({ ...s }));
   });
 
   // State for editable camera data, also loaded from storage
@@ -202,6 +204,36 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const handleServerChange = (id: number, field: keyof ServerDetails, value: string) => {
       if (!canEdit) return;
       setServers(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
+  };
+  
+  const handleAddServer = () => {
+      if (!canEdit) return;
+      
+      // Calculate next ID
+      const maxId = servers.length > 0 ? Math.max(...servers.map(s => s.id)) : 0;
+      const newId = maxId + 1;
+      
+      // Create new server with default values and next index for name
+      const newServer: ServerDetails = {
+          id: newId,
+          name: `SERVER_${String(newId).padStart(2, '0')}`,
+          ip: '',
+          user: 'administrator',
+          password: 'Completeview!',
+          teamviewerId: '',
+          teamviewerPassword: ''
+      };
+
+      setServers([...servers, newServer]);
+  };
+
+  const handleDeleteServer = (e: React.MouseEvent, id: number) => {
+      e.stopPropagation();
+      if (!canEdit) return;
+      
+      if (window.confirm(t('deleteServerConfirm'))) {
+          setServers(prev => prev.filter(s => s.id !== id));
+      }
   };
   
   const handleSave = () => {
@@ -377,11 +409,19 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       
       {/* Header */}
       <div className="flex items-center justify-center mb-8">
-        <img
-            src={`https://flagcdn.com/w40/${country.code}.png`}
-            alt={`${country.name} flag`}
-            className="w-8 h-auto mr-3 rounded-sm shadow-sm"
-        />
+        {country.code === 'dhl' ? (
+             <img 
+               src="https://www.dhl.com/content/dam/dhl/global/core/images/logos/dhl-logo.svg" 
+               alt="DHL Logo" 
+               className="h-10 w-auto mr-3 object-contain"
+             />
+        ) : (
+            <img
+                src={`https://flagcdn.com/w40/${country.code}.png`}
+                alt={`${country.name} flag`}
+                className="w-8 h-auto mr-3 rounded-sm shadow-sm"
+            />
+        )}
         <h2 className="text-3xl font-bold text-[#0d1a2e]">
             {clubName}
         </h2>
@@ -402,6 +442,17 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                     onClick={() => setSelectedServer(server)}
                     className={`${spanClass} bg-[#0d1a2e] rounded-lg p-6 text-white shadow-xl cursor-pointer hover:shadow-2xl transition-all border border-[#1a2b4e] relative group`}
                 >
+                    {/* Delete Button (Only if canEdit) */}
+                    {canEdit && (
+                        <button
+                            onClick={(e) => handleDeleteServer(e, server.id)}
+                            className="absolute top-2 right-2 text-gray-400 hover:text-red-500 p-2 rounded-full hover:bg-white/10 transition-colors z-20"
+                            title={t('actionDelete')}
+                        >
+                            <TrashIcon className="w-5 h-5" />
+                        </button>
+                    )}
+
                     <div className="text-center border-b border-gray-600 pb-2 mb-4">
                         <h3 className="text-xl font-bold uppercase tracking-wider">{server.name}</h3>
                     </div>
@@ -516,16 +567,26 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
           onClick={onBack}
            className="bg-white text-[#0d1a2e] border border-[#0d1a2e] font-bold py-2 px-8 rounded-lg shadow-md hover:bg-gray-100 transition-colors duration-200"
         >
-          Volver
+          {t('backButton')}
         </button>
         {canEdit && (
-            <button
-            onClick={handleSave}
-            className="bg-[#0d1a2e] text-white font-bold py-2 px-8 rounded-lg shadow-lg hover:bg-[#1a2b4e] transition-colors duration-200 flex items-center justify-center"
-            >
-            <SaveIcon className="w-5 h-5 mr-2" />
-            Guardar Cambios
-            </button>
+            <>
+                <button
+                onClick={handleAddServer}
+                className="bg-blue-600 text-white font-bold py-2 px-8 rounded-lg shadow-lg hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center"
+                >
+                <PlusIcon className="w-5 h-5 mr-2" />
+                {t('addServerButton')}
+                </button>
+
+                <button
+                onClick={handleSave}
+                className="bg-[#0d1a2e] text-white font-bold py-2 px-8 rounded-lg shadow-lg hover:bg-[#1a2b4e] transition-colors duration-200 flex items-center justify-center"
+                >
+                <SaveIcon className="w-5 h-5 mr-2" />
+                {t('saveButton')}
+                </button>
+            </>
         )}
       </div>
 

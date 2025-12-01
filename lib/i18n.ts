@@ -1,4 +1,5 @@
 
+
 export const translations = {
   es: {
     // Login & Register & Reset
@@ -83,6 +84,8 @@ export const translations = {
     userLabel: 'Usuario:',
     finalPasswordLabel: 'Contraseña:',
     idLabel: 'ID:',
+    addServerButton: 'Agregar Servidor',
+    deleteServerConfirm: '¿Está seguro de que desea eliminar este servidor?',
     
     // Modal Details
     modalTitle: (serverName: string, city: string) => `Detalles del ${serverName} - ${city}`,
@@ -182,6 +185,8 @@ export const translations = {
     userLabel: 'User:',
     finalPasswordLabel: 'Password:',
     idLabel: 'ID:',
+    addServerButton: 'Add Server',
+    deleteServerConfirm: 'Are you sure you want to delete this server?',
 
     // Modal Details
     modalTitle: (serverName: string, city: string) => `${serverName} Details - ${city}`,

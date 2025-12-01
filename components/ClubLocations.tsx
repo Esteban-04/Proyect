@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Country } from '../types';
 import ClubButton from './ClubButton';
@@ -48,7 +49,7 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
       <div className={`relative z-10 ${paddingClass}`}>
         <div className="flex justify-center items-center mb-8">
           {isDhl ? (
-            <h2 className="text-2xl sm:text-3xl md:text-5xl font-black italic text-[#D40511] tracking-tighter drop-shadow-md text-center">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-black italic text-[#D40511] tracking-tighter drop-shadow-md text-center">
               {country.name}
             </h2>
           ) : (
