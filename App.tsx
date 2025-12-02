@@ -48,6 +48,38 @@ const App: React.FC = () => {
             role: 'user',
             isDisabled: false,
             allowedCountries: []
+        },
+        {
+            name: 'Mauricio Salmon',
+            username: 'mauricio',
+            password: 'S@ltex7509!',
+            role: 'user',
+            isDisabled: false,
+            allowedCountries: []
+        },
+        {
+            name: 'Pablo Estupiñan',
+            username: 'pablo',
+            password: 'S@ltex7509!',
+            role: 'user',
+            isDisabled: false,
+            allowedCountries: []
+        },
+        {
+            name: 'Cristian Salazar',
+            username: 'csalazar',
+            password: 'S@ltex7509!',
+            role: 'user',
+            isDisabled: false,
+            allowedCountries: []
+        },
+        {
+            name: 'Cristian Ortega',
+            username: 'cortega',
+            password: 'S@ltex7509!',
+            role: 'user',
+            isDisabled: false,
+            allowedCountries: []
         }
     ];
 
