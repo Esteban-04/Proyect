@@ -48,68 +48,237 @@ const TeamViewerIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 
-// --- Data ---
+// --- Data & Configuration ---
 
-const ALL_AVAILABLE_SERVERS: ServerDetails[] = [
-  {
-    id: 1,
-    name: 'SERVER_01',
-    ip: '192.168.11.10',
-    user: 'administrator',
-    password: 'Completeview!',
-    teamviewerId: '1 626 036 641',
-    teamviewerPassword: '@l3ss21++'
-  },
-  {
-    id: 2,
-    name: 'SERVER_02',
-    ip: '192.168.11.20',
-    user: 'administrator',
-    password: 'Completeview!',
-    teamviewerId: '703 111 643',
-    teamviewerPassword: '@l3ss21++'
-  },
-  {
-    id: 3,
-    name: 'SERVER_03',
-    ip: '192.168.11.30',
-    user: 'administrator',
-    password: 'Completeview!',
-    teamviewerId: 'N/A',
-    teamviewerPassword: '@l3ss21++'
-  },
-  {
-    id: 4,
-    name: 'SERVER_04',
-    ip: '192.168.11.40',
-    user: 'administrator',
-    password: 'Completeview!',
-    teamviewerId: 'N/A',
-    teamviewerPassword: '@l3ss21++'
-  },
-  {
-    id: 5,
-    name: 'SERVER_05',
-    ip: '192.168.11.50',
-    user: 'administrator',
-    password: 'Completeview!',
-    teamviewerId: 'N/A',
-    teamviewerPassword: '@l3ss21++'
-  }
-];
+// Helper function to easily define a server in the configuration list below.
+// Usage: s(ID, IP, User, Password, TV_ID, TV_Pass)
+const s = (
+    id: number, 
+    ip: string, 
+    user: string = 'administrator', 
+    password: string = 'Completeview!', 
+    tvId: string = '', 
+    tvPass: string = ''
+): ServerDetails => ({
+    id,
+    name: `SERVER_${String(id).padStart(2, '0')}`,
+    ip,
+    user,
+    password,
+    teamviewerId: tvId,
+    teamviewerPassword: tvPass
+});
 
-// Configuration for number of servers per club
-const CLUB_SERVER_COUNTS: Record<string, number> = {
-  'Barranquilla': 3,
-  'Cali - Cañas Gordas': 2,
-  'Cali - Menga': 2,
-  'Pereira': 3,
-  'Bogotá - Salitre': 3,
-  'Medellín - Las Américas': 2,
-  'Chía': 5,
-  'Bogotá - Usaquén': 3,
-  'Bucaramanga - Floridablanca': 3,
-  'Medellín - El Poblado': 2,
+// ==================================================================================
+// CONFIGURACIÓN DE SERVIDORES
+// Edite aquí la información de cada sitio.
+// ==================================================================================
+
+const CLUB_SPECIFIC_DEFAULTS: Record<string, ServerDetails[]> = {
+  // --- COLOMBIA ---
+  'Barranquilla': [
+      s(1, '192.168.11.10','administrator','Completeview!','1626036641','@l3ss21++' ),
+      s(2, '192.168.11.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.11.30','administrator','Completeview!','1626036641','@l3ss21++'),
+  ],
+  'Cali - Cañas Gordas': [
+      s(1, '192.168.12.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.21.10','administrator','Completeview!','1626036641','@l3ss21++'),
+  ],
+  'Cali - Menga': [
+      s(1, '192.168.13.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.13.20','administrator','Completeview!','1626036641','@l3ss21++'),
+  ],
+  'Pereira': [
+      s(1, '192.168.14.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.14.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.14.40','administrator','Completeview!','1626036641','@l3ss21++'),
+  ],
+  'Bogotá - Salitre': [
+      s(1, '192.168.15.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.15.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.15.30','administrator','Completeview!','1626036641','@l3ss21++'),
+  ],
+  'Medellín - Las Américas': [
+      s(1, '192.168.16.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.16.20','administrator','Completeview!','1626036641','@l3ss21++'),
+  ],
+  'Chía': [
+      s(1, '192.168.17.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.17.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.17.30','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(4, '192.168.17.40','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(5, '192.168.17.60','administrator','Completeview!','1626036641','@l3ss21++'),
+  ],
+  'Bogotá - Usaquén': [
+      s(1, '192.168.18.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.18.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.18.30','administrator','Completeview!','1626036641','@l3ss21++'),
+  ],
+  'Bucaramanga - Floridablanca': [
+      s(1, '192.168.19.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.19.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.19.30','administrator','Completeview!','1626036641','@l3ss21++'),
+  ],
+  'Medellín - El Poblado': [
+      s(1, '192.168.101.10','administrator','Completeview!@','1626036641','@l3ss21++'),
+      s(2, '192.168.101.20','administrator','Completeview!@','1626036641','@l3ss21++'),
+  ],
+
+  // --- DHL ---
+  'Intexzona': [
+      s(1, '192.168.205.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.205.20','administrator','Completeview!','1626036641','@l3ss21++'),
+  ],
+  'San Carlos II': [
+      s(1, '192.168.202.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.202.20','administrator','Completeview!','1626036641','@l3ss21++'),
+  ],
+  'Easy': [
+      s(1, '192.168.203.10','administrator','Completeview!','1626036641','@l3ss21++'),
+  ],
+  'PLC': [
+       s(1, '192.168.201.10','administrator','Completeview!','1626036641','@l3ss21++'),
+  ],
+  'Rio Negro': [
+       s(1, '192.168.204.10','administrator','Completeview!','1626036641','@l3ss21++'),
+  ],
+
+  // --- COSTA RICA ---
+  'Cartago': [
+      s(1, '192.168.1.10'),
+      s(2, '192.168.1.20'),
+      s(3, '192.168.1.30'),
+  ],
+
+  // --- EL SALVADOR ---
+  'Santa Elena': [ 
+      s(1, '192.168.71.10','administrator','Completeview!','1626036641','@l3ss21++'), 
+      s(2, '192.168.71.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.71.30','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(4, '192.168.71.40','admin','Completeview!','1626036641','@l3ss21++'),
+  ],
+  'Los Héroes': [ 
+      s(1, '192.168.72.10','administrator','Completeview!','1626036641','@l3ss21++'), 
+      s(2, '192.168.72.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.72.30','administrator','Completeview!','1626036641','@l3ss21++'), ],
+  'San Miguel': [ 
+      s(1, '192.168.73.10','administrator','Completeview!@','1626036641','@l3ss21++'),
+      s(2, '192.168.73.20','administrator','Completeview!@','1626036641','@l3ss21++'),
+ ],
+  'Santa Ana': [ 
+      s(1, '192.168.74.10','Server 1 6704','Completeview!@','1626036641','@l3ss21++'),
+      s(2, '192.168.74.20','Server 2 6704','Completeview!@','1626036641','@l3ss21++'),
+   ],
+
+  // --- GUATEMALA ---
+  'Miraflores': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'Pradera': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'Fraijanes': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'San Cristóbal': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'Aranda': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'Escuintla': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+
+  // --- HONDURAS ---
+  'Florencia': [ 
+      s(1, '192.168.62.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.62.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.62.93','','!','','@l3ss21++'),
+      s(4, '192.168.62.50','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+  'San Pedro Sula': [ 
+      s(1, '192.168.63.30','','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.63.20','','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.63.10','','Completeview!','1626036641','@l3ss21++'),
+   ],
+  'El Sauce':  [ 
+      s(1, '192.168.64.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.64.20','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+
+  // --- NICARAGUA ---
+  'Managua': [ 
+      s(1, '192.168.91.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.91.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.91.30','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+  'Masaya': [ 
+      s(1, '192.168.92.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.92.20','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+  // --- PANAMA ---
+  'Vía Brasil': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'El Dorado': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'David': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'Brisas': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'Costa Verde': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'Santiago de Veraguas': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'Metro Park': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+
+  // --- ARUBA ---
+  'Oranjestad': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+
+  // --- BARBADOS ---
+  'St. Michaels': [ 
+      s(1, '192.168.85.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.85.20','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+
+  // --- DOMINICAN REPUBLIC ---
+  'Los Prados': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'Santiago': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'Arroyo Hondo': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'San Isidro': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'Bolívar': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+
+  // --- JAMAICA ---
+  'Kingston': [ 
+      s(1, '192.168.171.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.171.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.171.30','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(4, '192.168.171.40','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+  'Portmore':  [ 
+      s(1, '192.168.172.10','salient','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.172.20','vivotek','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.172.30','vivotek','vivotek!','1626036641','@l3ss21++'),
+   ],
+
+  // --- TRINIDAD & TOBAGO ---
+  'Chaguanas': [ 
+      s(1, '192.168.81.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.81.20','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+  'Port of Spain': [ 
+      s(1, '192.168.82.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.82.20','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+  'Mausica': [ 
+      s(1, '192.168.183.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.183.20','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+  'San Fernando': [ 
+      s(1, '192.168.184.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.184.20','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+
+  // --- VIRGIN ISLANDS ---
+  'St. Thomas': [ 
+      s(1, '192.168.201.10','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+};
+
+// Fallback creator if a club is not in the list (should not happen if all are listed)
+const createDefaultServers = (count: number, baseIp: string): ServerDetails[] => {
+    return Array.from({ length: count }, (_, i) => ({
+      id: i + 1,
+      name: `SERVER_${String(i + 1).padStart(2, '0')}`,
+      ip: baseIp.includes('X') ? baseIp.replace('X', String((i + 1) * 10)) : baseIp,
+      user: 'administrator',
+      password: 'Completeview!',
+      teamviewerId: '',
+      teamviewerPassword: ''
+    }));
 };
 
 // Updated camera data to match the screenshot
@@ -163,10 +332,14 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
     }
 
     // Default fallback if no saved data exists
-    const serverCount = CLUB_SERVER_COUNTS[clubName] || 3;
-    const baseServers = ALL_AVAILABLE_SERVERS.slice(0, serverCount);
+    
+    // Check if we have specific defaults for this club
+    if (CLUB_SPECIFIC_DEFAULTS[clubName]) {
+        return CLUB_SPECIFIC_DEFAULTS[clubName].map(s => ({...s}));
+    }
 
-    return baseServers.map(s => ({ ...s }));
+    // Fallback: Generic creation if not found in list (should not happen if list is complete)
+    return createDefaultServers(3, '192.168.1.X');
   });
 
   // State for editable camera data, also loaded from storage
@@ -529,7 +702,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                                 {/* IP Input */}
                                 <input
                                     type="text"
-                                    value={server.ip}
+                                    value={server.ip || ''}
                                     readOnly={!canEdit}
                                     onChange={(e) => handleServerChange(server.id, 'ip', e.target.value)}
                                     onClick={(e) => e.stopPropagation()}
@@ -541,7 +714,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                                     <span className="mr-2">Usuario:</span>
                                     <input
                                         type="text"
-                                        value={server.user}
+                                        value={server.user || ''}
                                         readOnly={!canEdit}
                                         onChange={(e) => handleServerChange(server.id, 'user', e.target.value)}
                                         onClick={(e) => e.stopPropagation()}
@@ -555,7 +728,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                                     <div className="flex items-center flex-grow">
                                         <input
                                             type={visibleCardPasswords[server.id] ? 'text' : 'password'}
-                                            value={server.password}
+                                            value={server.password || ''}
                                             readOnly={!canEdit}
                                             onChange={(e) => handleServerChange(server.id, 'password', e.target.value)}
                                             onClick={(e) => e.stopPropagation()}
@@ -586,7 +759,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                                     <span className="mr-2 text-gray-400 text-base font-normal">ID:</span>
                                     <input
                                         type="text"
-                                        value={server.teamviewerId}
+                                        value={server.teamviewerId || ''}
                                         readOnly={!canEdit}
                                         onChange={(e) => handleServerChange(server.id, 'teamviewerId', e.target.value)}
                                         onClick={(e) => e.stopPropagation()}

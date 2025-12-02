@@ -24,12 +24,13 @@ const App: React.FC = () => {
   // User Data State (Moved from Login.tsx)
   const [users, setUsers] = useState<User[]>(() => {
     // Define the required users as per request
+    // Setting these specific users to 'admin' so they can edit server details
     const requiredUsers: User[] = [
         {
             name: 'Cesar Correa',
             username: 'cesar',
             password: 'S@ltex7509!',
-            role: 'user',
+            role: 'admin',
             isDisabled: false,
             allowedCountries: []
         },
@@ -37,7 +38,7 @@ const App: React.FC = () => {
             name: 'Nick Pineda',
             username: 'nick',
             password: 'S@ltex7509!',
-            role: 'user',
+            role: 'admin',
             isDisabled: false,
             allowedCountries: []
         },
@@ -45,7 +46,7 @@ const App: React.FC = () => {
             name: 'Gio Vanegas',
             username: 'gio',
             password: 'S@ltex7509!',
-            role: 'user',
+            role: 'admin',
             isDisabled: false,
             allowedCountries: []
         },
@@ -53,7 +54,7 @@ const App: React.FC = () => {
             name: 'Mauricio Salmon',
             username: 'mauricio',
             password: 'S@ltex7509!',
-            role: 'user',
+            role: 'admin',
             isDisabled: false,
             allowedCountries: []
         },
@@ -61,7 +62,7 @@ const App: React.FC = () => {
             name: 'Pablo Estupiñan',
             username: 'pablo',
             password: 'S@ltex7509!',
-            role: 'user',
+            role: 'admin',
             isDisabled: false,
             allowedCountries: []
         },
@@ -69,7 +70,7 @@ const App: React.FC = () => {
             name: 'Cristian Salazar',
             username: 'csalazar',
             password: 'S@ltex7509!',
-            role: 'user',
+            role: 'admin',
             isDisabled: false,
             allowedCountries: []
         },
@@ -77,7 +78,7 @@ const App: React.FC = () => {
             name: 'Cristian Ortega',
             username: 'cortega',
             password: 'S@ltex7509!',
-            role: 'user',
+            role: 'admin',
             isDisabled: false,
             allowedCountries: []
         }
