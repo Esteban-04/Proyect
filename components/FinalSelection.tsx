@@ -128,6 +128,9 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const [selectedServer, setSelectedServer] = useState<ServerDetails | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // State for delete confirmation modal
+  const [serverToDelete, setServerToDelete] = useState<number | null>(null);
 
   // State for password visibility inside the modal table
   const [visibleTablePasswords, setVisibleTablePasswords] = useState<Record<number, boolean>>({});
@@ -233,12 +236,17 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       setServers([...servers, newServer]);
   };
 
-  const handleDeleteServer = (e: React.MouseEvent, id: number) => {
+  const handleDeleteClick = (e: React.MouseEvent, id: number) => {
       e.stopPropagation();
       if (!canEdit) return;
-      
-      if (window.confirm(t('deleteServerConfirm'))) {
-          setServers(prev => prev.filter(s => s.id !== id));
+      // Instead of confirming immediately, set the state to show modal
+      setServerToDelete(id);
+  };
+
+  const confirmDeleteServer = () => {
+      if (serverToDelete !== null) {
+          setServers(prev => prev.filter(s => s.id !== serverToDelete));
+          setServerToDelete(null);
           showSuccess(t('serverDeleteSuccess'));
       }
   };
@@ -430,6 +438,36 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {serverToDelete !== null && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black bg-opacity-60">
+              <div className="bg-white rounded-lg shadow-2xl p-6 max-w-sm w-full text-center border-t-4 border-red-500 transform transition-all scale-100">
+                  <div className="mb-4">
+                      <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:h-10 sm:w-10">
+                         <TrashIcon className="h-6 w-6 text-red-600" aria-hidden="true" />
+                      </div>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">{t('actionDelete')}</h3>
+                  <p className="text-sm text-gray-500 mb-6">{t('deleteServerConfirm')}</p>
+                  
+                  <div className="flex justify-center space-x-4">
+                      <button 
+                        onClick={() => setServerToDelete(null)}
+                        className="bg-gray-200 text-gray-700 px-5 py-2 rounded-lg hover:bg-gray-300 font-medium transition-colors"
+                      >
+                          {t('noButton')}
+                      </button>
+                      <button 
+                        onClick={confirmDeleteServer}
+                        className="bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700 font-medium transition-colors shadow-sm"
+                      >
+                          {t('yesButton')}
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-center mb-8">
         {country.code === 'dhl' ? (
@@ -468,7 +506,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                     {/* Delete Button (Only if canEdit) */}
                     {canEdit && (
                         <button
-                            onClick={(e) => handleDeleteServer(e, server.id)}
+                            onClick={(e) => handleDeleteClick(e, server.id)}
                             className="absolute top-2 right-2 text-gray-400 hover:text-red-500 p-2 rounded-full hover:bg-white/10 transition-colors z-20"
                             title={t('actionDelete')}
                         >

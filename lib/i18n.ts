@@ -87,6 +87,8 @@ export const translations = {
     addServerButton: 'Agregar Servidor',
     deleteServerConfirm: '¿Está seguro de que desea eliminar este servidor?',
     serverDeleteSuccess: 'Servidor eliminado exitosamente.',
+    yesButton: 'Sí',
+    noButton: 'No',
     
     // Modal Details
     modalTitle: (serverName: string, city: string) => `Detalles del ${serverName} - ${city}`,
@@ -189,6 +191,8 @@ export const translations = {
     addServerButton: 'Add Server',
     deleteServerConfirm: 'Are you sure you want to delete this server?',
     serverDeleteSuccess: 'Server deleted successfully.',
+    yesButton: 'Yes',
+    noButton: 'No',
 
     // Modal Details
     modalTitle: (serverName: string, city: string) => `${serverName} Details - ${city}`,
