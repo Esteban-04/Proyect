@@ -127,7 +127,8 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const { t } = useLanguage();
   const [selectedServer, setSelectedServer] = useState<ServerDetails | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
   // State for password visibility inside the modal table
   const [visibleTablePasswords, setVisibleTablePasswords] = useState<Record<number, boolean>>({});
   
@@ -182,6 +183,11 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       return SERVER_CAMERA_DATA;
   });
 
+  const showSuccess = (message: string) => {
+    setSuccessMessage(message);
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
   const toggleTablePassword = (id: number) => {
     setVisibleTablePasswords(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -233,6 +239,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       
       if (window.confirm(t('deleteServerConfirm'))) {
           setServers(prev => prev.filter(s => s.id !== id));
+          showSuccess(t('serverDeleteSuccess'));
       }
   };
   
@@ -242,7 +249,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
           // Save both servers and cameras to localStorage specific to this club
           localStorage.setItem(getStorageKey('servers'), JSON.stringify(servers));
           localStorage.setItem(getStorageKey('cameras'), JSON.stringify(cameras));
-          alert(t('saveSuccess'));
+          showSuccess(t('saveSuccess'));
       } catch (e) {
           console.error("Error saving data:", e);
           alert("Error al guardar los datos.");
@@ -258,6 +265,14 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75">
+        
+        {/* Success Toast for Modal Context */}
+        {successMessage && (
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[60] bg-green-500 text-white px-6 py-3 rounded-lg shadow-2xl font-bold transition-all duration-300 animate-bounce">
+                {successMessage}
+            </div>
+        )}
+
         <div className="w-full max-w-7xl bg-white rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
           {/* Modal Header */}
           <div className="bg-[#0d1a2e] text-white p-4 flex justify-between items-center">
@@ -405,8 +420,16 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
   // Dashboard View
   return (
-    <div className="w-full flex flex-col items-center">
+    <div className="w-full flex flex-col items-center relative">
       
+      {/* Success Toast (Main View) */}
+      {successMessage && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] bg-green-500 text-white px-6 py-3 rounded-lg shadow-2xl font-bold transition-all duration-300 animate-bounce flex items-center">
+            <span className="mr-2">✓</span>
+            {successMessage}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-center mb-8">
         {country.code === 'dhl' ? (

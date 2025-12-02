@@ -86,6 +86,7 @@ export const translations = {
     idLabel: 'ID:',
     addServerButton: 'Agregar Servidor',
     deleteServerConfirm: '¿Está seguro de que desea eliminar este servidor?',
+    serverDeleteSuccess: 'Servidor eliminado exitosamente.',
     
     // Modal Details
     modalTitle: (serverName: string, city: string) => `Detalles del ${serverName} - ${city}`,
@@ -182,11 +183,12 @@ export const translations = {
 
     // Final Selection
     remoteDesktopLabel: 'Remote Desktop:',
-    userLabel: 'User:',
+    userLabel: 'Usuario:',
     finalPasswordLabel: 'Password:',
     idLabel: 'ID:',
     addServerButton: 'Add Server',
     deleteServerConfirm: 'Are you sure you want to delete this server?',
+    serverDeleteSuccess: 'Server deleted successfully.',
 
     // Modal Details
     modalTitle: (serverName: string, city: string) => `${serverName} Details - ${city}`,
