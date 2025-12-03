@@ -162,7 +162,8 @@ const CLUB_SPECIFIC_DEFAULTS: Record<string, ServerDetails[]> = {
   'Los Héroes': [ 
       s(1, '192.168.72.10','administrator','Completeview!','1626036641','@l3ss21++'), 
       s(2, '192.168.72.20','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(3, '192.168.72.30','administrator','Completeview!','1626036641','@l3ss21++'), ],
+      s(3, '192.168.72.30','administrator','Completeview!','1626036641','@l3ss21++'), 
+  ],
   'San Miguel': [ 
       s(1, '192.168.73.10','administrator','Completeview!@','1626036641','@l3ss21++'),
       s(2, '192.168.73.20','administrator','Completeview!@','1626036641','@l3ss21++'),
@@ -173,12 +174,28 @@ const CLUB_SPECIFIC_DEFAULTS: Record<string, ServerDetails[]> = {
    ],
 
   // --- GUATEMALA ---
-  'Miraflores': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
-  'Pradera': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
-  'Fraijanes': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
-  'San Cristóbal': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
-  'Aranda': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
-  'Escuintla': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'Pradera': [ 
+      s(1, '192.168.33.10','administrador','Completeview!','1626036641','@l3ss21++'), 
+      s(2, '192.168.33.20','administrador','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.33.30','administrador','Completeview!','1626036641','@l3ss21++'), 
+  ],
+  'Fraijanes': [ 
+      s(1, '192.168.34.10','administrador','Completeview!','1626036641','@l3ss21++'), 
+      s(2, '192.168.34.20','administrador','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.34.30','administrador','Completeview!','1626036641','@l3ss21++'), 
+  ],
+  'San Cristóbal': [ 
+      s(1, '192.168.35.10','administrador','Completeview!','1626036641','@l3ss21++'), 
+      s(2, '192.168.35.20','administrador','Completeview!','1626036641','@l3ss21++'),
+  ],
+  'Aranda': [ 
+      s(1, '192.168.36.10','admin','Seg-6306','1626036641','@l3ss21++'), 
+      s(2, '192.168.36.20','admin','Seg-6306','1626036641','@l3ss21++'),
+  ],
+  'Escuintla': [ 
+      s(1, '192.168.37.10','administrador','Completeview!@','1626036641','@l3ss21++'), 
+      s(2, '192.168.37.20','administrador','Completeview!@','1626036641','@l3ss21++'),
+  ],
 
   // --- HONDURAS ---
   'Florencia': [ 
