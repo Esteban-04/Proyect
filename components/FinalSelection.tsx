@@ -139,6 +139,7 @@ const CLUB_SPECIFIC_DEFAULTS: Record<string, ServerDetails[]> = {
   ],
   'PLC': [
        s(1, '192.168.201.10','administrator','Completeview!','1626036641','@l3ss21++'),
+       s(2, '192.168.201.20','administrator','Completeview!','1626036641','@l3ss21++'),
   ],
   'Rio Negro': [
        s(1, '192.168.204.10','administrator','Completeview!','1626036641','@l3ss21++'),
@@ -207,13 +208,42 @@ const CLUB_SPECIFIC_DEFAULTS: Record<string, ServerDetails[]> = {
       s(2, '192.168.92.20','administrator','Completeview!','1626036641','@l3ss21++'),
    ],
   // --- PANAMA ---
-  'Vía Brasil': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
-  'El Dorado': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
-  'David': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
-  'Brisas': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
-  'Costa Verde': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
-  'Santiago de Veraguas': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
-  'Metro Park': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'Vía Brasil': [ 
+      s(1, '192.168.20.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.20.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.20.30','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(4, '192.168.20.40','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+  'El Dorado':  [ 
+      s(1, '192.168.23.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.23.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.23.13','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+  'David': [ 
+      s(1, '192.168.24.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.24.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.24.30','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+  'Brisas': [ 
+      s(1, '192.168.25.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.25.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.25.30','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(4, '192.168.25.40','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+  'Costa Verde': [ 
+      s(1, '192.168.26.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.26.20','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+  'Santiago de Veraguas': [ 
+      s(1, '192.168.27.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.27.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.27.30','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
+  'Metro Park': [ 
+      s(1, '192.168.28.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.28.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.28.30','administrator','Completeview!','1626036641','@l3ss21++'),
+   ],
 
   // --- ARUBA ---
   'Oranjestad': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
@@ -225,11 +255,34 @@ const CLUB_SPECIFIC_DEFAULTS: Record<string, ServerDetails[]> = {
    ],
 
   // --- DOMINICAN REPUBLIC ---
-  'Los Prados': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
-  'Santiago': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
-  'Arroyo Hondo': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
-  'San Isidro': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
-  'Bolívar': [ s(1, '192.168.1.10'), s(2, '192.168.1.20'), s(3, '192.168.1.30') ],
+  'Los Prados': [ 
+      s(1, '192.168.61.10','admin','S@ltex7509!','1626036641','@l3ss21++'),
+      s(2, '192.168.61.20','admin','S@ltex7509!','1626036641','@l3ss21++'),
+      s(3, '192.168.61.30','admin','S@ltex7509!','1626036641','@l3ss21++'),
+      s(4, '192.168.61.40','admin','S@ltex7509!','1626036641','@l3ss21++'),
+   ],
+  'Santiago': [ 
+      s(1, '192.168.168.10','administrador','S@ltex7509!','1626036641','@l3ss21++'),
+      s(2, '192.168.168.20','administrador','S@ltex7509!','1626036641','@l3ss21++'),
+      s(3, '192.168.168.30','administrador','S@ltex7509!','1626036641','@l3ss21++'),
+      s(4, '192.168.168.40','administrador','S@ltex7509!','1626036641','@l3ss21++'),
+   ],
+  'Arroyo Hondo':  [ 
+      s(1, '192.168.84.10','administrador','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.84.20','administrador','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.84.30','administrador','Completeview!','1626036641','@l3ss21++'),
+   ],
+  'San Isidro': [ 
+      s(1, '192.168.185.10','administrador','Completeview!','1626036641','@l3ss21++'),
+      s(2, '192.168.185.20','administrador','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.185.30','administrador','Completeview!','1626036641','@l3ss21++'),
+   ],
+  'Bolívar': [ 
+      s(1, '192.168.138.10','administrador','S@ltex7509!','1626036641','@l3ss21++'),
+      s(2, '192.168.138.20','administrador','S@ltex7509!','1626036641','@l3ss21++'),
+      s(3, '192.168.138.30','administrador','S@ltex7509!','1626036641','@l3ss21++'),
+      s(4, '192.168.138.40','administrador','S@ltex7509!','1626036641','@l3ss21++'),
+   ],
 
   // --- JAMAICA ---
   'Kingston': [ 
