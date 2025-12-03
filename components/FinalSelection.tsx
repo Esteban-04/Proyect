@@ -77,27 +77,28 @@ const s = (
 const CLUB_SPECIFIC_DEFAULTS: Record<string, ServerDetails[]> = {
   // --- COLOMBIA ---
   'Barranquilla': [
-      s(1, '192.168.11.10','administrator','Completeview!','1626036641','@l3ss21++' ),
-      s(2, '192.168.11.20','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(3, '192.168.11.30','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(1, '192.168.11.10','administrator','Completeview!','1 626 036 641','@l3ss21++' ),
+      s(2, '192.168.11.20','administrator','Completeview!','703 111 643','@l3ss21++'),
+      s(3, '192.168.11.30','administrator','Completeview!','1 870 758 357','@l3ss21++'),
   ],
   'Cali - Cañas Gordas': [
-      s(1, '192.168.12.10','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(2, '192.168.21.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(1, '192.168.12.10','administrator','Completeview!','1 279 617 762','@l3ss21++'),
+      s(2, '192.168.12.20','administrator','Completeview!','1 289 199 790','@l3ss21++'),
   ],
   'Cali - Menga': [
-      s(1, '192.168.13.10','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(2, '192.168.13.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(1, '192.168.13.10','administrator','Completeview!','1 623 109 087','@l3ss21++'),
+      s(2, '192.168.13.20','administrator','Completeview!','307 986 008','@l3ss21++'),
   ],
   'Pereira': [
-      s(1, '192.168.14.10','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(2, '192.168.14.20','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(3, '192.168.14.40','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(1, '192.168.14.10','administrator','Completeview!','281 044 494','@l3ss21++'),
+      s(2, '192.168.14.20','administrator','Completeview!','1 341 818 303','@l3ss21++'),
+      s(3, '192.168.14.40','administrator','Completeview!','1 183 061 146','@l3ss21++'),
   ],
   'Bogotá - Salitre': [
-      s(1, '192.168.15.10','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(2, '192.168.15.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(1, '192.168.15.10','administrator','Completeview!','N/A','N/A'),
+      s(2, '192.168.15.20','administrator','Completeview!','1 228 790 199','@l3ss21++'),
       s(3, '192.168.15.30','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(4, '192.168.15.40','administrator','Completeview!','1626036641','@l3ss21++'),
   ],
   'Medellín - Las Américas': [
       s(1, '192.168.16.10','administrator','Completeview!','1626036641','@l3ss21++'),
