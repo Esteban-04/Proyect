@@ -35,9 +35,10 @@ interface FinalSelectionProps {
 
 // --- Icons ---
 
+// Updated icon to represent a computer/desktop instead of a trash can
 const RemoteDesktopIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" strokeWidth={0} stroke="currentColor" {...props}>
-     <path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14zM6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6z" />
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+     <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25" />
   </svg>
 );
 
@@ -387,6 +388,11 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       return `config_${country.code}_${safeClub}_${type}`;
   };
 
+  // Helper to get localized server name
+  const getServerName = (id: number) => {
+      return `${t('serverNamePrefix')} ${String(id).padStart(2, '0')}`;
+  };
+
   // Initialize servers state based on club configuration AND local storage
   const [servers, setServers] = useState<ServerDetails[]>(() => {
     try {
@@ -529,7 +535,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
           {/* Modal Header */}
           <div className="bg-[#0d1a2e] text-white p-4 flex justify-between items-center">
             <h2 className="text-xl font-bold">
-              {t('modalTitle', selectedServer.name, clubName)}
+              {t('modalTitle', getServerName(selectedServer.id), clubName)}
             </h2>
             <button onClick={() => setSelectedServer(null)} className="text-gray-300 hover:text-white">
               <XIcon className="h-6 w-6" />
@@ -759,7 +765,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                     )}
 
                     <div className="text-center border-b border-gray-600 pb-2 mb-4">
-                        <h3 className="text-xl font-bold uppercase tracking-wider">{server.name}</h3>
+                        <h3 className="text-xl font-bold uppercase tracking-wider">{getServerName(server.id)}</h3>
                     </div>
                     
                     <div className="flex flex-col space-y-6 px-4">
@@ -767,7 +773,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                         <div>
                             <div className="flex items-center mb-1">
                                 <RemoteDesktopIcon className="w-5 h-5 mr-2" />
-                                <span className="text-gray-300 text-sm font-medium">Escritorio Remoto:</span>
+                                <span className="text-gray-300 text-sm font-medium">{t('remoteDesktopLabel')}</span>
                             </div>
                             <div className="pl-7">
                                 {/* IP Input */}
@@ -782,7 +788,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                                 
                                 {/* User Input */}
                                 <div className="flex items-center text-sm text-gray-400">
-                                    <span className="mr-2">Usuario:</span>
+                                    <span className="mr-2">{t('userLabel')}</span>
                                     <input
                                         type="text"
                                         value={server.user || ''}
@@ -795,7 +801,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
                                 {/* Password Input */}
                                 <div className="flex items-center text-sm text-gray-400 mt-1">
-                                    <span className="mr-2">Contraseña:</span>
+                                    <span className="mr-2">{t('finalPasswordLabel')}</span>
                                     <div className="flex items-center flex-grow">
                                         <input
                                             type={visibleCardPasswords[server.id] ? 'text' : 'password'}
@@ -827,7 +833,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                             <div className="pl-7">
                                 {/* TeamViewer ID Input */}
                                 <div className="flex items-center text-xl font-bold mb-1">
-                                    <span className="mr-2 text-gray-400 text-base font-normal">ID:</span>
+                                    <span className="mr-2 text-gray-400 text-base font-normal">{t('idLabel')}</span>
                                     <input
                                         type="text"
                                         value={server.teamviewerId || ''}
@@ -840,7 +846,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
                                 {/* TeamViewer Password Input */}
                                 <div className="flex items-center text-sm text-gray-400">
-                                    <span className="mr-2">Contraseña:</span>
+                                    <span className="mr-2">{t('finalPasswordLabel')}</span>
                                     <div className="flex items-center flex-grow">
                                         <input
                                             type={visibleTvPasswords[server.id] ? 'text' : 'password'}

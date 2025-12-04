@@ -1,5 +1,6 @@
 
 
+
 export const translations = {
   es: {
     // Login & Register & Reset
@@ -80,6 +81,7 @@ export const translations = {
     noAccessMessage: 'No tienes permisos asignados. Contacta al administrador.',
 
     // Final Selection
+    serverNamePrefix: 'SERVIDOR',
     remoteDesktopLabel: 'Escritorio Remoto:',
     userLabel: 'Usuario:',
     finalPasswordLabel: 'Contraseña:',
@@ -184,8 +186,9 @@ export const translations = {
     noAccessMessage: 'You do not have assigned permissions. Contact the administrator.',
 
     // Final Selection
+    serverNamePrefix: 'SERVER',
     remoteDesktopLabel: 'Remote Desktop:',
-    userLabel: 'Usuario:',
+    userLabel: 'User:',
     finalPasswordLabel: 'Password:',
     idLabel: 'ID:',
     addServerButton: 'Add Server',
