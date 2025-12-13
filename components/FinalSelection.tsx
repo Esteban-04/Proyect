@@ -159,39 +159,39 @@ const CLUB_SPECIFIC_DEFAULTS: Record<string, ServerDetails[]> = {
 
   // --- EL SALVADOR ---
   'Santa Elena': [ 
-      s(1, '192.168.71.10','administrator','Completeview!','1626036641','@l3ss21++'), 
-      s(2, '192.168.71.20','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(3, '192.168.71.30','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(4, '192.168.71.40','admin','Completeview!','1626036641','@l3ss21++'),
+      s(1, '192.168.71.10','administrator','Completeview!','621 522 823','@l3ss21++'), 
+      s(2, '192.168.71.20','administrator','Completeview!','682 498 803','@l3ss21++'),
+      s(3, '192.168.71.30','administrator','Completeview!','N/A','@l3ss21++'),
+      s(4, '192.168.71.40','admin','NULL','N/A','NULL'),
   ],
   'Los Héroes': [ 
-      s(1, '192.168.72.10','administrator','Completeview!','1626036641','@l3ss21++'), 
-      s(2, '192.168.72.20','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(3, '192.168.72.30','administrator','Completeview!','1626036641','@l3ss21++'), 
+      s(1, '192.168.72.10','administrator','Completeview!','1 237 968 588','@l3ss21++'), 
+      s(2, '192.168.72.20','administrator','Completeview!','1 236 510 034','@l3ss21++'),
+      s(3, '192.168.72.30','administrator','Completeview!','N/A','N/A'), 
   ],
   'San Miguel': [ 
-      s(1, '192.168.73.10','administrator','Completeview!@','1626036641','@l3ss21++'),
-      s(2, '192.168.73.20','administrator','Completeview!@','1626036641','@l3ss21++'),
+      s(1, '192.168.73.10','administrator','Completeview!@','628 215 335','@l3ss21++'),
+      s(2, '192.168.73.20','administrator','Completeview!@','629 849 271','@l3ss21++'),
  ],
   'Santa Ana': [ 
-      s(1, '192.168.74.10','Server 1 6704','Completeview!@','1626036641','@l3ss21++'),
-      s(2, '192.168.74.20','Server 2 6704','Completeview!@','1626036641','@l3ss21++'),
+      s(1, '192.168.74.10','Server 1 6704','Completeview!@','N/A','N/A'),
+      s(2, '192.168.74.20','Server 2 6704','Completeview!@','611 752 548','@l3ss21++'),
    ],
 
   // --- GUATEMALA ---
   'Pradera': [ 
-      s(1, '192.168.33.10','administrador','Completeview!','1626036641','@l3ss21++'), 
-      s(2, '192.168.33.20','administrador','Completeview!','1626036641','@l3ss21++'),
+      s(1, '192.168.33.10','administrador','Completeview!@','N/A','N/A'), 
+      s(2, '192.168.33.20','administrator','Completeview!','1626036641','@l3ss21++'),
       s(3, '192.168.33.30','administrador','Completeview!','1626036641','@l3ss21++'), 
   ],
   'Fraijanes': [ 
-      s(1, '192.168.34.10','administrador','Completeview!','1626036641','@l3ss21++'), 
-      s(2, '192.168.34.20','administrador','Completeview!','1626036641','@l3ss21++'),
-      s(3, '192.168.34.30','administrador','Completeview!','1626036641','@l3ss21++'), 
+      s(1, '192.168.34.10','administrador','Completeview!','N/A','N/A'), 
+      s(2, '192.168.34.20','administrador','Completeview!','N/A','N/A'),
+      s(3, '192.168.34.30','administrador','Completeview!','N/A','N/A'), 
   ],
   'San Cristóbal': [ 
-      s(1, '192.168.35.10','administrador','Completeview!','1626036641','@l3ss21++'), 
-      s(2, '192.168.35.20','administrador','Completeview!','1626036641','@l3ss21++'),
+      s(1, '192.168.35.10','administrador','Completeview!','N/A','N/A'), 
+      s(2, '192.168.35.20','administrador','Completeview!','1 364 504 927','@l3ss21++'),
   ],
   'Aranda': [ 
       s(1, '192.168.36.10','admin','Seg-6306','1626036641','@l3ss21++'), 
