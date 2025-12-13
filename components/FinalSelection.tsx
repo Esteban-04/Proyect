@@ -198,7 +198,7 @@ const CLUB_SPECIFIC_DEFAULTS: Record<string, ServerDetails[]> = {
       s(2, '192.168.36.20','admin','Seg-6306','1626036641','@l3ss21++'),
   ],
   'Escuintla': [ 
-      s(1, '192.168.37.10','administrador','Completeview!@','1626036641','@l3ss21++'), 
+      s(1, '192.168.37.10','administrador','Completeview!@','442 648 400','@l3ss21++'), 
       s(2, '192.168.37.20','administrador','Completeview!@','1626036641','@l3ss21++'),
   ],
 
