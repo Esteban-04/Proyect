@@ -92,6 +92,13 @@ export const translations = {
     yesButton: 'Sí',
     noButton: 'No',
     
+    // Status Monitoring
+    checkStatusButton: 'Verificar Estado',
+    statusOnline: 'En línea',
+    statusOffline: 'Fuera de línea',
+    statusChecking: 'Verificando...',
+    statusAlertMessage: '¡Alerta! Algunos servidores están fuera de línea.',
+
     // Modal Details
     modalTitle: (serverName: string, city: string) => `Detalles del ${serverName} - ${city}`,
     colIndex: '#',
@@ -196,6 +203,13 @@ export const translations = {
     serverDeleteSuccess: 'Server deleted successfully.',
     yesButton: 'Yes',
     noButton: 'No',
+
+    // Status Monitoring
+    checkStatusButton: 'Check Status',
+    statusOnline: 'Online',
+    statusOffline: 'Offline',
+    statusChecking: 'Checking...',
+    statusAlertMessage: 'Alert! Some servers are offline.',
 
     // Modal Details
     modalTitle: (serverName: string, city: string) => `${serverName} Details - ${city}`,

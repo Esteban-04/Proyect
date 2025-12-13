@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Country } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { XIcon, SearchIcon, EyeIcon, EyeOffIcon, SaveIcon, PlusIcon, TrashIcon } from '../assets/icons';
+import { XIcon, SearchIcon, EyeIcon, EyeOffIcon, SaveIcon, PlusIcon, TrashIcon, ActivityIcon } from '../assets/icons';
 
 // --- Interfaces ---
 
@@ -14,6 +15,7 @@ interface ServerDetails {
   password?: string;
   teamviewerId: string;
   teamviewerPassword?: string;
+  status?: 'online' | 'offline' | 'checking'; // Added status field
 }
 
 interface CameraData {
@@ -67,7 +69,8 @@ const s = (
     user,
     password,
     teamviewerId: tvId,
-    teamviewerPassword: tvPass
+    teamviewerPassword: tvPass,
+    status: 'checking' // Default initial status
 });
 
 // ==================================================================================
@@ -98,33 +101,33 @@ const CLUB_SPECIFIC_DEFAULTS: Record<string, ServerDetails[]> = {
   'Bogotá - Salitre': [
       s(1, '192.168.15.10','administrator','Completeview!','N/A','N/A'),
       s(2, '192.168.15.20','administrator','Completeview!','1 228 790 199','@l3ss21++'),
-      s(3, '192.168.15.30','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(4, '192.168.15.40','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.15.30','administrator','Completeview!','478 973 430','@l3ss21++'),
+      s(4, '192.168.15.40','administrator','Completeview!','211 163 822','@l3ss21++'),
   ],
   'Medellín - Las Américas': [
-      s(1, '192.168.16.10','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(2, '192.168.16.20','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(1, '192.168.16.10','administrator','Completeview!','1 631 576 176','@l3ss21++'),
+      s(2, '192.168.16.20','administrator','Completeview!','1 631 554 728','@l3ss21++'),
   ],
   'Chía': [
-      s(1, '192.168.17.10','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(2, '192.168.17.20','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(3, '192.168.17.30','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(4, '192.168.17.40','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(5, '192.168.17.60','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(1, '192.168.17.10','admin','Completeview!','1 264 471 565','@l3ss21++'),
+      s(2, '192.168.17.20','SALIENT','Completeview!','1 272 871 782','@l3ss21++'),
+      s(3, '192.168.17.30','administrador','Completeview!','1 272 896 646','@l3ss21++'),
+      s(4, '192.168.17.40','administrator','Completeview!','1 396 635 647','@l3ss21++'),
+      s(5, '192.168.17.60','administrator','Completeview!','1 407 994 534','@l3ss21++'),
   ],
   'Bogotá - Usaquén': [
-      s(1, '192.168.18.10','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(1, '192.168.18.10','administrador','Completeview!','674 654 075','@l3ss21++'),
       s(2, '192.168.18.20','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(3, '192.168.18.30','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(3, '192.168.18.30','administrator','Completeview!','1 173 879 373','@l3ss21++'),
   ],
   'Bucaramanga - Floridablanca': [
-      s(1, '192.168.19.10','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(2, '192.168.19.20','administrator','Completeview!','1626036641','@l3ss21++'),
-      s(3, '192.168.19.30','administrator','Completeview!','1626036641','@l3ss21++'),
+      s(1, '192.168.19.10','administrator','Completeview!','985 234 209','@l3ss21++'),
+      s(2, '192.168.19.20','administrator','Completeview!','1 060 623 534','@l3ss21++'),
+      s(3, '192.168.19.30','administrator','Completeview!','1 747 628 156','@l3ss21++'),
   ],
   'Medellín - El Poblado': [
-      s(1, '192.168.101.10','administrator','Completeview!@','1626036641','@l3ss21++'),
-      s(2, '192.168.101.20','administrator','Completeview!@','1626036641','@l3ss21++'),
+      s(1, '192.168.101.10','admin','Completeview!@','278 758 567','@l3ss21++'),
+      s(2, '192.168.101.20','administrator','Completeview!@','269 870 231','@l3ss21++'),
   ],
 
   // --- DHL ---
@@ -349,7 +352,8 @@ const createDefaultServers = (count: number, baseIp: string): ServerDetails[] =>
       user: 'administrator',
       password: 'Completeview!',
       teamviewerId: '',
-      teamviewerPassword: ''
+      teamviewerPassword: '',
+      status: 'checking'
     }));
 };
 
@@ -369,6 +373,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const [selectedServer, setSelectedServer] = useState<ServerDetails | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
   
   // State for delete confirmation modal
   const [serverToDelete, setServerToDelete] = useState<number | null>(null);
@@ -401,25 +406,23 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         if (saved) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed) && parsed.length > 0) {
-                return parsed;
+                // Ensure legacy data has status field
+                return parsed.map(p => ({ ...p, status: p.status || 'checking' }));
             }
         }
     } catch (e) {
         console.error("Error loading saved servers:", e);
     }
 
-    // Default fallback if no saved data exists
-    
-    // Check if we have specific defaults for this club
+    // Default fallback
     if (CLUB_SPECIFIC_DEFAULTS[clubName]) {
-        return CLUB_SPECIFIC_DEFAULTS[clubName].map(s => ({...s}));
+        return CLUB_SPECIFIC_DEFAULTS[clubName].map(s => ({...s, status: 'checking'}));
     }
 
-    // Fallback: Generic creation if not found in list (should not happen if list is complete)
     return createDefaultServers(3, '192.168.1.X');
   });
 
-  // State for editable camera data, also loaded from storage
+  // State for editable camera data
   const [cameras, setCameras] = useState<CameraData[]>(() => {
       try {
           const key = getStorageKey('cameras');
@@ -435,6 +438,122 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       }
       return SERVER_CAMERA_DATA;
   });
+
+  // --- ROBUST SERVER STATUS CHECK ---
+  // Tries multiple endpoints to bypass VPN DNS issues
+  const checkServerStatus = async () => {
+    setServers(prev => prev.map(s => ({ ...s, status: 'checking' })));
+    setAlertMessage(null); // Clear previous alerts while checking
+
+    // --- DETECT GITHUB PAGES / PUBLIC HOSTING ---
+    const isPublicHost = window.location.hostname.includes('github.io') || 
+                         window.location.hostname.includes('vercel.app') ||
+                         window.location.hostname.includes('netlify.app');
+                         
+    if (isPublicHost) {
+         setServers(prev => prev.map(s => ({ ...s, status: 'offline' })));
+         setAlertMessage("ERROR: Estás en GitHub Pages (público). No puedes conectar a tu backend local (privado). Descarga el código y ejecútalo en tu PC (npm start).");
+         return;
+    }
+
+    // Check for mixed content issues (HTTPS -> HTTP)
+    if (window.location.protocol === 'https:' && !window.location.hostname.includes('localhost')) {
+        setServers(prev => prev.map(s => ({ ...s, status: 'offline' })));
+        setAlertMessage("Error de seguridad: La web es HTTPS pero el backend es HTTP. El navegador bloquea esto. Ejecuta la web en http://localhost.");
+        return;
+    }
+
+    try {
+        // Prepare payload for backend
+        const payload = servers.map(s => ({ id: s.id, ip: s.ip }));
+
+        // Use AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); 
+
+        // STRATEGY: Try 127.0.0.1 first (bypasses VPN DNS), then localhost
+        let response;
+        try {
+             // Attempt 1: 127.0.0.1
+             response = await fetch('http://127.0.0.1:3001/api/check-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ servers: payload }),
+                signal: controller.signal
+            });
+        } catch (e) {
+            console.warn("Failed 127.0.0.1, trying localhost...");
+            // Attempt 2: localhost
+            const controller2 = new AbortController();
+            const timeoutId2 = setTimeout(() => controller2.abort(), 8000);
+            response = await fetch('http://localhost:3001/api/check-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ servers: payload }),
+                signal: controller2.signal
+            });
+            clearTimeout(timeoutId2);
+        }
+        
+        clearTimeout(timeoutId);
+
+        if (!response || !response.ok) {
+            throw new Error('Backend not reachable');
+        }
+
+        const data = await response.json();
+        const results = data.results || [];
+        
+        const offlineNames: string[] = [];
+
+        setServers(prev => prev.map(s => {
+            const result = results.find((r: any) => r.id === s.id);
+            const status = result ? result.status : 'offline';
+            
+            if (status === 'offline') {
+                offlineNames.push(getServerName(s.id));
+            }
+            
+            return { ...s, status: status };
+        }));
+        
+        if (offlineNames.length > 0) {
+             const message = `${t('statusAlertMessage')}: ${offlineNames.join(', ')}`;
+             setAlertMessage(message);
+
+             // --- BROWSER NOTIFICATION ---
+             if ('Notification' in window && Notification.permission === 'granted') {
+                 try {
+                     new Notification("⚠️ Alerta de Conexión", {
+                         body: `El servidor no responde: ${offlineNames.join(', ')}`,
+                         icon: '/vite.svg', // generic vite icon or any accessible image
+                         requireInteraction: true // keeps it visible on some OS until clicked
+                     });
+                 } catch (e) {
+                     console.error("Notification trigger failed", e);
+                 }
+             }
+
+        } else {
+             setAlertMessage(null);
+        }
+
+    } catch (error) {
+        console.error("Error checking server status:", error);
+        
+        setServers(prev => prev.map(s => ({ ...s, status: 'offline' })));
+        setAlertMessage("Error: Backend desconectado. ¿Ejecutaste 'node server.js'? (Intenta apagar el VPN si persiste)");
+    }
+  };
+
+  // Check status on mount
+  useEffect(() => {
+      // Request notification permissions immediately
+      if ('Notification' in window && Notification.permission !== 'granted') {
+          Notification.requestPermission();
+      }
+      checkServerStatus();
+  }, []);
 
   const showSuccess = (message: string) => {
     setSuccessMessage(message);
@@ -467,12 +586,8 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   
   const handleAddServer = () => {
       if (!canEdit) return;
-      
-      // Calculate next ID
       const maxId = servers.length > 0 ? Math.max(...servers.map(s => s.id)) : 0;
       const newId = maxId + 1;
-      
-      // Create new server with default values and next index for name
       const newServer: ServerDetails = {
           id: newId,
           name: `SERVER_${String(newId).padStart(2, '0')}`,
@@ -480,16 +595,15 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
           user: 'administrator',
           password: 'Completeview!',
           teamviewerId: '',
-          teamviewerPassword: ''
+          teamviewerPassword: '',
+          status: 'checking'
       };
-
       setServers([...servers, newServer]);
   };
 
   const handleDeleteClick = (e: React.MouseEvent, id: number) => {
       e.stopPropagation();
       if (!canEdit) return;
-      // Instead of confirming immediately, set the state to show modal
       setServerToDelete(id);
   };
 
@@ -504,7 +618,6 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const handleSave = () => {
       if (!canEdit) return;
       try {
-          // Save both servers and cameras to localStorage specific to this club
           localStorage.setItem(getStorageKey('servers'), JSON.stringify(servers));
           localStorage.setItem(getStorageKey('cameras'), JSON.stringify(cameras));
           showSuccess(t('saveSuccess'));
@@ -683,8 +796,15 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       {/* Success Toast (Main View) */}
       {successMessage && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] bg-green-500 text-white px-6 py-3 rounded-lg shadow-2xl font-bold transition-all duration-300 animate-bounce flex items-center">
-            <span className="mr-2">✓</span>
             {successMessage}
+        </div>
+      )}
+
+      {/* Offline Alert Toast - Persistent until cleared */}
+      {alertMessage && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] bg-red-600 text-white px-6 py-3 rounded-lg shadow-2xl font-bold transition-all duration-300 flex items-center text-center max-w-xl animate-pulse">
+            <span className="mr-2 text-2xl">⚠️</span>
+            <span>{alertMessage}</span>
         </div>
       )}
 
@@ -737,6 +857,21 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
             {clubName}
         </h2>
       </div>
+      
+      {/* Check Status Button */}
+      <div className="mb-6 w-full flex justify-end max-w-5xl items-center space-x-2">
+         {/* Debug info (small) */}
+         <span className="text-xs text-gray-400 hidden md:inline-block">
+            {window.location.hostname}
+         </span>
+          <button 
+            onClick={checkServerStatus}
+            className="flex items-center space-x-2 text-sm font-semibold text-gray-600 hover:text-[#0d1a2e] bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200 hover:border-[#0d1a2e] transition-all"
+          >
+              <ActivityIcon className="w-5 h-5" />
+              <span>{t('checkStatusButton')}</span>
+          </button>
+      </div>
 
       {/* Grid Layout */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-5xl">
@@ -746,26 +881,68 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
              const isOddTotal = servers.length % 2 !== 0;
              const isFirst = index === 0;
              const spanClass = (isOddTotal && isFirst) ? 'md:col-span-2' : 'col-span-1';
+             
+             // Dynamic Styling based on Status
+             const isOffline = server.status === 'offline';
+             const isOnline = server.status === 'online';
+
+             // Base classes + Blue Theme (Always)
+             let cardClasses = "rounded-lg p-6 text-white shadow-xl cursor-pointer hover:shadow-2xl transition-all border relative group bg-[#0d1a2e] border-[#1a2b4e] ";
+             
+             // Removed absolute positioning so it flows in the flex container
+             let badgeClasses = "inline-flex items-center px-3 py-1 rounded-md border shadow-sm transition-all duration-300 ";
+             
+             let dotClasses = "w-2.5 h-2.5 rounded-full mr-2 ";
+             let statusText = "";
+
+             if (isOffline) {
+                 // Offline specific: Red Badge + Pulse
+                 badgeClasses += "bg-[#b91c1c] border-red-400 animate-pulse"; 
+                 dotClasses += "bg-white"; 
+                 statusText = t('statusOffline');
+             } else if (isOnline) {
+                 // Online specific: Green Badge
+                 badgeClasses += "bg-green-600 border-green-500";
+                 dotClasses += "bg-white";
+                 statusText = t('statusOnline');
+             } else {
+                 // Checking specific: Gray Badge + Dot Pulse
+                 badgeClasses += "bg-gray-600 border-gray-500";
+                 dotClasses += "bg-gray-300 animate-pulse"; 
+                 statusText = t('statusChecking');
+             }
 
              return (
                 <div 
                     key={server.id}
                     onClick={() => setSelectedServer(server)}
-                    className={`${spanClass} bg-[#0d1a2e] rounded-lg p-6 text-white shadow-xl cursor-pointer hover:shadow-2xl transition-all border border-[#1a2b4e] relative group`}
+                    className={`${spanClass} ${cardClasses}`}
                 >
                     {/* Delete Button (Only if canEdit) */}
                     {canEdit && (
                         <button
                             onClick={(e) => handleDeleteClick(e, server.id)}
-                            className="absolute top-2 right-2 text-gray-400 hover:text-red-500 p-2 rounded-full hover:bg-white/10 transition-colors z-20"
+                            className="absolute top-2 right-2 text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors z-20"
                             title={t('actionDelete')}
                         >
                             <TrashIcon className="w-5 h-5" />
                         </button>
                     )}
 
-                    <div className="text-center border-b border-gray-600 pb-2 mb-4">
-                        <h3 className="text-xl font-bold uppercase tracking-wider">{getServerName(server.id)}</h3>
+                    {/* Server Header - Flex Column to prevent overlapping */}
+                    <div className="border-b border-white/20 pb-2 mb-4 flex flex-col justify-between min-h-[4rem]">
+                        {/* Top Row: Status Badge */}
+                         <div className="flex justify-start w-full mb-2">
+                             <div className={badgeClasses} title={statusText}>
+                                <span className={dotClasses}></span>
+                                <span className="text-xs font-bold text-white tracking-wider uppercase">{statusText}</span>
+                            </div>
+                        </div>
+                        
+                        {/* Bottom Row: Server Name (Centered) */}
+                        <div className="text-center w-full">
+                            <h3 className="text-xl font-bold uppercase tracking-wider">{getServerName(server.id)}</h3>
+                        </div>
                     </div>
                     
                     <div className="flex flex-col space-y-6 px-4">
@@ -787,8 +964,8 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                                 />
                                 
                                 {/* User Input */}
-                                <div className="flex items-center text-sm text-gray-400">
-                                    <span className="mr-2">{t('userLabel')}</span>
+                                <div className="flex items-center text-sm text-gray-300">
+                                    <span className="mr-2 opacity-80">{t('userLabel')}</span>
                                     <input
                                         type="text"
                                         value={server.user || ''}
@@ -800,8 +977,8 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                                 </div>
 
                                 {/* Password Input */}
-                                <div className="flex items-center text-sm text-gray-400 mt-1">
-                                    <span className="mr-2">{t('finalPasswordLabel')}</span>
+                                <div className="flex items-center text-sm text-gray-300 mt-1">
+                                    <span className="mr-2 opacity-80">{t('finalPasswordLabel')}</span>
                                     <div className="flex items-center flex-grow">
                                         <input
                                             type={visibleCardPasswords[server.id] ? 'text' : 'password'}
@@ -833,7 +1010,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                             <div className="pl-7">
                                 {/* TeamViewer ID Input */}
                                 <div className="flex items-center text-xl font-bold mb-1">
-                                    <span className="mr-2 text-gray-400 text-base font-normal">{t('idLabel')}</span>
+                                    <span className="mr-2 text-gray-300 text-base font-normal opacity-80">{t('idLabel')}</span>
                                     <input
                                         type="text"
                                         value={server.teamviewerId || ''}
@@ -845,8 +1022,8 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                                 </div>
 
                                 {/* TeamViewer Password Input */}
-                                <div className="flex items-center text-sm text-gray-400">
-                                    <span className="mr-2">{t('finalPasswordLabel')}</span>
+                                <div className="flex items-center text-sm text-gray-300">
+                                    <span className="mr-2 opacity-80">{t('finalPasswordLabel')}</span>
                                     <div className="flex items-center flex-grow">
                                         <input
                                             type={visibleTvPasswords[server.id] ? 'text' : 'password'}
@@ -906,3 +1083,4 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 };
 
 export default FinalSelection;
+
