@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Country } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -1083,4 +1082,3 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 };
 
 export default FinalSelection;
-
