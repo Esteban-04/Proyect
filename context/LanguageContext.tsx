@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode } from 'react';
 import { translations, Language } from '../lib/i18n';
 
@@ -23,9 +24,8 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
 
     if (typeof stringOrFn === 'function') {
-        // Fix for: A spread argument must either have a tuple type or be passed to a rest parameter.
-        // Using .apply() to call the function with an array of arguments resolves this.
-        return stringOrFn.apply(null, args);
+        // CORRECCIÓN: Se cambió el uso de .apply para evitar errores de tipado de argumentos
+        return (stringOrFn as (...args: any[]) => string)(...args);
     }
     return stringOrFn as string;
   };

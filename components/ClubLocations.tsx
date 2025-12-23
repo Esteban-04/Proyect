@@ -3,7 +3,6 @@ import React from 'react';
 import { Country } from '../types';
 import ClubButton from './ClubButton';
 import { useLanguage } from '../context/LanguageContext';
-import { DHL_HEADER_IMAGE } from '../assets/dhl-header-image';
 
 interface ClubLocationsProps {
   country: Country;

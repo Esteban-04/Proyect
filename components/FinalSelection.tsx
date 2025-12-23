@@ -307,7 +307,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-5xl">
-        {servers.map((server, index) => (
+        {servers.map((server) => (
             <div key={server.id} onClick={() => setSelectedServer(server)} className="rounded-lg p-6 text-white shadow-xl cursor-pointer hover:shadow-2xl transition-all border relative group bg-[#0d1a2e] border-[#1a2b4e]">
                 {canEdit && <button onClick={(e) => handleDeleteClick(e, server.id)} className="absolute top-2 right-2 text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/10 z-20"><TrashIcon className="w-5 h-5" /></button>}
                 <div className="border-b border-white/20 pb-2 mb-4 flex flex-col justify-between min-h-[4rem]">

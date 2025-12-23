@@ -140,7 +140,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
   };
 
   const SUPER_ADMIN_USERNAME = 'admin';
-  const displayUsers = [...users].sort((a, b) => a.username === SUPER_ADMIN_USERNAME ? -1 : 1);
+  // CORRECCIÓN: Se cambió (a, b) por (a, _b) para evitar error de variable no utilizada
+  const displayUsers = [...users].sort((a, _b) => a.username === SUPER_ADMIN_USERNAME ? -1 : 1);
 
   return (
     <div className="w-full max-w-7xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col h-[90vh] relative font-sans">
