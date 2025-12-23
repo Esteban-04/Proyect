@@ -1,19 +1,24 @@
 
 {
-  "name": "monitor-frontend",
+  "name": "saltex-monitor-full",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "start": "vite",
+    "start": "node server.js",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server": "node server.js"
   },
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "lucide-react": "^0.263.1"
+    "lucide-react": "^0.263.1",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "ping": "^0.4.4",
+    "nodemailer": "^6.9.7"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",
