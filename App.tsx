@@ -11,6 +11,7 @@ import { useLanguage } from './context/LanguageContext';
 import CodeBackground from './components/CodeBackground';
 import BrandCard from './components/BrandCard';
 import ServerStatusSummary from './components/ServerStatusSummary';
+import MapView from './components/MapView';
 
 const App: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -19,6 +20,7 @@ const App: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
 
   const [users, setUsers] = useState<User[]>(() => {
     const requiredUsers: User[] = [
@@ -90,11 +92,11 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     if (!selectedBrand) return (
-        <div>
-          <p className="text-gray-600 mb-8 text-center font-semibold text-xl">{t('selectBrandTitle')}</p>
-          <div className={`grid ${hasPriceSmartAccess && hasDhlAccess ? 'grid-cols-1 md:grid-cols-2 max-w-2xl' : 'grid-cols-1 max-w-md'} gap-6 mx-auto`}>
-            {hasPriceSmartAccess && <BrandCard name="PriceSmart" onClick={() => setSelectedBrand('pricesmart')} />}
-            {hasDhlAccess && <BrandCard name="DHL" onClick={() => setSelectedBrand('dhl')} />}
+        <div className="py-8">
+          <p className="text-gray-600 mb-10 text-center font-black text-2xl sm:text-3xl uppercase tracking-tighter italic">{t('selectBrandTitle')}</p>
+          <div className={`grid ${hasPriceSmartAccess && hasDhlAccess ? 'grid-cols-1 md:grid-cols-2 max-w-3xl' : 'grid-cols-1 max-w-md'} gap-8 mx-auto px-4`}>
+            {hasPriceSmartAccess && <BrandCard name="PriceSmart" onClick={() => setSelectedBrand('pricesmart')} className="active:scale-95" />}
+            {hasDhlAccess && <BrandCard name="DHL" onClick={() => setSelectedBrand('dhl')} className="active:scale-95" />}
           </div>
         </div>
     );
@@ -102,17 +104,27 @@ const App: React.FC = () => {
     if (selectedBrand === 'pricesmart') {
       if (!selectedCountry) return (
         <div>
-          <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4 border-b border-gray-100 pb-4">
-              <h2 className="text-xl font-bold text-gray-800">{t('allCountriesTitle')}</h2>
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-10 gap-6 border-b border-gray-100 pb-6">
+              <h2 className="text-2xl sm:text-3xl font-black text-gray-800 uppercase tracking-tighter italic">{t('allCountriesTitle')}</h2>
+              <div className="flex bg-slate-100 p-1.5 rounded-xl shadow-inner w-full sm:w-auto">
+                  <button onClick={() => setViewMode('grid')} className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'grid' ? 'bg-[#0d1a2e] text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>{t('toggleViewGrid')}</button>
+                  <button onClick={() => setViewMode('map')} className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'map' ? 'bg-[#0d1a2e] text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>{t('toggleViewMap')}</button>
+              </div>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {otherCountries.map(c => <CountryCard key={c.code} country={c} isSelected={false} onSelect={setSelectedCountry} />)}
-          </div>
-          {colombia && <div className="mt-4"><CountryCard country={colombia} isSelected={false} onSelect={setSelectedCountry} /></div>}
+          {viewMode === 'grid' ? (
+              <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {otherCountries.map(c => <CountryCard key={c.code} country={c} isSelected={false} onSelect={setSelectedCountry} />)}
+                  </div>
+                  {colombia && <div className="mt-4"><CountryCard country={colombia} isSelected={false} onSelect={setSelectedCountry} /></div>}
+              </div>
+          ) : (
+              <MapView countries={visibleCountries} selectedCountryCode={null} onSelectCountry={setSelectedCountry} />
+          )}
           
-          <div className="mt-8 text-center">
-            <button onClick={() => setSelectedBrand(null)} className="bg-[#0d1a2e] text-white font-semibold py-2 px-6 rounded-lg hover:bg-[#1a2b4e]">{t('backButton')}</button>
+          <div className="mt-12 text-center">
+            <button onClick={() => setSelectedBrand(null)} className="w-full sm:w-auto bg-[#0d1a2e] text-white font-black py-4 px-10 rounded-xl hover:bg-[#1a2b4e] uppercase tracking-widest shadow-lg transition-all active:scale-95">{t('backButton')}</button>
           </div>
         </div>
       );
@@ -129,28 +141,32 @@ const App: React.FC = () => {
   
   return (
     <div className="bg-gray-50 min-h-screen font-sans flex flex-col">
-       <header className="shadow-md py-3 bg-[#0d1a2e]">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-3">
-            <div className="flex items-center gap-3">
-                 <h1 className="text-xl md:text-2xl font-bold text-white">SALTEX GROUP</h1>
-                 {(isAdmin || (currentUser?.role === 'admin')) && <button onClick={() => setShowAdminDashboard(true)} className="text-[10px] bg-gray-700 text-white px-2 py-0.5 rounded border border-gray-500">Admin</button>}
+       <header className="shadow-xl py-4 bg-[#0d1a2e] sticky top-0 z-[60]">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-4">
+                 <h1 className="text-xl md:text-2xl font-black text-white italic tracking-tighter">SALTEX GROUP</h1>
+                 {(isAdmin || (currentUser?.role === 'admin')) && <button onClick={() => setShowAdminDashboard(true)} className="text-[10px] bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full border border-blue-500/30 font-black uppercase tracking-widest">Admin</button>}
             </div>
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
                 <ServerStatusSummary />
-                <div className="flex items-center text-white text-xs font-medium border-l border-gray-600 pl-2 sm:pl-4">
-                    <button onClick={() => setLanguage('es')} className={`px-2 py-1 rounded-md ${language === 'es' ? 'bg-white text-[#0d1a2e]' : 'hover:bg-gray-700'}`}>ES</button>
-                    <span className="mx-1 text-gray-500">|</span>
-                    <button onClick={() => setLanguage('en')} className={`px-2 py-1 rounded-md ${language === 'en' ? 'bg-white text-[#0d1a2e]' : 'hover:bg-gray-700'}`}>EN</button>
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center text-white text-[10px] font-black border-l border-white/10 pl-3">
+                        <button onClick={() => setLanguage('es')} className={`px-2 py-1.5 rounded-lg transition-all ${language === 'es' ? 'bg-white text-[#0d1a2e]' : 'hover:bg-white/10'}`}>ES</button>
+                        <button onClick={() => setLanguage('en')} className={`px-2 py-1.5 rounded-lg transition-all ${language === 'en' ? 'bg-white text-[#0d1a2e]' : 'hover:bg-white/10'}`}>EN</button>
+                    </div>
+                    <button onClick={handleLogout} className="bg-white text-[#0d1a2e] font-black py-2 px-4 rounded-xl shadow-lg hover:bg-gray-100 text-xs uppercase tracking-tighter active:scale-95 transition-all">{t('logoutButton')}</button>
                 </div>
-                <button onClick={handleLogout} className="bg-white text-[#0d1a2e] font-bold py-1.5 px-3 rounded-lg shadow hover:bg-gray-100 text-xs sm:text-sm">{t('logoutButton')}</button>
             </div>
         </div>
       </header>
-      <main className="flex-grow flex items-center justify-center p-2 sm:p-4">
-        <div className={`w-full max-w-5xl mx-auto rounded-xl shadow-lg bg-white ${selectedBrand === 'dhl' && !selectedClub ? 'p-0 overflow-hidden' : 'p-4 sm:p-8'}`}>
+      <main className="flex-grow flex items-center justify-center p-3 sm:p-6 lg:p-8">
+        <div className={`w-full max-w-5xl mx-auto rounded-2xl shadow-2xl bg-white ${selectedBrand === 'dhl' && !selectedClub ? 'p-0 overflow-hidden border-none' : 'p-5 sm:p-10 border border-gray-100'}`}>
             {renderContent()}
         </div>
       </main>
+      <footer className="py-6 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] bg-white border-t border-gray-100">
+          Saltex Group Monitor &copy; {new Date().getFullYear()}
+      </footer>
     </div>
   );
 };
