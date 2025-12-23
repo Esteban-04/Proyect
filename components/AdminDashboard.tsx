@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { EyeIcon, EyeOffIcon, PlusIcon, GlobeIcon, UserIcon, LockClosedIcon, KeyIcon, PencilIcon, SaveIcon, TrashIcon, CameraIcon, XIcon, ActivityIcon } from '../assets/icons';
-import { COUNTRIES, DHL_DATA, USER_STORAGE_KEY } from '../constants';
+import { EyeIcon, EyeOffIcon, PlusIcon, GlobeIcon, UserIcon, KeyIcon, PencilIcon, SaveIcon, TrashIcon, ActivityIcon, XIcon } from '../assets/icons';
+import { COUNTRIES, USER_STORAGE_KEY } from '../constants';
 
 interface AdminDashboardProps {
   users: User[];
@@ -15,16 +15,17 @@ interface AdminDashboardProps {
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onContinue, onLogout, currentUser }) => {
   const { language, setLanguage, t } = useLanguage();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [activeTab, setActiveTab] = useState<'users' | 'alerts'>('users');
   const [backendStatus, setBackendStatus] = useState<'online' | 'offline'>('offline');
-  const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Cargar URL del backend persistida
+  // Configuración de Backend y Alertas
   const [backendUrl, setBackendUrl] = useState(() => {
-    return localStorage.getItem('saltex_backend_url') || 'http://localhost:3001';
+      const saved = localStorage.getItem('saltex_backend_url');
+      if (saved) return saved;
+      // En producción, si se sirve desde el mismo servidor, la URL es relativa
+      return window.location.hostname === 'localhost' ? 'http://localhost:3001' : window.location.origin;
   });
 
   const [alertConfig, setAlertConfig] = useState(() => {
@@ -39,6 +40,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
       recipient: 'esteban@saltexgroup.com'
     };
   });
+
+  // Estado de los Modales
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [passwordEditingUser, setPasswordEditingUser] = useState<string | null>(null);
+  const [tempAllowedCountries, setTempAllowedCountries] = useState<string[]>([]);
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+
+  // Form states
+  const [formData, setFormData] = useState({ name: '', username: '', password: '', role: 'user' as 'admin' | 'user' });
+  const [newPassword, setNewPassword] = useState('');
 
   useEffect(() => {
     const checkBackend = async () => {
@@ -56,241 +72,359 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
       setTimeout(() => setSuccessMessage(null), 3000);
   };
 
-  const handleSaveAllConfig = async (e: React.FormEvent) => {
-      e.preventDefault();
+  const handleSaveAll = async () => {
       localStorage.setItem('saltex_backend_url', backendUrl);
       localStorage.setItem('saltex_alert_config', JSON.stringify(alertConfig));
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users));
       
       try {
-          const response = await fetch(`${backendUrl}/api/config-alerts`, {
+          await fetch(`${backendUrl}/api/config-alerts`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ config: alertConfig })
           });
-          if (response.ok) showSuccess(t('globalSaveSuccess'));
-      } catch (err) {
-          alert("Cambios guardados localmente, pero no se pudo sincronizar con el backend: " + backendUrl);
-      }
+      } catch (err) {}
+      showSuccess(t('globalSaveSuccess'));
   };
 
-  const testEmailConnection = async () => {
-      setIsTestingEmail(true);
-      try {
-          const res = await fetch(`${backendUrl}/api/test-email`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ config: alertConfig })
-          });
-          if (res.ok) alert("✅ Correo enviado a " + alertConfig.recipient);
-          else alert("❌ Error en el envío.");
-      } catch (e) { alert("❌ Backend inalcanzable."); }
-      finally { setIsTestingEmail(false); }
-  };
-
-  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
-  const [editingUser, setEditingUser] = useState<string | null>(null);
-  const [tempAllowedCountries, setTempAllowedCountries] = useState<string[]>([]);
-  const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [newUser, setNewUser] = useState<User>({ name: '', username: '', password: '', role: 'user', avatar: '', isDisabled: false, allowedCountries: [] });
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordEditingUser, setPasswordEditingUser] = useState<string | null>(null);
-  const [newPasswordValue, setNewPasswordValue] = useState('');
-  const [showEditUserModal, setShowEditUserModal] = useState(false);
-  const [editUserData, setEditUserData] = useState<User | null>(null);
-  const [originalUsername, setOriginalUsername] = useState<string>('');
-
-  // --- User Management Logic ---
-
-  // Fix: Added toggleUserStatus implementation
   const toggleUserStatus = (username: string) => {
     setUsers(prev => prev.map(u => u.username === username ? { ...u, isDisabled: !u.isDisabled } : u));
-    showSuccess(t('userUpdateSuccess'));
   };
 
-  // Fix: Added deleteUser implementation
   const deleteUser = (username: string) => {
-    const user = users.find(u => u.username === username);
-    if (user && !user.isDisabled) {
-        alert(t('deleteActiveUserError'));
-        return;
-    }
     if (window.confirm(t('confirmDeleteUser'))) {
         setUsers(prev => prev.filter(u => u.username !== username));
         showSuccess(t('userDeleteSuccess'));
     }
   };
 
-  // Fix: Added openPermissionsModal implementation
-  const openPermissionsModal = (username: string) => {
-    const user = users.find(u => u.username === username);
-    if (user) {
-        setEditingUser(username);
-        setTempAllowedCountries(user.allowedCountries || []);
-        setShowPermissionsModal(true);
+  const handleAddUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (users.find(u => u.username === formData.username)) {
+        alert("El usuario ya existe");
+        return;
     }
+    const newUser: User = { 
+        name: formData.name, 
+        username: formData.username, 
+        password: formData.password, 
+        role: formData.role, 
+        isDisabled: false, 
+        allowedCountries: [] 
+    };
+    setUsers([...users, newUser]);
+    setShowAddUserModal(false);
+    setFormData({ name: '', username: '', password: '', role: 'user' });
+    showSuccess(t('userCreateSuccess'));
   };
 
-  // Fix: Added savePermissions implementation
-  const savePermissions = () => {
+  const handleEditUser = (e: React.FormEvent) => {
+    e.preventDefault();
     if (editingUser) {
-        setUsers(prev => prev.map(u => u.username === editingUser ? { ...u, allowedCountries: tempAllowedCountries } : u));
-        setShowPermissionsModal(false);
+        setUsers(prev => prev.map(u => u.username === editingUser.username ? { ...u, name: formData.name, role: formData.role } : u));
+        setShowEditUserModal(false);
+        setEditingUser(null);
         showSuccess(t('userUpdateSuccess'));
     }
   };
 
-  const SUPER_ADMIN: User = { name: 'Super Admin', username: 'admin', password: 'Pr1c3sm4rt2025!', role: 'admin', isDisabled: false, allowedCountries: [] };
-  const displayUsers = [SUPER_ADMIN, ...users.filter(u => u.username !== 'admin')];
+  const handleChangePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordEditingUser) {
+        setUsers(prev => prev.map(u => u.username === passwordEditingUser ? { ...u, password: newPassword } : u));
+        setShowPasswordModal(false);
+        setPasswordEditingUser(null);
+        setNewPassword('');
+        showSuccess(t('passwordUpdateSuccess'));
+    }
+  };
+
+  const SUPER_ADMIN_USERNAME = 'admin';
+  const displayUsers = [...users].sort((a, b) => a.username === SUPER_ADMIN_USERNAME ? -1 : 1);
 
   return (
-    <div className="w-full max-w-7xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh] relative font-sans">
-      {successMessage && <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[100] bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg font-semibold animate-bounce">{successMessage}</div>}
+    <div className="w-full max-w-7xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col h-[90vh] relative font-sans">
+      {successMessage && (
+        <div className="absolute top-24 left-1/2 transform -translate-x-1/2 z-[100] bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg font-semibold animate-bounce">
+            {successMessage}
+        </div>
+      )}
 
-      <div className="bg-[#0d1a2e] px-8 py-6 flex flex-col md:flex-row justify-between items-center">
-        <div className="flex flex-col space-y-1">
-          <div className="flex items-center gap-3">
-              <h2 className="text-3xl font-bold text-white tracking-tight">{t('adminDashboardTitle')}</h2>
-              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${backendStatus === 'online' ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-red-500/20 text-red-400 border border-red-500/50'}`}>
+      {/* HEADER PRINCIPAL */}
+      <div className="bg-[#0b1626] px-8 py-6 flex flex-col md:flex-row justify-between items-center">
+        <div className="flex flex-col">
+          <h2 className="text-3xl font-bold text-white tracking-tight">Admin Dashboard</h2>
+          <div className="flex items-center gap-2 mt-1">
+             <p className="text-cyan-400 text-sm font-medium">User and permission management</p>
+             <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${backendStatus === 'online' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                 <div className={`w-1.5 h-1.5 rounded-full ${backendStatus === 'online' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                Backend {backendStatus}
-              </div>
+                {backendStatus}
+             </div>
           </div>
-          <p className="text-cyan-200 text-sm font-medium">{t('adminDashboardSubtitle')}</p>
+          <div className="flex items-center gap-2 mt-2 text-xs text-white/60">
+             <UserIcon className="w-3.5 h-3.5" />
+             <span>{t('loggedInAs')} <span className="text-white font-bold">{currentUser?.name || 'Super Admin'}</span></span>
+          </div>
         </div>
         
         <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
-            {/* Fix: changed setShowAdminDashboard to onContinue prop */}
-            <button onClick={onContinue} className="bg-white text-[#0d1a2e] px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-gray-100 shadow-md transition-all active:scale-95 border border-gray-200">{t('goToAppButton')}</button>
-            <button onClick={onLogout} className="bg-red-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-red-700 shadow-md transition-all active:scale-95">{t('logoutButton')}</button>
+            <div className="flex items-center bg-white/10 rounded-lg p-1 mr-2">
+                <button onClick={() => setLanguage('es')} className={`px-2 py-1 text-[10px] font-bold rounded ${language === 'es' ? 'bg-white text-[#0b1626]' : 'text-white hover:bg-white/5'}`}>ES</button>
+                <button onClick={() => setLanguage('en')} className={`px-2 py-1 text-[10px] font-bold rounded ${language === 'en' ? 'bg-white text-[#0b1626]' : 'text-white hover:bg-white/5'}`}>EN</button>
+            </div>
+            <button onClick={handleSaveAll} className="bg-[#2ecc71] text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-[#27ae60] shadow-md transition-all flex items-center gap-2">
+                <SaveIcon className="w-4 h-4" /> {t('saveChangesButton')}
+            </button>
+            <button onClick={() => { setFormData({name: '', username: '', password: '', role: 'user'}); setShowAddUserModal(true); }} className="bg-[#3498db] text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-[#2980b9] shadow-md transition-all flex items-center gap-2">
+                <PlusIcon className="w-4 h-4" /> {t('addUserButton')}
+            </button>
+            <button onClick={onLogout} className="bg-[#e74c3c] text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-[#c0392b] shadow-md transition-all">
+                {t('logoutButton')}
+            </button>
+            <button onClick={onContinue} className="bg-white text-[#0b1626] px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-gray-100 shadow-md transition-all border border-gray-200">
+                {t('goToAppButton')}
+            </button>
         </div>
       </div>
 
-      <div className="bg-gray-100 px-8 flex border-b">
-          <button onClick={() => setActiveTab('users')} className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'users' ? 'border-[#0d1a2e] text-[#0d1a2e]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{t('usersTab')}</button>
-          <button onClick={() => setActiveTab('alerts')} className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'alerts' ? 'border-[#0d1a2e] text-[#0d1a2e]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{t('alertsTab')}</button>
+      {/* TABS SELECTION */}
+      <div className="bg-white px-8 flex border-b">
+          <button onClick={() => setActiveTab('users')} className={`px-8 py-4 text-sm font-bold transition-all border-b-4 ${activeTab === 'users' ? 'border-[#0b1626] text-[#0b1626]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{t('usersTab')}</button>
+          <button onClick={() => setActiveTab('alerts')} className={`px-8 py-4 text-sm font-bold transition-all border-b-4 ${activeTab === 'alerts' ? 'border-[#0b1626] text-[#0b1626]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{t('alertsTab')}</button>
       </div>
 
-      <div className="p-8 overflow-y-auto bg-gray-50 flex-grow">
+      {/* CONTENT AREA */}
+      <div className="flex-grow overflow-y-auto bg-[#fdfdfd]">
           {activeTab === 'users' ? (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+              <div className="p-8">
+                  <div className="bg-white border-x border-t border-gray-100 rounded-t-xl overflow-hidden">
                     <table className="min-w-full divide-y divide-gray-100">
-                        <thead className="bg-[#f8fafc]">
+                        <thead className="bg-[#fcfcfc]">
                             <tr>
-                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t('userTableStatus')}</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t('userTableName')}</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t('userTableEmail')}</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t('userTableRole')}</th>
+                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">STATUS</th>
+                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">NAME</th>
+                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">USERNAME</th>
+                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">PASSWORD</th>
+                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">ROLE / PERMISSIONS</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100 bg-white">
+                        <tbody className="divide-y divide-gray-50 bg-white">
                             {displayUsers.map(user => {
-                                const isSuper = user.username === 'admin';
+                                const isSuper = user.username === SUPER_ADMIN_USERNAME;
                                 return (
-                                    <tr key={user.username} className="hover:bg-gray-50/50 transition-colors">
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center space-x-3">
-                                                {/* Fix: call toggleUserStatus */}
-                                                <button onClick={() => toggleUserStatus(user.username)} disabled={isSuper} className={`relative h-6 w-11 rounded-full transition-colors ${!user.isDisabled ? 'bg-green-400' : 'bg-gray-300'} disabled:opacity-40`}>
+                                    <tr key={user.username} className="hover:bg-gray-50/50 transition-colors group">
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            <div className="flex items-center gap-3">
+                                                <button 
+                                                    onClick={() => toggleUserStatus(user.username)} 
+                                                    disabled={isSuper} 
+                                                    className={`relative h-6 w-11 rounded-full transition-colors ${!user.isDisabled ? 'bg-[#2ecc71]' : 'bg-gray-300'} disabled:opacity-40 cursor-pointer`}
+                                                >
                                                     <span className={`absolute left-1 top-1 inline-block h-4 w-4 transform bg-white rounded-full transition-transform ${!user.isDisabled ? 'translate-x-5' : 'translate-x-0'}`} />
                                                 </button>
-                                                <span className="text-[13px] font-medium text-gray-400">{user.isDisabled ? t('statusDisabled') : t('statusActive')}</span>
+                                                <span className={`text-[13px] font-bold ${!user.isDisabled ? 'text-blue-400' : 'text-gray-400'}`}>
+                                                    {!user.isDisabled ? 'Active' : 'Disabled'}
+                                                </span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center font-bold text-gray-800">{user.name}</div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">{user.username}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap flex items-center justify-between">
-                                            <span className="text-sm font-medium px-3 py-1 bg-blue-50 text-blue-700 rounded-full">{user.role?.toUpperCase()}</span>
-                                            {!isSuper && (
-                                                <div className="flex gap-2">
-                                                    {/* Fix: call openPermissionsModal and deleteUser */}
-                                                    <button onClick={() => openPermissionsModal(user.username)} className="p-2 text-gray-400 hover:text-blue-600 transition-colors"><GlobeIcon className="w-5 h-5" /></button>
-                                                    <button onClick={() => deleteUser(user.username)} className="p-2 text-gray-400 hover:text-red-600 transition-colors"><TrashIcon className="w-5 h-5" /></button>
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
+                                                    <UserIcon className="w-6 h-6" />
                                                 </div>
-                                            )}
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-black text-slate-700">{user.name}</span>
+                                                    {isSuper && <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">SYSTEM ACCOUNT</span>}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            <span className="text-sm font-medium text-slate-400">{user.username}</span>
+                                        </td>
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm font-medium text-slate-400 tracking-widest">
+                                                    {visiblePasswords[user.username] ? user.password : '••••••'}
+                                                </span>
+                                                <button onClick={() => setVisiblePasswords(prev => ({...prev, [user.username]: !prev[user.username]}))} className="text-slate-300 hover:text-slate-500">
+                                                    {visiblePasswords[user.username] ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            <div className="flex items-center gap-3">
+                                                <span className={`text-[13px] font-bold px-3 py-1 rounded-full ${user.role === 'admin' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
+                                                    {(user.role || 'user').toUpperCase()}
+                                                </span>
+
+                                                {!isSuper && user.role === 'user' && (
+                                                    <button onClick={() => { setEditingUser(user); setTempAllowedCountries(user.allowedCountries || []); setShowPermissionsModal(true); }} className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all">
+                                                        <GlobeIcon className="w-5 h-5" />
+                                                    </button>
+                                                )}
+
+                                                {!isSuper && (
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-4">
+                                                        <button onClick={() => { setEditingUser(user); setFormData({name: user.name || '', username: user.username, password: user.password, role: user.role || 'user'}); setShowEditUserModal(true); }} className="p-2 text-blue-400 hover:bg-blue-50 rounded-lg"><PencilIcon className="w-5 h-5" /></button>
+                                                        <button onClick={() => { setPasswordEditingUser(user.username); setShowPasswordModal(true); }} className="p-2 text-amber-400 hover:bg-amber-50 rounded-lg"><KeyIcon className="w-5 h-5" /></button>
+                                                        <button onClick={() => deleteUser(user.username)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg"><TrashIcon className="w-5 h-5" /></button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 );
                             })}
                         </tbody>
                     </table>
+                  </div>
               </div>
           ) : (
-              <div className="max-w-2xl mx-auto space-y-6">
-                  <div className="bg-white p-10 rounded-xl shadow-sm border border-gray-200">
+              <div className="max-w-2xl mx-auto py-12 space-y-8">
+                  {/* CONFIGURACIÓN BACKEND */}
+                  <div className="bg-white p-10 rounded-2xl shadow-sm border border-gray-100">
                       <div className="flex items-center space-x-4 mb-8">
-                          <div className="bg-blue-50 p-3 rounded-full"><GlobeIcon className="w-8 h-8 text-blue-600" /></div>
+                          <div className="bg-blue-50 p-4 rounded-xl text-blue-600"><GlobeIcon className="w-8 h-8" /></div>
                           <div>
-                              <h3 className="text-2xl font-bold text-[#0d1a2e]">Servidor Backend</h3>
-                              <p className="text-gray-500 text-sm">Configura la URL donde está alojado tu backend de pings.</p>
+                              <h3 className="text-2xl font-bold text-slate-800">Servidor Backend</h3>
+                              <p className="text-slate-400 text-sm font-medium">Configura la URL de monitoreo en la nube.</p>
                           </div>
                       </div>
                       <div className="space-y-4">
-                          <label className="text-[10px] font-bold text-gray-400 uppercase">URL DEL BACKEND API</label>
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">URL API BACKEND</label>
                           <input 
                             type="text" 
                             value={backendUrl} 
                             onChange={e => setBackendUrl(e.target.value)} 
-                            className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm" 
+                            className="w-full bg-slate-50 border border-slate-100 p-4 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm" 
                             placeholder="https://mi-backend.render.com"
                           />
-                          <p className="text-[10px] text-gray-400">Si estás en local usa <code>http://localhost:3001</code>. Si estás en la nube usa la URL proporcionada por Render/Railway.</p>
+                          <p className="text-[10px] text-slate-300 font-bold">Por defecto: {window.location.origin}</p>
                       </div>
                   </div>
 
-                  <div className="bg-white p-10 rounded-xl shadow-sm border border-gray-200">
+                  <div className="bg-white p-10 rounded-2xl shadow-sm border border-gray-100">
                       <div className="flex items-center space-x-4 mb-8">
-                          <div className="bg-red-50 p-3 rounded-full"><ActivityIcon className="w-8 h-8 text-red-600" /></div>
+                          <div className="bg-red-50 p-4 rounded-xl text-red-600"><ActivityIcon className="w-8 h-8" /></div>
                           <div>
-                              <h3 className="text-2xl font-bold text-[#0d1a2e]">{t('smtpSettingsTitle')}</h3>
-                              <p className="text-gray-500 text-sm">Configura alertas para {alertConfig.recipient}</p>
+                              <h3 className="text-2xl font-bold text-slate-800">{t('smtpSettingsTitle')}</h3>
+                              <p className="text-slate-400 text-sm font-medium">Alertas automáticas de servidores caídos.</p>
                           </div>
                       </div>
-                      <form onSubmit={handleSaveAllConfig} className="space-y-6">
+                      <div className="space-y-6">
                           <div className="grid grid-cols-2 gap-4">
-                              <div><label className="text-[10px] font-bold text-gray-400 uppercase">Host</label><input type="text" value={alertConfig.host} onChange={e => setAlertConfig({...alertConfig, host: e.target.value})} className="w-full border p-2.5 rounded-lg" /></div>
-                              <div><label className="text-[10px] font-bold text-gray-400 uppercase">Puerto</label><input type="number" value={alertConfig.port} onChange={e => setAlertConfig({...alertConfig, port: parseInt(e.target.value)})} className="w-full border p-2.5 rounded-lg" /></div>
+                              <div><label className="text-[11px] font-bold text-slate-400 mb-2 block">Host SMTP</label><input type="text" value={alertConfig.host} onChange={e => setAlertConfig({...alertConfig, host: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl" /></div>
+                              <div><label className="text-[11px] font-bold text-slate-400 mb-2 block">Puerto</label><input type="number" value={alertConfig.port} onChange={e => setAlertConfig({...alertConfig, port: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl" /></div>
                           </div>
-                          <div><label className="text-[10px] font-bold text-gray-400 uppercase">Usuario SMTP</label><input type="email" value={alertConfig.user} onChange={e => setAlertConfig({...alertConfig, user: e.target.value})} className="w-full border p-2.5 rounded-lg" /></div>
-                          <div><label className="text-[10px] font-bold text-gray-400 uppercase">Contraseña</label><input type="password" value={alertConfig.pass} onChange={e => setAlertConfig({...alertConfig, pass: e.target.value})} className="w-full border p-2.5 rounded-lg" /></div>
+                          <div><label className="text-[11px] font-bold text-slate-400 mb-2 block">Usuario SMTP</label><input type="email" value={alertConfig.user} onChange={e => setAlertConfig({...alertConfig, user: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl" /></div>
+                          <div><label className="text-[11px] font-bold text-slate-400 mb-2 block">Contraseña</label><input type="password" value={alertConfig.pass} onChange={e => setAlertConfig({...alertConfig, pass: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl" /></div>
                           
-                          <div className="flex gap-4 pt-4">
-                              <button type="submit" className="flex-1 bg-[#0d1a2e] text-white py-4 rounded-lg font-bold shadow-lg hover:bg-[#1a2b4e] transition-all flex items-center justify-center"><SaveIcon className="w-5 h-5 mr-2" />{t('saveChangesButton')}</button>
-                              <button type="button" onClick={testEmailConnection} disabled={isTestingEmail} className="flex-1 bg-amber-500 text-white py-4 rounded-lg font-bold shadow-lg hover:bg-amber-600 transition-all flex items-center justify-center disabled:opacity-50">
-                                {isTestingEmail ? "Probando..." : "📧 Probar Email"}
-                              </button>
-                          </div>
-                      </form>
+                          <button onClick={handleSaveAll} className="w-full bg-[#0b1626] text-white py-4 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2"><SaveIcon className="w-5 h-5" />{t('saveChangesButton')}</button>
+                      </div>
                   </div>
               </div>
           )}
       </div>
 
-      {/* MODAL: Permisos */}
-      {showPermissionsModal && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-              <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col max-h-[80vh]">
-                  <div className="p-6 border-b flex justify-between items-center">
-                      <h4 className="text-xl font-bold">{t('modalPermissionsTitle')}</h4>
-                      <button onClick={() => setTempAllowedCountries([...COUNTRIES.map(c => c.code), 'dhl'])} className="text-sm font-bold text-blue-600">Select All</button>
+      {/* MODAL: AGREGAR USUARIO */}
+      {showAddUserModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md">
+              <form onSubmit={handleAddUser} className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200">
+                  <div className="bg-[#0b1626] p-6 flex justify-between items-center">
+                      <h4 className="text-xl font-bold text-white">{t('addUserTitle')}</h4>
+                      <button type="button" onClick={() => setShowAddUserModal(false)} className="text-white/60 hover:text-white"><XIcon className="w-6 h-6"/></button>
                   </div>
-                  <div className="p-6 overflow-y-auto grid grid-cols-2 gap-4">
+                  <div className="p-8 space-y-4">
+                      <div><label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Nombre Completo</label><input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50" /></div>
+                      <div><label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Usuario / Email</label><input required value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50" /></div>
+                      <div><label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Contraseña Inicial</label><input required type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50" /></div>
+                      <div><label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Rol</label>
+                        <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value as any})} className="w-full border p-3 rounded-xl bg-slate-50">
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                      </div>
+                  </div>
+                  <div className="p-6 bg-slate-50 border-t flex gap-3">
+                      <button type="button" onClick={() => setShowAddUserModal(false)} className="flex-1 py-3 font-bold text-slate-400 hover:text-slate-600">Cancelar</button>
+                      <button type="submit" className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700">Crear Usuario</button>
+                  </div>
+              </form>
+          </div>
+      )}
+
+      {/* MODAL: EDITAR USUARIO */}
+      {showEditUserModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md">
+              <form onSubmit={handleEditUser} className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200">
+                  <div className="bg-[#0b1626] p-6 flex justify-between items-center">
+                      <h4 className="text-xl font-bold text-white">{t('editUserTitle')}</h4>
+                      <button type="button" onClick={() => setShowEditUserModal(false)} className="text-white/60 hover:text-white"><XIcon className="w-6 h-6"/></button>
+                  </div>
+                  <div className="p-8 space-y-4">
+                      <div><label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Nombre Completo</label><input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50" /></div>
+                      <div><label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Usuario (No editable)</label><input disabled value={formData.username} className="w-full border p-3 rounded-xl bg-slate-100 text-slate-400" /></div>
+                      <div><label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Rol</label>
+                        <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value as any})} className="w-full border p-3 rounded-xl bg-slate-50">
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                      </div>
+                  </div>
+                  <div className="p-6 bg-slate-50 border-t flex gap-3">
+                      <button type="button" onClick={() => setShowEditUserModal(false)} className="flex-1 py-3 font-bold text-slate-400 hover:text-slate-600">Cancelar</button>
+                      <button type="submit" className="flex-1 py-3 bg-[#0b1626] text-white rounded-xl font-bold shadow-lg hover:bg-slate-800">Actualizar</button>
+                  </div>
+              </form>
+          </div>
+      )}
+
+      {/* MODAL: CAMBIAR CONTRASEÑA */}
+      {showPasswordModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md">
+              <form onSubmit={handleChangePassword} className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in duration-200">
+                  <div className="bg-amber-500 p-6 flex justify-between items-center">
+                      <h4 className="text-xl font-bold text-white">{t('changePasswordTitle')}</h4>
+                      <button type="button" onClick={() => setShowPasswordModal(false)} className="text-white/60 hover:text-white"><XIcon className="w-6 h-6"/></button>
+                  </div>
+                  <div className="p-8">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Nueva Contraseña para {passwordEditingUser}</label>
+                      <input required type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full border p-4 rounded-xl bg-slate-50 font-mono text-center text-lg" placeholder="••••••••" />
+                  </div>
+                  <div className="p-6 bg-slate-50 border-t flex gap-3">
+                      <button type="button" onClick={() => setShowPasswordModal(false)} className="flex-1 py-3 font-bold text-slate-400 hover:text-slate-600">Cancelar</button>
+                      <button type="submit" className="flex-1 py-3 bg-amber-500 text-white rounded-xl font-bold shadow-lg hover:bg-amber-600">Cambiar</button>
+                  </div>
+              </form>
+          </div>
+      )}
+
+      {/* MODAL PERMISOS DE PAÍSES */}
+      {showPermissionsModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in duration-200">
+                  <div className="p-6 border-b flex justify-between items-center bg-slate-50">
+                      <div>
+                        <h4 className="text-xl font-black text-slate-800">{t('modalPermissionsTitle')}</h4>
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">{editingUser?.name}</p>
+                      </div>
+                      <button onClick={() => setTempAllowedCountries([...COUNTRIES.map(c => c.code), 'dhl'])} className="text-xs font-black text-blue-600 uppercase tracking-widest">Select All</button>
+                  </div>
+                  <div className="p-8 overflow-y-auto grid grid-cols-2 gap-4">
                       {COUNTRIES.map(c => (
-                          <label key={c.code} className="flex items-center gap-3 p-2 border rounded hover:bg-gray-50 cursor-pointer">
-                              <input type="checkbox" checked={tempAllowedCountries.includes(c.code)} onChange={() => setTempAllowedCountries(prev => prev.includes(c.code) ? prev.filter(x => x !== c.code) : [...prev, c.code])} />
-                              <span className="text-sm font-medium">{c.name}</span>
+                          <label key={c.code} className={`flex items-center gap-3 p-3 border-2 rounded-xl transition-all cursor-pointer ${tempAllowedCountries.includes(c.code) ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100'}`}>
+                              <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked={tempAllowedCountries.includes(c.code)} onChange={() => setTempAllowedCountries(prev => prev.includes(c.code) ? prev.filter(x => x !== c.code) : [...prev, c.code])} />
+                              <span className="text-sm font-bold">{c.name}</span>
                           </label>
                       ))}
-                      <label className="flex items-center gap-3 p-2 border rounded hover:bg-gray-50 cursor-pointer col-span-2 bg-yellow-50 border-yellow-200">
-                          <input type="checkbox" checked={tempAllowedCountries.includes('dhl')} onChange={() => setTempAllowedCountries(prev => prev.includes('dhl') ? prev.filter(x => x !== 'dhl') : [...prev, 'dhl'])} />
-                          <span className="text-sm font-bold">DHL GLOBAL</span>
+                      <label className={`flex items-center gap-3 p-3 border-2 rounded-xl col-span-2 transition-all cursor-pointer ${tempAllowedCountries.includes('dhl') ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100'}`}>
+                          <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500" checked={tempAllowedCountries.includes('dhl')} onChange={() => setTempAllowedCountries(prev => prev.includes('dhl') ? prev.filter(x => x !== 'dhl') : [...prev, 'dhl'])} />
+                          <span className="text-sm font-black uppercase tracking-tighter italic">DHL GLOBAL MONITOR</span>
                       </label>
                   </div>
-                  <div className="p-6 border-t flex justify-end gap-3">
-                      <button onClick={() => setShowPermissionsModal(false)} className="px-4 py-2 text-gray-400 font-bold">Cerrar</button>
-                      {/* Fix: call savePermissions */}
-                      <button onClick={savePermissions} className="bg-[#0d1a2e] text-white px-6 py-2 rounded-lg font-bold">Guardar</button>
+                  <div className="p-6 border-t flex justify-end gap-4 bg-slate-50">
+                      <button onClick={() => setShowPermissionsModal(false)} className="px-6 py-3 text-slate-400 font-bold hover:text-slate-600">Cancel</button>
+                      <button onClick={() => { setUsers(prev => prev.map(u => u.username === editingUser?.username ? {...u, allowedCountries: tempAllowedCountries} : u)); setShowPermissionsModal(false); showSuccess(t('userUpdateSuccess')); }} className="bg-[#0b1626] text-white px-10 py-3 rounded-xl font-bold shadow-lg">Save Changes</button>
                   </div>
               </div>
           </div>

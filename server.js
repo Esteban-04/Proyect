@@ -1,10 +1,14 @@
 
-const express = require('express');
-const cors = require('cors');
-const ping = require('ping');
-const nodemailer = require('nodemailer');
-const fs = require('fs');
-const path = require('path');
+import express from 'express';
+import cors from 'cors';
+import ping from 'ping';
+import nodemailer from 'nodemailer';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -36,6 +40,7 @@ let lastOfflineIps = new Set();
 app.use(cors());
 app.use(express.json());
 
+// --- Endpoints de API ---
 app.get('/api/health', (req, res) => {
     res.json({ 
         status: 'ok', 
@@ -72,7 +77,7 @@ app.post('/api/test-email', async (req, res) => {
             from: `"SALTEX TEST" <${config.user}>`,
             to: config.recipient,
             subject: '🧪 SALTEX: Prueba de Conexión en la Nube',
-            text: 'Si recibes esto, tu backend en la nube está configurado correctamente.'
+            text: 'Si recibes esto, tu backend en Railway está configurado correctamente.'
         });
         res.json({ success: true });
     } catch (error) {
@@ -87,7 +92,8 @@ app.post('/api/check-status', async (req, res) => {
     const results = await Promise.all(servers.map(async (server) => {
         if (!server.ip || server.ip.includes('X')) return { id: server.id, status: 'offline' };
         try {
-            // timeout de 3 segundos para entornos de nube
+            // Nota: Algunos entornos de nube bloquean ICMP. Si el ping falla siempre, 
+            // considera usar chequeos de puerto TCP si es posible.
             const resPing = await ping.promise.probe(server.ip, { timeout: 3 });
             return { id: server.id, status: resPing.alive ? 'online' : 'offline', name: server.name, ip: server.ip };
         } catch (e) {
@@ -95,18 +101,19 @@ app.post('/api/check-status', async (req, res) => {
         }
     }));
 
-    const currentlyOffline = results.filter(r => r.status === 'offline' && r.ip);
-    const newOffline = currentlyOffline.filter(s => !lastOfflineIps.has(s.ip));
-
-    if (newOffline.length > 0 && emailConfig.enabled) {
-        // Lógica de envío de alertas por correo aquí
-        console.log(`⚠️ Se detectaron ${newOffline.length} nuevos servidores caídos`);
-    }
-
-    lastOfflineIps = new Set(currentlyOffline.map(s => s.ip));
+    lastOfflineIps = new Set(results.filter(r => r.status === 'offline' && r.ip).map(s => s.ip));
     res.json({ results });
 });
 
+// --- Servir Frontend (Vite Build) ---
+// Servimos los archivos estáticos de la carpeta /dist
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// Cualquier ruta que no sea de la API, sirve el index.html (SPA routing)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor SALTEX activo en puerto ${PORT}`);
+    console.log(`🚀 Servidor SALTEX corriendo en puerto ${PORT}`);
 });
