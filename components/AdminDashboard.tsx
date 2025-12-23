@@ -24,8 +24,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
   const [backendUrl, setBackendUrl] = useState(() => {
       const saved = localStorage.getItem('saltex_backend_url');
       if (saved) return saved;
-      // En producción, si se sirve desde el mismo servidor, la URL es relativa
-      return window.location.hostname === 'localhost' ? 'http://localhost:3001' : window.location.origin;
+      return ''; // Usar ruta relativa por defecto
   });
 
   const [alertConfig, setAlertConfig] = useState(() => {
@@ -59,7 +58,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
   useEffect(() => {
     const checkBackend = async () => {
         try {
-            const res = await fetch(`${backendUrl}/api/health`);
+            const apiPath = backendUrl ? `${backendUrl}/api/health` : '/api/health';
+            const res = await fetch(apiPath);
             if (res.ok) setBackendStatus('online');
             else setBackendStatus('offline');
         } catch (e) { setBackendStatus('offline'); }
@@ -78,7 +78,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users));
       
       try {
-          await fetch(`${backendUrl}/api/config-alerts`, {
+          const apiPath = backendUrl ? `${backendUrl}/api/config-alerts` : '/api/config-alerts';
+          await fetch(apiPath, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ config: alertConfig })
@@ -140,7 +141,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
   };
 
   const SUPER_ADMIN_USERNAME = 'admin';
-  // CORRECCIÓN: Se cambió (a, b) por (a, _b) para evitar error de variable no utilizada
   const displayUsers = [...users].sort((a, _b) => a.username === SUPER_ADMIN_USERNAME ? -1 : 1);
 
   return (
@@ -298,9 +298,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                             value={backendUrl} 
                             onChange={e => setBackendUrl(e.target.value)} 
                             className="w-full bg-slate-50 border border-slate-100 p-4 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm" 
-                            placeholder="https://mi-backend.render.com"
+                            placeholder="Dejar vacío para usar ruta relativa"
                           />
-                          <p className="text-[10px] text-slate-300 font-bold">Por defecto: {window.location.origin}</p>
+                          <p className="text-[10px] text-slate-300 font-bold tracking-tight">Vacio = {window.location.origin}</p>
                       </div>
                   </div>
 
@@ -327,7 +327,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
           )}
       </div>
 
-      {/* MODAL: AGREGAR USUARIO */}
+      {/* MODALES IGUALES... */}
       {showAddUserModal && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md">
               <form onSubmit={handleAddUser} className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200">
@@ -354,7 +354,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
           </div>
       )}
 
-      {/* MODAL: EDITAR USUARIO */}
       {showEditUserModal && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md">
               <form onSubmit={handleEditUser} className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200">
@@ -380,7 +379,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
           </div>
       )}
 
-      {/* MODAL: CAMBIAR CONTRASEÑA */}
       {showPasswordModal && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md">
               <form onSubmit={handleChangePassword} className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in duration-200">
@@ -400,7 +398,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
           </div>
       )}
 
-      {/* MODAL PERMISOS DE PAÍSES */}
       {showPermissionsModal && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md">
               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in duration-200">

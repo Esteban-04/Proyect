@@ -82,7 +82,11 @@ const ServerStatusSummary: React.FC = () => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-            const response = await fetch('http://localhost:3001/api/check-status', {
+            // CORRECCIÓN: Usar ruta relativa para que funcione en Railway independientemente del dominio
+            const backendUrl = localStorage.getItem('saltex_backend_url') || '';
+            const apiEndpoint = backendUrl ? `${backendUrl}/api/check-status` : '/api/check-status';
+
+            const response = await fetch(apiEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ servers: payload }),
@@ -162,7 +166,7 @@ const ServerStatusSummary: React.FC = () => {
                         <div className={`${hasIssues ? 'bg-red-600' : 'bg-[#0d1a2e]'} text-white p-4 sm:p-6 flex justify-between items-center transition-colors`}>
                             <div>
                                 <h3 className="font-bold text-xl sm:text-2xl flex items-center"><GlobeIcon className="w-6 h-6 mr-2" />{t('monitorTitle')}</h3>
-                                <p className="text-white/80 text-sm mt-1">{backendDisconnected ? '⚠️ No se detecta node server.js' : checking ? t('monitorStatusUpdate') : `${t('monitorLastUpdate')}: ${lastUpdated?.toLocaleTimeString()}`}</p>
+                                <p className="text-white/80 text-sm mt-1">{backendDisconnected ? '⚠️ Backend no responde' : checking ? t('monitorStatusUpdate') : `${t('monitorLastUpdate')}: ${lastUpdated?.toLocaleTimeString()}`}</p>
                             </div>
                             <button onClick={() => setShowModal(false)} className="text-white/70 hover:text-white"><XIcon className="w-8 h-8" /></button>
                         </div>
@@ -183,7 +187,7 @@ const ServerStatusSummary: React.FC = () => {
                         </div>
 
                         <div className="overflow-y-auto flex-grow p-4 sm:p-6 space-y-6">
-                            {backendDisconnected && <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg text-amber-800 text-sm font-medium">⚠️ El backend de monitoreo no responde. Por favor, asegúrate de haber ejecutado <code>node server.js</code> en la carpeta backend para ver el estado real de los servidores.</div>}
+                            {backendDisconnected && <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg text-amber-800 text-sm font-medium">⚠️ El backend de monitoreo no responde. Verifica que el servidor esté activo.</div>}
                             {hasIssues && (
                                 <div>
                                     <h4 className="text-red-700 font-bold text-lg mb-3 flex items-center"><ActivityIcon className="w-5 h-5 mr-2" />{t('monitorIssuesTitle')}</h4>
