@@ -7,7 +7,6 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-// La nube suele asignar el puerto dinámicamente mediante la variable PORT
 const PORT = process.env.PORT || 3001;
 const CONFIG_FILE = path.join(__dirname, 'config.json');
 
@@ -26,7 +25,7 @@ if (fs.existsSync(CONFIG_FILE)) {
     try {
         const savedConfig = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
         emailConfig = { ...emailConfig, ...savedConfig };
-        console.log("✅ Configuración cargada");
+        console.log("✅ Configuración de alertas cargada");
     } catch (e) {
         console.error("❌ Error cargando configuración");
     }
@@ -34,11 +33,11 @@ if (fs.existsSync(CONFIG_FILE)) {
 
 let lastOfflineIps = new Set();
 
-// CORS habilitado para que el frontend en la nube pueda hablar con el backend
 app.use(cors());
 app.use(express.json());
 
 app.get('/api/health', (req, res) => {
+    console.log(`[${new Date().toISOString()}] Health check requested`);
     res.json({ 
         status: 'ok', 
         uptime: process.uptime(), 
@@ -50,65 +49,38 @@ app.post('/api/config-alerts', (req, res) => {
     const { config } = req.body;
     if (config) {
         emailConfig = { ...emailConfig, ...config };
-        // En entornos como Heroku/Render, el sistema de archivos puede ser efímero, 
-        // pero esto sirve para la sesión actual.
         try {
             fs.writeFileSync(CONFIG_FILE, JSON.stringify(emailConfig, null, 2));
         } catch(e) {}
+        console.log("✅ Configuración de alertas actualizada");
         return res.json({ success: true });
     }
     res.status(400).json({ error: 'Configuración inválida' });
-});
-
-app.post('/api/test-email', async (req, res) => {
-    const { config } = req.body;
-    const testTransporter = nodemailer.createTransport({
-        host: config.host,
-        port: config.port,
-        secure: config.secure,
-        auth: { user: config.user, pass: config.pass },
-    });
-
-    try {
-        await testTransporter.sendMail({
-            from: `"SALTEX TEST" <${config.user}>`,
-            to: config.recipient,
-            subject: '🧪 SALTEX: Prueba de Conexión',
-            text: 'Prueba de backend en la nube exitosa.'
-        });
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
 });
 
 app.post('/api/check-status', async (req, res) => {
     const { servers } = req.body;
     if (!servers) return res.status(400).send();
 
+    console.log(`[${new Date().toISOString()}] Checking status for ${servers.length} servers...`);
+
     const results = await Promise.all(servers.map(async (server) => {
         if (!server.ip || server.ip.includes('X')) return { id: server.id, status: 'offline' };
         try {
-            // Nota: Algunos proveedores de nube bloquean el protocolo ICMP (ping).
-            // Si esto sucede, el estado siempre será offline.
-            const resPing = await ping.promise.probe(server.ip, { timeout: 3 });
-            return { id: server.id, status: resPing.alive ? 'online' : 'offline', name: server.name, ip: server.ip };
+            // Nota: El ping puede tardar. Se usa timeout corto para no bloquear.
+            const resPing = await ping.promise.probe(server.ip, { timeout: 2 });
+            const status = resPing.alive ? 'online' : 'offline';
+            console.log(` - Server ${server.ip}: ${status}`);
+            return { id: server.id, status, name: server.name, ip: server.ip };
         } catch (e) {
+            console.error(` ❌ Error pinging ${server.ip}: ${e.message}`);
             return { id: server.id, status: 'offline' };
         }
     }));
 
-    const currentlyOffline = results.filter(r => r.status === 'offline' && r.ip);
-    const newOffline = currentlyOffline.filter(s => !lastOfflineIps.has(s.ip));
-
-    if (newOffline.length > 0 && emailConfig.enabled) {
-        // Enviar email... (Lógica simplificada para brevedad)
-    }
-
-    lastOfflineIps = new Set(currentlyOffline.map(s => s.ip));
     res.json({ results });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor SALTEX activo en puerto ${PORT}`);
+    console.log(`🚀 SALTEX Monitor Backend escuchando en puerto ${PORT}`);
 });

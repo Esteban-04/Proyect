@@ -63,9 +63,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
             const res = await fetch(apiPath);
             if (res.ok) setBackendStatus('online');
             else setBackendStatus('offline');
-        } catch (e) { setBackendStatus('offline'); }
+        } catch (e) { 
+            setBackendStatus('offline'); 
+        }
     };
     checkBackend();
+    const interval = setInterval(checkBackend, 30000);
+    return () => clearInterval(interval);
   }, [backendUrl]);
 
   const SUPER_ADMIN_USERNAME = 'admin';
@@ -222,10 +226,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                     <table className="min-w-full divide-y divide-gray-100">
                         <thead className="bg-[#fcfcfc]">
                             <tr>
-                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">STATUS</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">NAME</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">USERNAME</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">PASSWORD</th>
+                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">STATUS</th>
+                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">NAME</th>
+                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">USERNAME</th>
+                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">PASSWORD</th>
                                 <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">ROLE / PERMISSIONS</th>
                             </tr>
                         </thead>
@@ -287,6 +291,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
               </div>
           ) : (
               <div className="max-w-2xl mx-auto space-y-6">
+                  <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl flex items-start gap-4">
+                      <ActivityIcon className="w-6 h-6 text-amber-600 shrink-0 mt-1" />
+                      <div>
+                          <p className="text-amber-800 font-bold text-sm">⚠️ Nota Técnica Importante</p>
+                          <p className="text-amber-700 text-xs mt-1">Los servidores en la nube (como Railway) no pueden alcanzar IPs privadas (192.168.x.x) de tu red local. Si todos los servidores aparecen "Fuera de línea", es probable que el backend necesite un túnel VPN o ser ejecutado localmente.</p>
+                      </div>
+                  </div>
+
                   <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-sm border border-gray-100">
                       <div className="flex items-center space-x-4 mb-8">
                           <div className="bg-blue-50 p-4 rounded-xl text-blue-600 shrink-0"><GlobeIcon className="w-8 h-8" /></div>
@@ -298,7 +310,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                       <div className="space-y-4">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">URL API BACKEND</label>
                           <input type="text" value={backendUrl} onChange={e => setBackendUrl(e.target.value)} className="w-full bg-slate-50 border border-slate-100 p-4 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm" placeholder="Dejar vacío para usar ruta relativa" />
-                          <p className="text-[10px] text-slate-300 font-bold tracking-tight uppercase">Vacío = Autodetectar URL actual</p>
+                          <p className="text-[10px] text-slate-300 font-bold tracking-tight uppercase">Vacío = Autodetectar URL actual (Recomendado en Railway)</p>
                       </div>
                   </div>
 
