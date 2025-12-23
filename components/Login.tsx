@@ -37,20 +37,24 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, users, setUsers }) => {
 
   const handleLoginSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    
+    // Normalizar credenciales para evitar fallos por espacios o mayúsculas en el usuario
+    const normalizedUsername = username.trim().toLowerCase();
+    const rawPassword = password.trim();
+
     // Check for hardcoded admin user
-    const isSuperAdmin = username === 'admin' && password === 'Pr1c3sm4rt2025!';
+    const isSuperAdmin = normalizedUsername === 'admin' && rawPassword === 'Pr1c3sm4rt2025!';
     
     if (isSuperAdmin) {
         setError(null);
-        // Create a temporary admin user object for session
         const adminUser: User = { username: 'admin', password: '', name: 'Super Admin', role: 'admin', isDisabled: false };
         onLoginSuccess(adminUser, true);
         return;
     }
 
-    // Check for dynamically registered users
+    // Check for dynamically registered users (insensible a mayúsculas en el username)
     const registeredUser = users.find(
-        user => user.username === username && user.password === password
+        user => user.username.toLowerCase() === normalizedUsername && user.password === rawPassword
     );
 
     if (registeredUser) {
@@ -58,7 +62,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, users, setUsers }) => {
             setError('loginErrorAccountDisabled');
         } else {
             setError(null);
-            // Default role to user if undefined
             const userWithRole = { ...registeredUser, role: registeredUser.role || 'user' };
             onLoginSuccess(userWithRole, false);
         }
@@ -69,35 +72,36 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, users, setUsers }) => {
 
   const handleResetSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setResetMessage(t('resetSuccessMessage', resetEmail));
+    setResetMessage(t('resetSuccessMessage', resetEmail.trim()));
     setResetEmail('');
   };
 
   const handleRegisterSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const normalizedEmail = registerEmail.trim().toLowerCase();
+    
     // Check if user already exists
-    const existingUser = users.find(user => user.username === registerEmail);
+    const existingUser = users.find(user => user.username.toLowerCase() === normalizedEmail);
     if (existingUser) {
         setError('registerErrorEmailExists');
-        setRegisterMessage(''); // Clear any success message
+        setRegisterMessage('');
         return;
     }
     
     // Add new user
     const newUser: User = { 
-        name: registerName, 
-        username: registerEmail, 
-        password: registerPassword,
-        isDisabled: false, // By default, users are enabled.
-        role: 'user', // Default role is user
-        allowedCountries: [] // Default no countries (or could be all, logic handled in App)
+        name: registerName.trim(), 
+        username: normalizedEmail, 
+        password: registerPassword.trim(),
+        isDisabled: false,
+        role: 'user',
+        allowedCountries: []
     };
     setUsers(currentUsers => [...currentUsers, newUser]);
     
-    setError(null); // Clear previous errors
+    setError(null);
     setRegisterMessage(t('registerSuccessMessage'));
     
-    // Clear fields and navigate back to login after a short delay
     setTimeout(() => {
       setRegisterName('');
       setRegisterEmail('');
@@ -111,7 +115,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, users, setUsers }) => {
       setResetMessage('');
       setRegisterMessage('');
       setView(targetView);
-      // Reset password visibility states when navigating
       setShowPassword(false);
       setShowRegisterPassword(false);
   }
@@ -134,7 +137,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, users, setUsers }) => {
     </div>
   );
 
-  // --- Render Register View ---
   if (view === 'register') {
       return (
         <div className="relative w-full max-w-md bg-white rounded-xl shadow-2xl p-8 space-y-6 z-10">
@@ -181,7 +183,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, users, setUsers }) => {
                         required
                         value={registerEmail}
                         onChange={(e) => setRegisterEmail(e.target.value)}
-                        placeholder={t('emailPlaceholder')}
+                        placeholder={t('usernamePlaceholder')}
                         className="block w-full pl-10 pr-3 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-[#0d1a2e] sm:text-sm"
                         disabled={!!registerMessage}
                     />
@@ -234,7 +236,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, users, setUsers }) => {
       );
   }
 
-  // --- Render Forgot Password View ---
   if (view === 'forgotPassword') {
     return (
         <div className="relative w-full max-w-md bg-white rounded-xl shadow-2xl p-8 space-y-6 z-10">
@@ -262,7 +263,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, users, setUsers }) => {
                         required
                         value={resetEmail}
                         onChange={(e) => setResetEmail(e.target.value)}
-                        placeholder={t('emailPlaceholder')}
+                        placeholder={t('usernamePlaceholder')}
                         className="block w-full pl-10 pr-3 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-[#0d1a2e] sm:text-sm"
                     />
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -292,7 +293,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, users, setUsers }) => {
     );
   }
 
-  // --- Render Login View ---
   return (
     <div className="relative w-full max-w-md bg-white rounded-xl shadow-2xl p-8 space-y-6 z-10">
         {languageSwitcher}
@@ -311,7 +311,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, users, setUsers }) => {
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder={t('emailPlaceholder')}
+                    placeholder={t('usernamePlaceholder')}
                     className="block w-full pl-10 pr-3 py-2 border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-[#0d1a2e] sm:text-sm"
                 />
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

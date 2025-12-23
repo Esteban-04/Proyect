@@ -1,10 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { EyeIcon, EyeOffIcon, PlusIcon, GlobeIcon, UserIcon, LockClosedIcon, KeyIcon, PencilIcon, SaveIcon, TrashIcon } from '../assets/icons';
+import { EyeIcon, EyeOffIcon, PlusIcon, GlobeIcon, UserIcon, LockClosedIcon, KeyIcon, PencilIcon, SaveIcon, TrashIcon, CameraIcon, XIcon, ActivityIcon } from '../assets/icons';
 import { COUNTRIES, DHL_DATA, USER_STORAGE_KEY } from '../constants';
-import { translations } from '../lib/i18n';
 
 interface AdminDashboardProps {
   users: User[];
@@ -14,859 +13,288 @@ interface AdminDashboardProps {
   currentUser: User | null;
 }
 
-type TranslationKey = keyof typeof translations.es;
-
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onContinue, onLogout, currentUser }) => {
-  const { t, language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // State for password visibility (map of username -> boolean)
-  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+  const [activeTab, setActiveTab] = useState<'users' | 'alerts'>('users');
+  const [backendStatus, setBackendStatus] = useState<'online' | 'offline'>('offline');
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  
-  // State for Permissions Modal
-  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
-  const [editingUser, setEditingUser] = useState<string | null>(null);
-  const [tempAllowedCountries, setTempAllowedCountries] = useState<string[]>([]);
 
-  // State for Add User Modal
-  const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [newUser, setNewUser] = useState<{name: string, username: string, password: string, role: 'admin' | 'user'}>({ name: '', username: '', password: '', role: 'user' });
-  const [newUserError, setNewUserError] = useState<TranslationKey | ''>('');
+  // Cargar URL del backend persistida
+  const [backendUrl, setBackendUrl] = useState(() => {
+    return localStorage.getItem('saltex_backend_url') || 'http://localhost:3001';
+  });
 
-  // State for Change Password Modal
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordEditingUser, setPasswordEditingUser] = useState<string | null>(null);
-  const [newPasswordValue, setNewPasswordValue] = useState('');
+  const [alertConfig, setAlertConfig] = useState(() => {
+    const saved = localStorage.getItem('saltex_alert_config');
+    return saved ? JSON.parse(saved) : {
+      enabled: false,
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      user: '',
+      pass: '',
+      recipient: 'esteban@saltexgroup.com'
+    };
+  });
 
-  // State for Edit User Info Modal
-  const [showEditUserModal, setShowEditUserModal] = useState(false);
-  const [editUserData, setEditUserData] = useState<{ originalUsername: string, name: string, username: string } | null>(null);
-  const [editUserError, setEditUserError] = useState<TranslationKey | ''>('');
-
-  // Hardcoded Super Admin
-  const SUPER_ADMIN: User = {
-    name: 'Super Admin',
-    username: 'admin',
-    password: 'Pr1c3sm4rt2025!',
-    role: 'admin',
-    isDisabled: false,
-    allowedCountries: [] // Implicitly all
-  };
-
-  // Combine Super Admin with registered users for display
-  // Filter out any registered user named 'admin' to avoid duplicates if one was created manually
-  const displayUsers = [SUPER_ADMIN, ...users.filter(u => u.username !== 'admin')];
+  useEffect(() => {
+    const checkBackend = async () => {
+        try {
+            const res = await fetch(`${backendUrl}/api/health`);
+            if (res.ok) setBackendStatus('online');
+            else setBackendStatus('offline');
+        } catch (e) { setBackendStatus('offline'); }
+    };
+    checkBackend();
+  }, [backendUrl]);
 
   const showSuccess = (message: string) => {
       setSuccessMessage(message);
       setTimeout(() => setSuccessMessage(null), 3000);
   };
 
-  const toggleUserStatus = (username: string) => {
-    if (username === 'admin') return; // Prevent disabling super admin
-    setUsers(prevUsers => 
-      prevUsers.map(user => 
-        user.username === username 
-          ? { ...user, isDisabled: !user.isDisabled } 
-          : user
-      )
-    );
-  };
-
-  const togglePasswordVisibility = (username: string) => {
-    setVisiblePasswords(prev => ({
-        ...prev,
-        [username]: !prev[username]
-    }));
-  };
-
-  const changeUserRole = (username: string, newRole: 'admin' | 'user') => {
-    if (username === 'admin') return; // Prevent changing super admin
-    setUsers(prevUsers => 
-      prevUsers.map(user => 
-        user.username === username 
-          ? { ...user, role: newRole } 
-          : user
-      )
-    );
-  };
-
-  // --- Global Save Handler ---
-  const handleGlobalSave = () => {
-      // Explicitly write to the same standardized key used in App.tsx
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users));
-      showSuccess(t('globalSaveSuccess'));
-  };
-
-  const deleteUser = (username: string) => {
-      if (username === 'admin') return;
-      
-      const user = users.find(u => u.username === username);
-      if (!user) return;
-
-      if (!user.isDisabled) {
-          alert(t('deleteActiveUserError'));
-          return;
-      }
-
-      if (window.confirm(t('confirmDeleteUser'))) {
-          const updatedUsers = users.filter(u => u.username !== username);
-          setUsers(updatedUsers);
-          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUsers));
-          showSuccess(t('userDeleteSuccess'));
-      }
-  };
-
-  // --- Permissions Modal Logic ---
-  const openPermissionsModal = (username: string) => {
-      const user = displayUsers.find(u => u.username === username);
-      if (user) {
-          setEditingUser(username);
-          setTempAllowedCountries(user.allowedCountries || []);
-          setShowPermissionsModal(true);
-      }
-  };
-
-  const toggleCountryPermission = (code: string) => {
-      setTempAllowedCountries(prev => {
-          if (prev.includes(code)) {
-              return prev.filter(c => c !== code);
-          } else {
-              return [...prev, code];
-          }
-      });
-  };
-
-  const toggleSelectAllCountries = () => {
-      const allCodes = [...COUNTRIES.map(c => c.code), DHL_DATA.code];
-      if (tempAllowedCountries.length === allCodes.length) {
-          setTempAllowedCountries([]);
-      } else {
-          setTempAllowedCountries(allCodes);
-      }
-  };
-
-  const savePermissions = () => {
-      if (editingUser) {
-          if (editingUser === 'admin') {
-             setShowPermissionsModal(false);
-             setEditingUser(null);
-             return;
-          }
-
-          // Calculate new state explicitly
-          const updatedUsers = users.map(user => 
-                user.username === editingUser
-                ? { ...user, allowedCountries: tempAllowedCountries }
-                : user
-            );
-
-          // Update parent state
-          setUsers(updatedUsers);
-          
-          // Force immediate save to localStorage to ensure persistence
-          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUsers));
-          
-          showSuccess(t('globalSaveSuccess'));
-          
-          setShowPermissionsModal(false);
-          setEditingUser(null);
-      }
-  };
-
-  // --- Change Password Modal Logic ---
-  const openPasswordModal = (username: string) => {
-      setPasswordEditingUser(username);
-      setNewPasswordValue('');
-      setShowPasswordModal(true);
-  };
-
-  const handleSavePassword = (e: React.FormEvent) => {
+  const handleSaveAllConfig = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (passwordEditingUser && newPasswordValue) {
-          if (passwordEditingUser === 'admin') return; // Security check
-
-          const updatedUsers = users.map(user => 
-                user.username === passwordEditingUser
-                ? { ...user, password: newPasswordValue }
-                : user
-            );
-            
-          setUsers(updatedUsers);
-          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUsers));
-
-          setShowPasswordModal(false);
-          setPasswordEditingUser(null);
-          setNewPasswordValue('');
-          showSuccess(t('passwordUpdateSuccess'));
-      }
-  };
-
-  // --- Edit User Modal Logic ---
-  const openEditUserModal = (username: string) => {
-      const user = users.find(u => u.username === username);
-      if (user) {
-          setEditUserData({ 
-              originalUsername: username, 
-              name: user.name || '', 
-              username: user.username,
+      localStorage.setItem('saltex_backend_url', backendUrl);
+      localStorage.setItem('saltex_alert_config', JSON.stringify(alertConfig));
+      
+      try {
+          const response = await fetch(`${backendUrl}/api/config-alerts`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ config: alertConfig })
           });
-          setShowEditUserModal(true);
-          setEditUserError('');
+          if (response.ok) showSuccess(t('globalSaveSuccess'));
+      } catch (err) {
+          alert("Cambios guardados localmente, pero no se pudo sincronizar con el backend: " + backendUrl);
       }
   };
 
-  const handleUpdateUser = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!editUserData) return;
-
-      // Check if username changed and if it conflicts
-      if (editUserData.username !== editUserData.originalUsername) {
-          if (editUserData.username === 'admin' || users.some(u => u.username === editUserData.username)) {
-              setEditUserError('registerErrorUserExists');
-              return;
-          }
-      }
-
-      const updatedUsers = users.map(user => 
-              user.username === editUserData.originalUsername
-              ? { ...user, name: editUserData.name, username: editUserData.username }
-              : user
-          );
-
-      setUsers(updatedUsers);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUsers));
-      
-      setShowEditUserModal(false);
-      setEditUserData(null);
-      showSuccess(t('userUpdateSuccess'));
+  const testEmailConnection = async () => {
+      setIsTestingEmail(true);
+      try {
+          const res = await fetch(`${backendUrl}/api/test-email`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ config: alertConfig })
+          });
+          if (res.ok) alert("✅ Correo enviado a " + alertConfig.recipient);
+          else alert("❌ Error en el envío.");
+      } catch (e) { alert("❌ Backend inalcanzable."); }
+      finally { setIsTestingEmail(false); }
   };
 
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [tempAllowedCountries, setTempAllowedCountries] = useState<string[]>([]);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [newUser, setNewUser] = useState<User>({ name: '', username: '', password: '', role: 'user', avatar: '', isDisabled: false, allowedCountries: [] });
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordEditingUser, setPasswordEditingUser] = useState<string | null>(null);
+  const [newPasswordValue, setNewPasswordValue] = useState('');
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [editUserData, setEditUserData] = useState<User | null>(null);
+  const [originalUsername, setOriginalUsername] = useState<string>('');
 
-  // --- Add User Modal Logic ---
-  const handleAddUser = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (newUser.username === 'admin') {
-           setNewUserError('registerErrorUserExists'); // Technically name reserved
-           return;
-      }
-      // Check against current users prop for validation
-      if (users.some(u => u.username === newUser.username)) {
-          setNewUserError('registerErrorUserExists');
-          return;
-      }
-      
-      const userToAdd: User = {
-          ...newUser,
-          isDisabled: false,
-          // role is taken from newUser state
-          allowedCountries: []
-      };
+  // --- User Management Logic ---
 
-      const updatedUsers = [...users, userToAdd];
-      setUsers(updatedUsers);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUsers));
-      
-      setShowAddUserModal(false);
-      setNewUser({ name: '', username: '', password: '', role: 'user' });
-      setNewUserError('');
-      showSuccess(t('userCreateSuccess')); // Ensure distinct success message
+  // Fix: Added toggleUserStatus implementation
+  const toggleUserStatus = (username: string) => {
+    setUsers(prev => prev.map(u => u.username === username ? { ...u, isDisabled: !u.isDisabled } : u));
+    showSuccess(t('userUpdateSuccess'));
   };
+
+  // Fix: Added deleteUser implementation
+  const deleteUser = (username: string) => {
+    const user = users.find(u => u.username === username);
+    if (user && !user.isDisabled) {
+        alert(t('deleteActiveUserError'));
+        return;
+    }
+    if (window.confirm(t('confirmDeleteUser'))) {
+        setUsers(prev => prev.filter(u => u.username !== username));
+        showSuccess(t('userDeleteSuccess'));
+    }
+  };
+
+  // Fix: Added openPermissionsModal implementation
+  const openPermissionsModal = (username: string) => {
+    const user = users.find(u => u.username === username);
+    if (user) {
+        setEditingUser(username);
+        setTempAllowedCountries(user.allowedCountries || []);
+        setShowPermissionsModal(true);
+    }
+  };
+
+  // Fix: Added savePermissions implementation
+  const savePermissions = () => {
+    if (editingUser) {
+        setUsers(prev => prev.map(u => u.username === editingUser ? { ...u, allowedCountries: tempAllowedCountries } : u));
+        setShowPermissionsModal(false);
+        showSuccess(t('userUpdateSuccess'));
+    }
+  };
+
+  const SUPER_ADMIN: User = { name: 'Super Admin', username: 'admin', password: 'Pr1c3sm4rt2025!', role: 'admin', isDisabled: false, allowedCountries: [] };
+  const displayUsers = [SUPER_ADMIN, ...users.filter(u => u.username !== 'admin')];
 
   return (
-    <div className="w-full max-w-7xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] relative">
-      
-      {/* Toast Notification */}
-      {successMessage && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg font-semibold transition-all duration-500 ease-in-out animate-bounce text-center w-11/12 sm:w-auto">
-            {successMessage}
+    <div className="w-full max-w-7xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh] relative font-sans">
+      {successMessage && <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[100] bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg font-semibold animate-bounce">{successMessage}</div>}
+
+      <div className="bg-[#0d1a2e] px-8 py-6 flex flex-col md:flex-row justify-between items-center">
+        <div className="flex flex-col space-y-1">
+          <div className="flex items-center gap-3">
+              <h2 className="text-3xl font-bold text-white tracking-tight">{t('adminDashboardTitle')}</h2>
+              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${backendStatus === 'online' ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-red-500/20 text-red-400 border border-red-500/50'}`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${backendStatus === 'online' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                Backend {backendStatus}
+              </div>
+          </div>
+          <p className="text-cyan-200 text-sm font-medium">{t('adminDashboardSubtitle')}</p>
         </div>
-      )}
-
-      {/* Responsive Header */}
-      <div className="bg-[#0d1a2e] px-4 py-4 sm:px-8 sm:py-6 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-        <div className="text-center md:text-left w-full md:w-auto">
-          <h2 className="text-xl sm:text-3xl font-bold text-white mb-1">Admin Dashboard</h2>
-          <p className="text-cyan-200 text-xs sm:text-sm">{t('adminDashboardSubtitle')}</p>
-          {currentUser && (
-            <div className="mt-2 flex items-center justify-center md:justify-start text-sm text-gray-400">
-               <UserIcon className="w-4 h-4 mr-1" />
-               <span>{t('loggedInAs')} <span className="text-white font-semibold">{currentUser.name || currentUser.username}</span></span>
-            </div>
-          )}
-        </div>
-        <div className="flex flex-wrap justify-center md:justify-end gap-2 sm:gap-4 items-center w-full md:w-auto">
-             {/* Language Switcher */}
-             <div className="flex items-center text-white text-sm font-medium border-r border-gray-600 pr-2 sm:pr-4 mr-1 sm:mr-2">
-               <button 
-                 type="button"
-                 onClick={() => setLanguage('es')}
-                 className={`px-2 py-1 rounded-md transition-colors duration-200 ${language === 'es' ? 'bg-white text-[#0d1a2e]' : 'hover:bg-gray-700 text-gray-300'}`}
-               >
-                 ES
-               </button>
-               <span className="mx-1 text-gray-500">|</span>
-               <button
-                 type="button"
-                 onClick={() => setLanguage('en')}
-                 className={`px-2 py-1 rounded-md transition-colors duration-200 ${language === 'en' ? 'bg-white text-[#0d1a2e]' : 'hover:bg-gray-700 text-gray-300'}`}
-               >
-                 EN
-               </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleGlobalSave}
-              className="bg-green-600 text-white font-bold py-1.5 px-3 sm:py-2 sm:px-4 rounded-lg shadow-md hover:bg-green-700 transition-colors flex items-center text-xs sm:text-sm"
-            >
-              <SaveIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">{t('globalSaveButton')}</span>
-              <span className="sm:hidden">Guardar</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowAddUserModal(true)}
-              className="bg-blue-600 text-white font-bold py-1.5 px-3 sm:py-2 sm:px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors flex items-center text-xs sm:text-sm"
-            >
-              <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">{t('addUserButton')}</span>
-               <span className="sm:hidden">Agregar</span>
-            </button>
-
-             <button
-                type="button"
-                onClick={onLogout}
-                className="bg-red-600 text-white font-semibold py-1.5 px-3 sm:py-2 sm:px-4 rounded-lg shadow-md hover:bg-red-700 transition-colors text-xs sm:text-sm"
-              >
-                {t('logoutButton')}
-              </button>
-              <button
-                type="button"
-                onClick={onContinue}
-                className="bg-white text-[#0d1a2e] font-bold py-1.5 px-3 sm:py-2 sm:px-6 rounded-lg shadow-md hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white text-xs sm:text-sm"
-              >
-                {t('continueToApp')}
-              </button>
-        </div>
-      </div>
-
-      {/* Content Area */}
-      <div className="p-2 sm:p-8 overflow-y-auto bg-gray-50 flex-grow">
         
-        {/* Mobile View: Cards */}
-        <div className="sm:hidden space-y-4 pb-20">
-          {displayUsers.length === 0 ? (
-             <div className="text-center text-gray-500 py-8">{t('noRegisteredUsers')}</div>
-          ) : (
-            displayUsers.map((user) => {
-              const isSuperAdmin = user.username === 'admin';
-              return (
-                <div key={user.username} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 relative">
-                  {/* Header: Name and Status */}
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="text-base font-bold text-gray-900">{user.name || 'N/A'}</h3>
-                      <div className="flex items-center text-xs text-gray-500 mt-0.5">
-                        <UserIcon className="w-3 h-3 mr-1" />
-                        <span>{user.username}</span>
-                      </div>
-                    </div>
-                     <button
-                        type="button"
-                        onClick={() => toggleUserStatus(user.username)}
-                        disabled={isSuperAdmin}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0d1a2e] flex-shrink-0 ${
-                            isSuperAdmin ? 'bg-green-500 opacity-50 cursor-not-allowed' : (!user.isDisabled ? 'bg-green-500' : 'bg-gray-300')
-                        }`}
-                    >
-                        <span
-                            className={`${
-                                !user.isDisabled ? 'translate-x-4' : 'translate-x-1'
-                            } inline-block h-3 w-3 transform rounded-full bg-white transition-transform`}
-                        />
-                    </button>
-                  </div>
-
-                  {/* Password Row */}
-                  <div className="mb-3 bg-gray-50 rounded p-2 flex justify-between items-center">
-                      <span className="text-xs font-semibold text-gray-500 uppercase">{t('userTablePassword')}</span>
-                      <div className="flex items-center space-x-2">
-                          <span className="font-mono text-sm text-gray-800">
-                              {visiblePasswords[user.username] ? user.password : t('passwordHidden')}
-                          </span>
-                          <button 
-                              type="button"
-                              onClick={() => togglePasswordVisibility(user.username)}
-                              className="text-gray-400 hover:text-gray-600 focus:outline-none p-1"
-                          >
-                              {visiblePasswords[user.username] ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
-                          </button>
-                      </div>
-                  </div>
-
-                  {/* Role and Permissions */}
-                  <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-2 flex-grow">
-                          <select
-                              value={user.role || 'user'}
-                              onChange={(e) => changeUserRole(user.username, e.target.value as 'admin' | 'user')}
-                              disabled={isSuperAdmin}
-                              className={`block w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-[#0d1a2e] focus:border-[#0d1a2e] py-1 pl-2 pr-6 bg-white ${isSuperAdmin ? 'bg-gray-100' : ''}`}
-                          >
-                              <option value="admin">{t('roleAdmin')}</option>
-                              <option value="user">{t('roleUser')}</option>
-                          </select>
-                      </div>
-                      
-                      {/* Permissions Icon */}
-                      {(!user.role || user.role === 'user') && (
-                          <button
-                            type="button"
-                            onClick={() => openPermissionsModal(user.username)}
-                            disabled={isSuperAdmin}
-                            className={`ml-2 text-gray-500 hover:text-[#0d1a2e] p-2 rounded-full hover:bg-gray-100 ${isSuperAdmin ? 'invisible' : ''}`}
-                            title={t('btnManageCountries')}
-                          >
-                            <GlobeIcon className="w-5 h-5" />
-                          </button>
-                      )}
-                  </div>
-
-                  {/* Actions Footer */}
-                  <div className="border-t border-gray-100 pt-3 flex justify-end space-x-4">
-                        <button
-                            type="button"
-                            onClick={() => openEditUserModal(user.username)}
-                            disabled={isSuperAdmin}
-                            className={`text-blue-600 hover:text-blue-800 flex items-center text-sm font-medium ${isSuperAdmin ? 'opacity-30 cursor-not-allowed' : ''}`}
-                        >
-                            <PencilIcon className="w-4 h-4 mr-1" />
-                            Editar
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => openPasswordModal(user.username)}
-                            disabled={isSuperAdmin}
-                            className={`text-amber-600 hover:text-amber-800 flex items-center text-sm font-medium ${isSuperAdmin ? 'opacity-30 cursor-not-allowed' : ''}`}
-                        >
-                            <KeyIcon className="w-4 h-4 mr-1" />
-                            Pass
-                        </button>
-                        
-                        <button
-                            type="button"
-                            onClick={() => deleteUser(user.username)}
-                            disabled={isSuperAdmin}
-                            className={`text-red-600 hover:text-red-800 flex items-center text-sm font-medium ${isSuperAdmin ? 'opacity-30 cursor-not-allowed' : ''}`}
-                        >
-                            <TrashIcon className="w-4 h-4 mr-1" />
-                            {t('actionDelete')}
-                        </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* Desktop View: Table */}
-        <div className="hidden sm:block bg-white rounded-lg shadow border border-gray-200 overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-3 py-3 sm:px-6 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                  {t('userTableStatus')}
-                </th>
-                <th className="px-3 py-3 sm:px-6 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                  {t('userTableName')}
-                </th>
-                <th className="px-3 py-3 sm:px-6 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                  {t('userTableEmail')}
-                </th>
-                <th className="px-3 py-3 sm:px-6 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                  {t('userTablePassword')}
-                </th>
-                 <th className="px-3 py-3 sm:px-6 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                  {t('userTableRole')}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {displayUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                    {t('noRegisteredUsers')}
-                  </td>
-                </tr>
-              ) : (
-                displayUsers.map((user) => {
-                  const isSuperAdmin = user.username === 'admin';
-                  
-                  return (
-                    <tr key={user.username} className="hover:bg-gray-50 transition-colors">
-                        {/* Status Toggle */}
-                        <td className="px-3 py-3 sm:px-6 whitespace-nowrap">
-                        <button
-                            type="button"
-                            onClick={() => toggleUserStatus(user.username)}
-                            disabled={isSuperAdmin}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0d1a2e] ${
-                                isSuperAdmin ? 'bg-green-500 opacity-50 cursor-not-allowed' : (!user.isDisabled ? 'bg-green-500' : 'bg-gray-300')
-                            }`}
-                        >
-                            <span
-                                className={`${
-                                    !user.isDisabled ? 'translate-x-6' : 'translate-x-1'
-                                } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
-                            />
-                        </button>
-                        <span className="ml-2 text-xs text-gray-500 align-middle hidden sm:inline-block">
-                            {!user.isDisabled ? t('statusActive') : t('statusDisabled')}
-                        </span>
-                        </td>
-                        
-                        {/* Name */}
-                        <td className="px-3 py-3 sm:px-6 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {user.name || 'N/A'} {isSuperAdmin && <span className="text-xs text-gray-400 ml-1 hidden sm:inline">(System)</span>}
-                        </td>
-
-                        {/* Email/Username */}
-                        <td className="px-3 py-3 sm:px-6 whitespace-nowrap text-sm text-gray-500">
-                        {user.username}
-                        </td>
-                        
-                        {/* Password View */}
-                        <td className="px-3 py-3 sm:px-6 whitespace-nowrap text-sm text-gray-700 text-center">
-                            <div className="flex items-center justify-center space-x-2">
-                                <span className="font-mono">
-                                    {visiblePasswords[user.username] ? user.password : t('passwordHidden')}
-                                </span>
-                                <button 
-                                    type="button"
-                                    onClick={() => togglePasswordVisibility(user.username)}
-                                    className="text-gray-400 hover:text-gray-600 focus:outline-none"
-                                >
-                                    {visiblePasswords[user.username] ? <EyeOffIcon className="w-4 h-4 pointer-events-none" /> : <EyeIcon className="w-4 h-4 pointer-events-none" />}
-                                </button>
-                            </div>
-                        </td>
-
-                        {/* Role & Actions Unified */}
-                        <td className="px-3 py-3 sm:px-6 whitespace-nowrap">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2">
-                                    <select
-                                        value={user.role || 'user'}
-                                        onChange={(e) => changeUserRole(user.username, e.target.value as 'admin' | 'user')}
-                                        disabled={isSuperAdmin}
-                                        className={`block w-20 sm:w-32 pl-1 sm:pl-3 pr-4 sm:pr-8 py-1 text-xs sm:text-sm border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm focus:outline-none focus:ring-[#0d1a2e] focus:border-[#0d1a2e] ${isSuperAdmin ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}`}
-                                    >
-                                        <option value="admin">{t('roleAdmin')}</option>
-                                        <option value="user">{t('roleUser')}</option>
-                                    </select>
-                                    
-                                    {/* Only show manage countries for non-admin users or if user is being edited */}
-                                    {(!user.role || user.role === 'user') && (
-                                         <button
-                                            type="button"
-                                            onClick={() => openPermissionsModal(user.username)}
-                                            disabled={isSuperAdmin}
-                                            className={`text-gray-400 hover:text-[#0d1a2e] p-1 ${isSuperAdmin ? 'opacity-0 cursor-default' : ''}`}
-                                            title={t('btnManageCountries')}
-                                         >
-                                            <GlobeIcon className="w-5 h-5" />
-                                         </button>
-                                    )}
-                                </div>
-
-                                <div className="flex items-center space-x-2 ml-4">
-                                    {/* Edit User Info Button */}
-                                    <button
-                                        type="button"
-                                        onClick={() => openEditUserModal(user.username)}
-                                        disabled={isSuperAdmin}
-                                        className={`text-blue-600 hover:text-blue-900 p-1 ${isSuperAdmin ? 'opacity-0 cursor-default' : ''}`}
-                                        title={t('editUserTooltip')}
-                                    >
-                                        <PencilIcon className="w-5 h-5" />
-                                    </button>
-
-                                    {/* Change Password Button */}
-                                    <button
-                                        type="button"
-                                        onClick={() => openPasswordModal(user.username)}
-                                        disabled={isSuperAdmin}
-                                        className={`text-amber-600 hover:text-amber-900 p-1 ${isSuperAdmin ? 'opacity-0 cursor-default' : ''}`}
-                                        title={t('changePasswordTooltip')}
-                                    >
-                                        <KeyIcon className="w-5 h-5" />
-                                    </button>
-
-                                     {/* Delete Button */}
-                                     <button
-                                        type="button"
-                                        onClick={() => deleteUser(user.username)}
-                                        disabled={isSuperAdmin}
-                                        className={`text-red-600 hover:text-red-900 p-1 ${isSuperAdmin ? 'opacity-0 cursor-default' : ''}`}
-                                        title={t('actionDelete')}
-                                    >
-                                        <TrashIcon className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+        <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
+            {/* Fix: changed setShowAdminDashboard to onContinue prop */}
+            <button onClick={onContinue} className="bg-white text-[#0d1a2e] px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-gray-100 shadow-md transition-all active:scale-95 border border-gray-200">{t('goToAppButton')}</button>
+            <button onClick={onLogout} className="bg-red-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-red-700 shadow-md transition-all active:scale-95">{t('logoutButton')}</button>
         </div>
       </div>
 
-      {/* Add User Modal */}
-      {showAddUserModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-              <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('addUserTitle')}</h3>
-                  
-                  <form onSubmit={handleAddUser} className="space-y-4">
-                      <div>
-                          <label className="block text-sm font-medium text-gray-700">{t('fullNamePlaceholder')}</label>
-                          <input
-                            type="text"
-                            required
-                            value={newUser.name}
-                            onChange={(e) => setNewUser(prev => ({...prev, name: e.target.value}))}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#0d1a2e] focus:border-[#0d1a2e] sm:text-sm"
-                          />
-                      </div>
-                       <div>
-                          <label className="block text-sm font-medium text-gray-700">{t('usernamePlaceholder')}</label>
-                          <input
-                            type="text"
-                            required
-                            value={newUser.username}
-                            onChange={(e) => setNewUser(prev => ({...prev, username: e.target.value}))}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#0d1a2e] focus:border-[#0d1a2e] sm:text-sm"
-                          />
-                      </div>
-                      <div>
-                          <label className="block text-sm font-medium text-gray-700">{t('passwordPlaceholder')}</label>
-                          <input
-                            type="password"
-                            required
-                            value={newUser.password}
-                            onChange={(e) => setNewUser(prev => ({...prev, password: e.target.value}))}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#0d1a2e] focus:border-[#0d1a2e] sm:text-sm"
-                          />
-                      </div>
-                      
-                      {/* Role Selection in Add User Modal */}
-                      <div>
-                          <label className="block text-sm font-medium text-gray-700">{t('roleLabel')}</label>
-                          <select
-                            value={newUser.role}
-                            onChange={(e) => setNewUser(prev => ({...prev, role: e.target.value as 'admin' | 'user'}))}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#0d1a2e] focus:border-[#0d1a2e] sm:text-sm"
-                          >
-                              <option value="user">{t('roleUser')}</option>
-                              <option value="admin">{t('roleAdmin')}</option>
-                          </select>
-                      </div>
+      <div className="bg-gray-100 px-8 flex border-b">
+          <button onClick={() => setActiveTab('users')} className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'users' ? 'border-[#0d1a2e] text-[#0d1a2e]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{t('usersTab')}</button>
+          <button onClick={() => setActiveTab('alerts')} className={`px-6 py-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'alerts' ? 'border-[#0d1a2e] text-[#0d1a2e]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{t('alertsTab')}</button>
+      </div>
 
-
-                      {newUserError && <p className="text-red-600 text-xs">{t(newUserError)}</p>}
-
-                      <div className="flex justify-end space-x-3 mt-6">
-                          <button
-                            type="button"
-                            onClick={() => setShowAddUserModal(false)}
-                            className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-sm font-medium"
-                          >
-                              {t('cancelButton')}
-                          </button>
-                          <button
-                            type="submit"
-                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm font-medium"
-                          >
-                              {t('createButton')}
-                          </button>
-                      </div>
-                  </form>
+      <div className="p-8 overflow-y-auto bg-gray-50 flex-grow">
+          {activeTab === 'users' ? (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-100">
+                        <thead className="bg-[#f8fafc]">
+                            <tr>
+                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t('userTableStatus')}</th>
+                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t('userTableName')}</th>
+                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t('userTableEmail')}</th>
+                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t('userTableRole')}</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 bg-white">
+                            {displayUsers.map(user => {
+                                const isSuper = user.username === 'admin';
+                                return (
+                                    <tr key={user.username} className="hover:bg-gray-50/50 transition-colors">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center space-x-3">
+                                                {/* Fix: call toggleUserStatus */}
+                                                <button onClick={() => toggleUserStatus(user.username)} disabled={isSuper} className={`relative h-6 w-11 rounded-full transition-colors ${!user.isDisabled ? 'bg-green-400' : 'bg-gray-300'} disabled:opacity-40`}>
+                                                    <span className={`absolute left-1 top-1 inline-block h-4 w-4 transform bg-white rounded-full transition-transform ${!user.isDisabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                                                </button>
+                                                <span className="text-[13px] font-medium text-gray-400">{user.isDisabled ? t('statusDisabled') : t('statusActive')}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center font-bold text-gray-800">{user.name}</div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">{user.username}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap flex items-center justify-between">
+                                            <span className="text-sm font-medium px-3 py-1 bg-blue-50 text-blue-700 rounded-full">{user.role?.toUpperCase()}</span>
+                                            {!isSuper && (
+                                                <div className="flex gap-2">
+                                                    {/* Fix: call openPermissionsModal and deleteUser */}
+                                                    <button onClick={() => openPermissionsModal(user.username)} className="p-2 text-gray-400 hover:text-blue-600 transition-colors"><GlobeIcon className="w-5 h-5" /></button>
+                                                    <button onClick={() => deleteUser(user.username)} className="p-2 text-gray-400 hover:text-red-600 transition-colors"><TrashIcon className="w-5 h-5" /></button>
+                                                </div>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
               </div>
-          </div>
-      )}
+          ) : (
+              <div className="max-w-2xl mx-auto space-y-6">
+                  <div className="bg-white p-10 rounded-xl shadow-sm border border-gray-200">
+                      <div className="flex items-center space-x-4 mb-8">
+                          <div className="bg-blue-50 p-3 rounded-full"><GlobeIcon className="w-8 h-8 text-blue-600" /></div>
+                          <div>
+                              <h3 className="text-2xl font-bold text-[#0d1a2e]">Servidor Backend</h3>
+                              <p className="text-gray-500 text-sm">Configura la URL donde está alojado tu backend de pings.</p>
+                          </div>
+                      </div>
+                      <div className="space-y-4">
+                          <label className="text-[10px] font-bold text-gray-400 uppercase">URL DEL BACKEND API</label>
+                          <input 
+                            type="text" 
+                            value={backendUrl} 
+                            onChange={e => setBackendUrl(e.target.value)} 
+                            className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm" 
+                            placeholder="https://mi-backend.render.com"
+                          />
+                          <p className="text-[10px] text-gray-400">Si estás en local usa <code>http://localhost:3001</code>. Si estás en la nube usa la URL proporcionada por Render/Railway.</p>
+                      </div>
+                  </div>
 
-      {/* Permissions Modal */}
+                  <div className="bg-white p-10 rounded-xl shadow-sm border border-gray-200">
+                      <div className="flex items-center space-x-4 mb-8">
+                          <div className="bg-red-50 p-3 rounded-full"><ActivityIcon className="w-8 h-8 text-red-600" /></div>
+                          <div>
+                              <h3 className="text-2xl font-bold text-[#0d1a2e]">{t('smtpSettingsTitle')}</h3>
+                              <p className="text-gray-500 text-sm">Configura alertas para {alertConfig.recipient}</p>
+                          </div>
+                      </div>
+                      <form onSubmit={handleSaveAllConfig} className="space-y-6">
+                          <div className="grid grid-cols-2 gap-4">
+                              <div><label className="text-[10px] font-bold text-gray-400 uppercase">Host</label><input type="text" value={alertConfig.host} onChange={e => setAlertConfig({...alertConfig, host: e.target.value})} className="w-full border p-2.5 rounded-lg" /></div>
+                              <div><label className="text-[10px] font-bold text-gray-400 uppercase">Puerto</label><input type="number" value={alertConfig.port} onChange={e => setAlertConfig({...alertConfig, port: parseInt(e.target.value)})} className="w-full border p-2.5 rounded-lg" /></div>
+                          </div>
+                          <div><label className="text-[10px] font-bold text-gray-400 uppercase">Usuario SMTP</label><input type="email" value={alertConfig.user} onChange={e => setAlertConfig({...alertConfig, user: e.target.value})} className="w-full border p-2.5 rounded-lg" /></div>
+                          <div><label className="text-[10px] font-bold text-gray-400 uppercase">Contraseña</label><input type="password" value={alertConfig.pass} onChange={e => setAlertConfig({...alertConfig, pass: e.target.value})} className="w-full border p-2.5 rounded-lg" /></div>
+                          
+                          <div className="flex gap-4 pt-4">
+                              <button type="submit" className="flex-1 bg-[#0d1a2e] text-white py-4 rounded-lg font-bold shadow-lg hover:bg-[#1a2b4e] transition-all flex items-center justify-center"><SaveIcon className="w-5 h-5 mr-2" />{t('saveChangesButton')}</button>
+                              <button type="button" onClick={testEmailConnection} disabled={isTestingEmail} className="flex-1 bg-amber-500 text-white py-4 rounded-lg font-bold shadow-lg hover:bg-amber-600 transition-all flex items-center justify-center disabled:opacity-50">
+                                {isTestingEmail ? "Probando..." : "📧 Probar Email"}
+                              </button>
+                          </div>
+                      </form>
+                  </div>
+              </div>
+          )}
+      </div>
+
+      {/* MODAL: Permisos */}
       {showPermissionsModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-              <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 max-h-[80vh] flex flex-col">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('modalPermissionsTitle')}</h3>
-                  <div className="mb-4 flex justify-end">
-                      <button 
-                        type="button"
-                        onClick={toggleSelectAllCountries}
-                        className="text-sm text-[#0d1a2e] hover:underline font-medium"
-                      >
-                          {t('selectAll')}
-                      </button>
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col max-h-[80vh]">
+                  <div className="p-6 border-b flex justify-between items-center">
+                      <h4 className="text-xl font-bold">{t('modalPermissionsTitle')}</h4>
+                      <button onClick={() => setTempAllowedCountries([...COUNTRIES.map(c => c.code), 'dhl'])} className="text-sm font-bold text-blue-600">Select All</button>
                   </div>
-                  <div className="overflow-y-auto flex-grow border-t border-b border-gray-200 py-4">
-                      <div className="space-y-6">
-                         {/* PriceSmart Section */}
-                         <div>
-                            <h4 className="text-sm font-bold text-gray-700 uppercase mb-2 tracking-wide border-b pb-1">PriceSmart</h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {COUNTRIES.map((country) => (
-                                    <label key={country.code} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded border border-transparent hover:border-gray-200 transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            checked={tempAllowedCountries.includes(country.code)}
-                                            onChange={() => toggleCountryPermission(country.code)}
-                                            className="rounded text-[#0d1a2e] focus:ring-[#0d1a2e] h-4 w-4 border-gray-300 flex-shrink-0"
-                                        />
-                                        <img
-                                            src={`https://flagcdn.com/w40/${country.code}.png`}
-                                            alt={`${country.name} flag`}
-                                            className="w-6 h-auto rounded-sm shadow-sm flex-shrink-0"
-                                        />
-                                        <span className="text-sm text-gray-700 font-medium truncate">{country.name}</span>
-                                    </label>
-                                ))}
-                            </div>
-                         </div>
-
-                         {/* DHL Section */}
-                         <div>
-                            <h4 className="text-sm font-bold text-gray-700 uppercase mb-2 tracking-wide border-b pb-1">DHL</h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <label key={DHL_DATA.code} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded border border-transparent hover:border-gray-200 transition-colors">
-                                    <input
-                                        type="checkbox"
-                                        checked={tempAllowedCountries.includes(DHL_DATA.code)}
-                                        onChange={() => toggleCountryPermission(DHL_DATA.code)}
-                                        className="rounded text-[#0d1a2e] focus:ring-[#0d1a2e] h-4 w-4 border-gray-300 flex-shrink-0"
-                                    />
-                                    <img 
-                                      src="https://www.dhl.com/content/dam/dhl/global/core/images/logos/dhl-logo.svg" 
-                                      alt="DHL Logo" 
-                                      className="w-12 h-auto flex-shrink-0"
-                                    />
-                                    {/* <span className="text-sm text-gray-700 font-medium">{DHL_DATA.name}</span> */}
-                                </label>
-                            </div>
-                         </div>
-                      </div>
+                  <div className="p-6 overflow-y-auto grid grid-cols-2 gap-4">
+                      {COUNTRIES.map(c => (
+                          <label key={c.code} className="flex items-center gap-3 p-2 border rounded hover:bg-gray-50 cursor-pointer">
+                              <input type="checkbox" checked={tempAllowedCountries.includes(c.code)} onChange={() => setTempAllowedCountries(prev => prev.includes(c.code) ? prev.filter(x => x !== c.code) : [...prev, c.code])} />
+                              <span className="text-sm font-medium">{c.name}</span>
+                          </label>
+                      ))}
+                      <label className="flex items-center gap-3 p-2 border rounded hover:bg-gray-50 cursor-pointer col-span-2 bg-yellow-50 border-yellow-200">
+                          <input type="checkbox" checked={tempAllowedCountries.includes('dhl')} onChange={() => setTempAllowedCountries(prev => prev.includes('dhl') ? prev.filter(x => x !== 'dhl') : [...prev, 'dhl'])} />
+                          <span className="text-sm font-bold">DHL GLOBAL</span>
+                      </label>
                   </div>
-                  <div className="flex justify-end space-x-3 mt-6">
-                      <button
-                        type="button"
-                        onClick={() => setShowPermissionsModal(false)}
-                        className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-sm font-medium"
-                      >
-                          {t('cancelButton')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={savePermissions}
-                        className="bg-[#0d1a2e] text-white px-4 py-2 rounded-md hover:bg-[#1a2b4e] text-sm font-medium"
-                      >
-                          {t('savePermissions')}
-                      </button>
+                  <div className="p-6 border-t flex justify-end gap-3">
+                      <button onClick={() => setShowPermissionsModal(false)} className="px-4 py-2 text-gray-400 font-bold">Cerrar</button>
+                      {/* Fix: call savePermissions */}
+                      <button onClick={savePermissions} className="bg-[#0d1a2e] text-white px-6 py-2 rounded-lg font-bold">Guardar</button>
                   </div>
               </div>
           </div>
       )}
-
-      {/* Change Password Modal */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('changePasswordTitle')}</h3>
-                <form onSubmit={handleSavePassword} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">{t('newPasswordLabel')}</label>
-                        <input
-                            type="text"
-                            required
-                            value={newPasswordValue}
-                            onChange={(e) => setNewPasswordValue(e.target.value)}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#0d1a2e] focus:border-[#0d1a2e] sm:text-sm"
-                        />
-                    </div>
-                    <div className="flex justify-end space-x-3 mt-6">
-                        <button
-                            type="button"
-                            onClick={() => setShowPasswordModal(false)}
-                            className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-sm font-medium"
-                        >
-                            {t('cancelButton')}
-                        </button>
-                        <button
-                            type="submit"
-                            className="bg-[#0d1a2e] text-white px-4 py-2 rounded-md hover:bg-[#1a2b4e] text-sm font-medium"
-                        >
-                            {t('updateButton')}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-      )}
-
-      {/* Edit User Info Modal */}
-      {showEditUserModal && editUserData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('editUserTitle')}</h3>
-                <form onSubmit={handleUpdateUser} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">{t('fullNamePlaceholder')}</label>
-                        <input
-                            type="text"
-                            required
-                            value={editUserData.name}
-                            onChange={(e) => setEditUserData({...editUserData, name: e.target.value})}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#0d1a2e] focus:border-[#0d1a2e] sm:text-sm"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">{t('usernamePlaceholder')}</label>
-                        <input
-                            type="text"
-                            required
-                            value={editUserData.username}
-                            onChange={(e) => setEditUserData({...editUserData, username: e.target.value})}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#0d1a2e] focus:border-[#0d1a2e] sm:text-sm"
-                        />
-                    </div>
-
-                    {editUserError && <p className="text-red-600 text-xs">{t(editUserError)}</p>}
-
-                    <div className="flex justify-end space-x-3 mt-6">
-                        <button
-                            type="button"
-                            onClick={() => setShowEditUserModal(false)}
-                            className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 text-sm font-medium"
-                        >
-                            {t('cancelButton')}
-                        </button>
-                        <button
-                            type="submit"
-                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm font-medium"
-                        >
-                            {t('updateButton')}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-      )}
-
     </div>
   );
 };

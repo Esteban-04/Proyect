@@ -2,7 +2,7 @@
 {
   "name": "monitor-backend",
   "version": "1.0.0",
-  "description": "Backend for pinging servers",
+  "description": "Backend for pinging servers and sending email alerts",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -10,6 +10,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2",
-    "ping": "^0.4.4"
+    "ping": "^0.4.4",
+    "nodemailer": "^6.9.7"
   }
 }
