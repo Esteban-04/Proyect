@@ -163,13 +163,12 @@ const ServerStatusSummary: React.FC = () => {
     }, [checkGlobalStatus]);
 
     useEffect(() => {
-        // Ejecución inmediata al montar
+        // Se ejecuta inmediatamente al cargar el sitio.
         checkGlobalStatus();
-        // Se aumenta el intervalo de actualización a 60 segundos para evitar chequeos constantes de 10s
-        const statusInterval = setInterval(() => checkGlobalStatus(false), 60000);
-        const reportInterval = setInterval(() => generateSnapshotReport(), 5 * 60 * 1000);
-        return () => { clearInterval(statusInterval); clearInterval(reportInterval); };
-    }, [checkGlobalStatus, generateSnapshotReport]);
+        
+        // Se han eliminado los intervalos (setInterval) para cumplir con la solicitud de no realizar chequeos periódicos.
+        // La actualización ahora solo se dispara manualmente mediante el botón del modal.
+    }, [checkGlobalStatus]);
 
     const getCountryStats = (): CountryStatus[] => {
         const stats: Record<string, CountryStatus> = {};

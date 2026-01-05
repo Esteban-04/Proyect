@@ -88,7 +88,6 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
         const updated = await Promise.all(listToProcess.map(async (s) => {
             const res = cloudData.results.find((r: any) => r.id === s.id);
-            // Fix: Explicitly type status to match ServerDetails status union
             let status: ServerDetails['status'] = res ? (res.status as ServerDetails['status']) : 'offline';
             if (status === 'offline') {
                 status = await probeLocalVPN(s.ip);
@@ -126,7 +125,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         }
         
         setServers(loadedServers);
-        // Verificación inmediata al entrar al sitio
+        // Verificación INMEDIATA al cargar el sitio
         if (loadedServers.length > 0) {
           checkServerStatus(false, loadedServers);
         }
@@ -140,6 +139,8 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   }, [clubName, configKey, checkServerStatus]);
 
   useEffect(() => { loadCloudData(); }, [loadCloudData]);
+
+  // Se eliminaron todos los intervalos. La verificación ocurre solo al entrar o al presionar el botón.
 
   const handleSave = async () => {
     if (!canEdit) return;
@@ -190,9 +191,15 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       </div>
       
       <div className="mb-6 w-full flex justify-end max-w-6xl items-center gap-4">
-          <button onClick={() => checkServerStatus(true)} disabled={isVerifying} className="flex items-center gap-2 bg-white border border-slate-200 px-5 py-2 rounded-xl shadow-sm hover:bg-slate-50 transition-all group">
+          <button 
+            onClick={() => checkServerStatus(true)} 
+            disabled={isVerifying} 
+            className="flex items-center gap-2 bg-white border border-slate-200 px-5 py-2 rounded-xl shadow-sm hover:bg-slate-50 transition-all group"
+          >
             <ActivityIcon className={`w-4 h-4 text-slate-400 group-hover:text-blue-500 ${isVerifying ? 'animate-spin' : ''}`} />
-            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{isVerifying ? t('statusChecking') : t('checkStatusButton')}</span>
+            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
+                {isVerifying ? t('statusChecking') : t('checkStatusButton')}
+            </span>
           </button>
       </div>
 
