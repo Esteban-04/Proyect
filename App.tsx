@@ -44,6 +44,27 @@ const App: React.FC = () => {
     } catch (error) { return requiredUsers; }
   });
 
+  // Efecto para sincronizar usuarios desde la Nube al inicio
+  useEffect(() => {
+    const syncUsersFromCloud = async () => {
+        try {
+            const savedUrl = localStorage.getItem('saltex_backend_url');
+            const base = savedUrl || window.location.origin;
+            const res = await fetch(`${base}/api/get-users`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.users && data.users.length > 0) {
+                    setUsers(data.users);
+                    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.users));
+                }
+            }
+        } catch (e) {
+            console.warn("Could not sync users from cloud on startup. Using local data.");
+        }
+    };
+    syncUsersFromCloud();
+  }, []);
+
   useEffect(() => { localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users)); }, [users]);
 
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);

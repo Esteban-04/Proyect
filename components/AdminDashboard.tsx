@@ -59,7 +59,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
   useEffect(() => {
     const checkBackend = async () => {
         try {
-            // Use window.location.origin as fallback to ensure relative calls work
             const base = backendUrl || window.location.origin;
             const res = await fetch(`${base}/api/health`);
             if (res.ok) setBackendStatus('online');
@@ -71,6 +70,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
     checkBackend();
     const interval = setInterval(checkBackend, 30000);
     return () => clearInterval(interval);
+  }, [backendUrl]);
+
+  // Cargar configuración de alertas desde la nube al entrar
+  useEffect(() => {
+      const loadAlerts = async () => {
+          try {
+              const base = backendUrl || window.location.origin;
+              const res = await fetch(`${base}/api/get-alert-config`);
+              if (res.ok) {
+                  const data = await res.json();
+                  if (data.config && Object.keys(data.config).length > 0) {
+                      setAlertConfig(data.config);
+                  }
+              }
+          } catch (e) {}
+      };
+      loadAlerts();
   }, [backendUrl]);
 
   const SUPER_ADMIN_USERNAME = 'admin';
@@ -98,19 +114,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
   };
 
   const handleSaveAll = async () => {
+      // 1. Guardar localmente
       localStorage.setItem('saltex_backend_url', backendUrl);
       localStorage.setItem('saltex_alert_config', JSON.stringify(alertConfig));
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users));
       
+      // 2. Sincronizar con la Nube
       try {
           const base = backendUrl || window.location.origin;
+          
+          // Guardar Alertas
           await fetch(`${base}/api/config-alerts`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ config: alertConfig })
           });
-      } catch (err) {}
-      showSuccess(t('globalSaveSuccess'));
+
+          // Guardar Usuarios
+          await fetch(`${base}/api/save-users`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ users: users })
+          });
+
+          showSuccess(t('globalSaveSuccess'));
+      } catch (err) {
+          console.error("Cloud sync error:", err);
+          showSuccess("Error sincronizando con la nube");
+      }
   };
 
   const toggleUserStatus = (username: string) => {
@@ -195,7 +226,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
         <div className="flex flex-col text-center md:text-left">
           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Admin Dashboard</h2>
           <div className="flex items-center justify-center md:justify-start gap-2 mt-1">
-             <p className="text-cyan-400 text-xs sm:text-sm font-medium">User management</p>
+             <p className="text-cyan-400 text-xs sm:text-sm font-medium">Cloud Persistence Active</p>
              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${backendStatus === 'online' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                 <div className={`w-1.5 h-1.5 rounded-full ${backendStatus === 'online' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
                 {backendStatus}
@@ -208,7 +239,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                 <button onClick={() => setLanguage('es')} className={`px-2 py-1 text-[10px] font-bold rounded ${language === 'es' ? 'bg-white text-[#0b1626]' : 'text-white hover:bg-white/5'}`}>ES</button>
                 <button onClick={() => setLanguage('en')} className={`px-2 py-1 text-[10px] font-bold rounded ${language === 'en' ? 'bg-white text-[#0b1626]' : 'text-white hover:bg-white/5'}`}>EN</button>
             </div>
-            <button onClick={handleSaveAll} className="bg-[#2ecc71] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#27ae60] shadow-md transition-all flex items-center gap-2"><SaveIcon className="w-4 h-4" /> <span className="hidden sm:inline">{t('saveChangesButton')}</span></button>
+            <button onClick={handleSaveAll} className="bg-[#2ecc71] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#27ae60] shadow-md transition-all flex items-center gap-2"><SaveIcon className="w-4 h-4" /> <span className="hidden sm:inline">Guardar en la Nube</span></button>
             <button onClick={() => setShowAddUserModal(true)} className="bg-[#3498db] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#2980b9] shadow-md transition-all flex items-center gap-2"><PlusIcon className="w-4 h-4" /> <span className="hidden sm:inline">{t('addUserButton')}</span></button>
             <button onClick={onLogout} className="bg-[#e74c3c] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#c0392b] shadow-md transition-all">{t('logoutButton')}</button>
             <button onClick={onContinue} className="bg-white text-[#0b1626] px-4 py-2 rounded-lg text-xs font-bold hover:bg-gray-100 shadow-md transition-all border border-gray-200">{t('goToAppButton')}</button>

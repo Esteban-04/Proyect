@@ -17,7 +17,7 @@ const DATA_FILE = path.join(__dirname, 'data.json');
 const initDb = () => {
     try {
         if (!fs.existsSync(DATA_FILE)) {
-            fs.writeFileSync(DATA_FILE, JSON.stringify({ configs: {} }, null, 2));
+            fs.writeFileSync(DATA_FILE, JSON.stringify({ configs: {}, users: [], alertConfig: {} }, null, 2));
         }
     } catch (e) {
         console.error("Critical error initializing database:", e);
@@ -30,12 +30,17 @@ app.use(express.json({ limit: '50mb' }));
 
 const readDb = () => {
     try {
-        if (!fs.existsSync(DATA_FILE)) return { configs: {} };
+        if (!fs.existsSync(DATA_FILE)) return { configs: {}, users: [], alertConfig: {} };
         const data = fs.readFileSync(DATA_FILE, 'utf8');
-        return JSON.parse(data);
+        const parsed = JSON.parse(data);
+        return {
+            configs: parsed.configs || {},
+            users: parsed.users || [],
+            alertConfig: parsed.alertConfig || {}
+        };
     } catch (e) {
         console.error("Error reading database:", e);
-        return { configs: {} };
+        return { configs: {}, users: [], alertConfig: {} };
     }
 };
 
@@ -47,6 +52,7 @@ const writeDb = (data) => {
     }
 };
 
+// Endpoints para configuraciones de Sedes/Clubs
 app.post('/api/save-config', (req, res) => {
     try {
         const { key, servers, cameras } = req.body;
@@ -71,6 +77,42 @@ app.get('/api/get-all-configs', (req, res) => {
     res.json(db.configs || {});
 });
 
+// Endpoints para Usuarios (Nube)
+app.get('/api/get-users', (req, res) => {
+    const db = readDb();
+    res.json({ users: db.users });
+});
+
+app.post('/api/save-users', (req, res) => {
+    try {
+        const { users } = req.body;
+        const db = readDb();
+        db.users = users;
+        writeDb(db);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Endpoint para Alertas (Nube)
+app.get('/api/get-alert-config', (req, res) => {
+    const db = readDb();
+    res.json({ config: db.alertConfig });
+});
+
+app.post('/api/config-alerts', (req, res) => {
+    try {
+        const { config } = req.body;
+        const db = readDb();
+        db.alertConfig = config;
+        writeDb(db);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', time: new Date().toISOString(), memory: process.memoryUsage() });
 });
@@ -80,7 +122,6 @@ app.post('/api/check-status', async (req, res) => {
     if (!servers || !Array.isArray(servers)) return res.status(400).json({ error: "Invalid data" });
 
     const results = await Promise.all(servers.map(async (server) => {
-        // El servidor Cloud solo pings a IPs públicas
         if (!server.ip || server.ip.startsWith('192.168') || server.ip.startsWith('10.') || server.ip === 'N/A') {
             return { id: server.id, status: 'offline' };
         }

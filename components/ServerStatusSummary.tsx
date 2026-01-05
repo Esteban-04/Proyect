@@ -210,7 +210,7 @@ const ServerStatusSummary: React.FC = () => {
             >
                 <LightningIcon className={`w-5 h-5 ${totalOffline > 0 ? 'text-white/70' : 'text-white'}`} />
                 <span className="font-bold text-sm tracking-tight">
-                    {checking ? 'Verificando...' : (totalOffline > 0 ? `${totalOffline} Fuera de Línea` : 'Sistemas OK')}
+                    {checking ? t('monitorChecking') : (totalOffline > 0 ? t('monitorOfflineCount', totalOffline) : t('monitorSystemsOk'))}
                 </span>
             </button>
 
@@ -221,9 +221,9 @@ const ServerStatusSummary: React.FC = () => {
                         <div className="bg-[#d32f2f] text-white px-6 py-5 relative shrink-0">
                             <div className="flex items-center gap-3">
                                 <GlobeIcon className="w-6 h-6" />
-                                <h3 className="text-xl font-bold tracking-tight">Monitor de Sitios</h3>
+                                <h3 className="text-xl font-bold tracking-tight">{t('monitorSites')}</h3>
                             </div>
-                            <p className="text-white/80 text-[11px] mt-0.5">Captura en tiempo real - {lastUpdated}</p>
+                            <p className="text-white/80 text-[11px] mt-0.5">{t('monitorRealTime')} - {lastUpdated}</p>
                             <button onClick={() => setShowModal(false)} className="absolute top-1/2 -translate-y-1/2 right-6 hover:opacity-70 transition-opacity">
                                 <XIcon className="w-7 h-7" />
                             </button>
@@ -231,19 +231,19 @@ const ServerStatusSummary: React.FC = () => {
                         
                         <div className="grid grid-cols-1 sm:grid-cols-4 gap-5 p-6 bg-white border-b border-gray-100 shrink-0">
                              <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col">
-                                <p className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">TOTAL SERVIDORES</p>
+                                <p className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">{t('monitorTotalServers')}</p>
                                 <p className="text-5xl font-black text-[#1a2b4e]">{totalServers}</p>
                              </div>
                              <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col">
-                                <p className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">EN LÍNEA</p>
+                                <p className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">{t('monitorOnlineCount')}</p>
                                 <p className="text-5xl font-black text-[#2e7d32]">{totalOnline}</p>
                              </div>
                              <div className="bg-[#fffafa] p-6 rounded-xl border border-red-50 shadow-sm flex flex-col">
-                                <p className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">FUERA DE LÍNEA</p>
+                                <p className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">{t('monitorOfflineLabel')}</p>
                                 <p className="text-5xl font-black text-[#d32f2f]">{totalOffline}</p>
                              </div>
                              <div className="bg-blue-50/20 p-6 rounded-xl border border-blue-50 shadow-sm flex flex-col">
-                                <p className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">DISPONIBILIDAD</p>
+                                <p className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">{t('monitorAvailability')}</p>
                                 <p className="text-5xl font-black text-blue-600">{totalServers > 0 ? ((totalOnline / totalServers) * 100).toFixed(1) : 0}%</p>
                              </div>
                         </div>
@@ -253,7 +253,7 @@ const ServerStatusSummary: React.FC = () => {
                             <div className="flex-1 space-y-6">
                                 <div className="flex items-center gap-2 mb-2">
                                     <GlobeIcon className="w-5 h-5 text-slate-400" />
-                                    <h4 className="text-slate-800 font-black text-lg tracking-tight">Desglose Geográfico</h4>
+                                    <h4 className="text-slate-800 font-black text-lg tracking-tight">{t('monitorGeoBreakdown')}</h4>
                                 </div>
                                 <div className="space-y-4">
                                     {countryStats.map((stat) => (
@@ -266,11 +266,11 @@ const ServerStatusSummary: React.FC = () => {
                                                 <div className="flex items-center">
                                                     {stat.offline > 0 ? (
                                                         <span className="bg-[#ffebee] text-[#d32f2f] px-3 py-1 rounded text-[9px] font-black uppercase tracking-widest">
-                                                            {stat.offline} FUERA DE LÍNEA
+                                                            {t('monitorOfflineCount', stat.offline)}
                                                         </span>
                                                     ) : (
                                                         <span className="bg-[#e8f5e9] text-[#2e7d32] px-3 py-1 rounded text-[9px] font-black uppercase tracking-widest">
-                                                            SISTEMAS OK
+                                                            {t('monitorSystemsOk')}
                                                         </span>
                                                     )}
                                                 </div>
@@ -291,14 +291,14 @@ const ServerStatusSummary: React.FC = () => {
                             <div className="w-full md:w-80 shrink-0 md:border-l md:pl-8 border-gray-200">
                                 <div className="flex items-center gap-2 mb-6">
                                     <FileTextIcon className="w-5 h-5 text-blue-600" />
-                                    <h4 className="text-slate-800 font-black text-lg tracking-tight">Reportes (5 min)</h4>
+                                    <h4 className="text-slate-800 font-black text-lg tracking-tight">{t('monitorReportsTitle')}</h4>
                                 </div>
                                 <div className="space-y-4">
                                     {reports.length === 0 ? (
                                         <div className="bg-slate-50/50 border-2 border-dashed border-slate-100 p-12 rounded-2xl flex flex-col items-center justify-center text-center">
                                             <p className="text-slate-300 text-[10px] font-black uppercase tracking-widest leading-loose">
-                                                ESPERANDO PRIMER REPORTE<br/>
-                                                <span className="bg-blue-600 text-white px-2 py-0.5 rounded ml-1">AUTOMÁTICO...</span>
+                                                {t('monitorWaitingFirstReport')}<br/>
+                                                <span className="bg-blue-600 text-white px-2 py-0.5 rounded ml-1">{t('monitorAutomatic')}...</span>
                                             </p>
                                         </div>
                                     ) : (
@@ -312,17 +312,17 @@ const ServerStatusSummary: React.FC = () => {
                                                 </div>
                                                 <div className="flex gap-6 mb-3">
                                                     <div className="flex flex-col">
-                                                        <span className="text-[9px] text-slate-300 font-black uppercase tracking-widest">ONLINE</span>
+                                                        <span className="text-[9px] text-slate-300 font-black uppercase tracking-widest">{t('monitorOnlineCount')}</span>
                                                         <span className="text-base font-black text-green-600">{report.online}</span>
                                                     </div>
                                                     <div className="flex flex-col">
-                                                        <span className="text-[9px] text-slate-300 font-black uppercase tracking-widest">OFFLINE</span>
+                                                        <span className="text-[9px] text-slate-300 font-black uppercase tracking-widest">{t('monitorOfflineLabel')}</span>
                                                         <span className="text-base font-black text-red-600">{report.offline}</span>
                                                     </div>
                                                 </div>
                                                 {report.offlineList.length > 0 && (
                                                     <div className="border-t border-gray-50 pt-3 mt-2">
-                                                        <p className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Alertas detectadas:</p>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">{t('monitorAlertsDetected')}</p>
                                                         <div className="max-h-24 overflow-y-auto space-y-1.5 pr-2">
                                                             {report.offlineList.slice(0, 5).map((off, i) => (
                                                                 <p key={i} className="text-[9px] font-bold text-red-600 flex items-start gap-1">
@@ -330,7 +330,7 @@ const ServerStatusSummary: React.FC = () => {
                                                                     {off.club}
                                                                 </p>
                                                             ))}
-                                                            {report.offlineList.length > 5 && <p className="text-[8px] text-slate-400 italic font-bold">+ {report.offlineList.length - 5} más...</p>}
+                                                            {report.offlineList.length > 5 && <p className="text-[8px] text-slate-400 italic font-bold">{t('monitorMore', report.offlineList.length - 5)}</p>}
                                                         </div>
                                                     </div>
                                                 )}
@@ -348,13 +348,13 @@ const ServerStatusSummary: React.FC = () => {
                                 className="bg-white border border-slate-200 px-6 py-2.5 rounded-xl font-bold text-sm text-[#1a2b4e] hover:bg-slate-50 transition-all flex items-center gap-2.5"
                             >
                                 <FileTextIcon className="w-4 h-4 text-slate-400" />
-                                Generar Reporte Ahora
+                                {t('monitorGenerateReport')}
                             </button>
                             <button 
                                 onClick={() => setShowModal(false)} 
                                 className="bg-[#0b1626] text-white px-10 py-2.5 rounded-xl font-bold text-sm hover:bg-[#1a2b4e] transition-all shadow-md"
                             >
-                                Cerrar
+                                {t('monitorClose')}
                             </button>
                         </div>
                     </div>

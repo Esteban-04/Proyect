@@ -111,7 +111,6 @@ export const translations = {
     monitorChecking: 'Verificando...',
     monitorOfflineShort: 'Fuera',
     monitorOnlineShort: 'OK',
-    monitorOffline: 'Fuera de Línea',
     monitorOnline: 'En Línea',
     monitorStatusUpdate: 'Actualizando estado...',
     monitorLastUpdate: 'Última actualización',
@@ -121,6 +120,22 @@ export const translations = {
     monitorUpdating: 'Actualizando...',
     monitorUpdateNow: 'Actualizar Ahora',
     monitorClose: 'Cerrar',
+
+    // New Monitor Modal Translations
+    monitorSites: 'Monitor de Sitios',
+    monitorRealTime: 'Captura en tiempo real',
+    monitorOfflineCount: (count: number) => `${count} Fuera de Línea`,
+    monitorSystemsOk: 'Sistemas OK',
+    monitorOnlineCount: 'EN LÍNEA',
+    monitorOfflineLabel: 'FUERA DE LÍNEA',
+    monitorAvailability: 'DISPONIBILIDAD',
+    monitorGeoBreakdown: 'Desglose Geográfico',
+    monitorReportsTitle: 'Reportes (5 min)',
+    monitorGenerateReport: 'Generar Reporte Ahora',
+    monitorWaitingFirstReport: 'ESPERANDO PRIMER REPORTE',
+    monitorAutomatic: 'AUTOMÁTICO',
+    monitorAlertsDetected: 'Alertas detectadas:',
+    monitorMore: (count: number) => `+ ${count} más...`,
 
     // Modal Details
     modalTitle: (serverName: string, city: string) => `Detalles del ${serverName} - ${city}`,
@@ -247,7 +262,6 @@ export const translations = {
     monitorChecking: 'Checking...',
     monitorOfflineShort: 'Off',
     monitorOnlineShort: 'OK',
-    monitorOffline: 'Offline',
     monitorOnline: 'Online',
     monitorStatusUpdate: 'Updating status...',
     monitorLastUpdate: 'Last update',
@@ -257,6 +271,22 @@ export const translations = {
     monitorUpdating: 'Updating...',
     monitorUpdateNow: 'Update Now',
     monitorClose: 'Close',
+
+    // New Monitor Modal Translations
+    monitorSites: 'Sites Monitor',
+    monitorRealTime: 'Real-time capture',
+    monitorOfflineCount: (count: number) => `${count} Offline`,
+    monitorSystemsOk: 'Systems OK',
+    monitorOnlineCount: 'ONLINE',
+    monitorOfflineLabel: 'OFFLINE',
+    monitorAvailability: 'AVAILABILITY',
+    monitorGeoBreakdown: 'Geographic Breakdown',
+    monitorReportsTitle: 'Reports (5 min)',
+    monitorGenerateReport: 'Generate Report Now',
+    monitorWaitingFirstReport: 'WAITING FOR FIRST REPORT',
+    monitorAutomatic: 'AUTOMATIC',
+    monitorAlertsDetected: 'Alerts detected:',
+    monitorMore: (count: number) => `+ ${count} more...`,
 
     // Modal Details
     modalTitle: (serverName: string, city: string) => `${serverName} Details - ${city}`,
