@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { COUNTRIES, DHL_DATA } from '../constants';
 import { CLUB_SPECIFIC_DEFAULTS } from '../config/serverDefaults';
 import { ServerDetails } from '../types';
-import { XIcon, GlobeIcon, ActivityIcon } from '../assets/icons';
+import { XIcon, GlobeIcon } from '../assets/icons';
 import { useLanguage } from '../context/LanguageContext';
 
 interface FlatServer extends ServerDetails {
@@ -60,18 +60,28 @@ const ServerStatusSummary: React.FC = () => {
         return (saved && saved.trim() !== '') ? saved : window.location.origin;
     };
 
-    const probeLocalVPN = (ip: string): Promise<'online' | 'offline'> => {
-        if (!ip || ip.includes('X') || ip === 'N/A' || ip === '0.0.0.0') return Promise.resolve('offline');
-        return new Promise((resolve) => {
-            const img = new Image();
-            const timer = setTimeout(() => { 
-                resolve('offline'); 
-                img.src = ""; 
-            }, 3000);
-            img.onload = () => { clearTimeout(timer); resolve('online'); };
-            img.onerror = () => { clearTimeout(timer); resolve('online'); };
-            img.src = `http://${ip}/favicon.ico?t=${Date.now()}`;
-        });
+    // VERIFICACIÓN MEJORADA: Ahora es mucho más estricta para evitar falsos positivos
+    const probeLocalVPN = async (ip: string): Promise<'online' | 'offline'> => {
+        if (!ip || ip.includes('X') || ip === 'N/A' || ip === '0.0.0.0') return 'offline';
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500); // 2.5 segundos de gracia
+        
+        try {
+            // Intentamos un fetch silencioso. Si hay rechazo de conexión o timeout, es offline.
+            await fetch(`http://${ip}/favicon.ico?t=${Date.now()}`, { 
+                mode: 'no-cors', 
+                signal: controller.signal 
+            });
+            clearTimeout(timeoutId);
+            return 'online';
+        } catch (e) {
+            clearTimeout(timeoutId);
+            // Si el error es por CORS pero hubo respuesta, el navegador lo tira a catch pero es "online"
+            // Sin embargo, si es TypeError (Network Error), es realmente offline.
+            const isNetworkError = e instanceof TypeError;
+            return isNetworkError ? 'offline' : 'online';
+        }
     };
 
     const checkGlobalStatus = useCallback(async (isManual = false) => {
@@ -108,6 +118,7 @@ const ServerStatusSummary: React.FC = () => {
             const cloudResults = cloudCheckRes && cloudCheckRes.ok ? await cloudCheckRes.json() : { results: [] };
             const finalOffline: FlatServer[] = [];
             
+            // Verificación uno a uno
             for (const s of gatheredServers) {
                 if (!s.ip || s.ip.includes('X')) {
                     finalOffline.push(s);
@@ -115,14 +126,20 @@ const ServerStatusSummary: React.FC = () => {
                 }
                 const res = cloudResults.results?.find((r: any) => r.ip === s.ip);
                 let status = res ? res.status : 'offline';
-                if (status === 'offline') status = await probeLocalVPN(s.ip);
-                if (status === 'offline') finalOffline.push(s);
+                
+                // Si la nube dice offline (lo cual pasará con IPs privadas), probamos localmente
+                if (status === 'offline') {
+                    status = await probeLocalVPN(s.ip);
+                }
+                
+                if (status === 'offline') {
+                    finalOffline.push(s);
+                }
             }
 
             setOfflineServers(finalOffline);
             const now = new Date();
-            const timeStr = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
-            setLastUpdated(timeStr);
+            setLastUpdated(now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }));
 
             return { total: gatheredServers.length, offline: finalOffline };
         } catch (error) {
@@ -147,21 +164,15 @@ const ServerStatusSummary: React.FC = () => {
                 offlineList: data.offline.map(s => ({ club: s.club, country: s.country, name: s.name })),
                 percentage: percentage
             };
-            setReports(prev => [newReport, ...prev].slice(0, 20)); // Guardar últimos 20 reportes
+            setReports(prev => [newReport, ...prev].slice(0, 20));
         }
     }, [checkGlobalStatus]);
 
     useEffect(() => {
         checkGlobalStatus();
-        // Verificación cada 10 segundos
         const statusInterval = setInterval(() => checkGlobalStatus(false), 10000);
-        // Reporte resumido cada 5 minutos
         const reportInterval = setInterval(() => generateSnapshotReport(), 5 * 60 * 1000);
-        
-        return () => {
-            clearInterval(statusInterval);
-            clearInterval(reportInterval);
-        };
+        return () => { clearInterval(statusInterval); clearInterval(reportInterval); };
     }, [checkGlobalStatus, generateSnapshotReport]);
 
     const getCountryStats = (): CountryStatus[] => {
@@ -194,106 +205,84 @@ const ServerStatusSummary: React.FC = () => {
         <>
             <button 
                 onClick={() => setShowModal(true)}
-                className={`flex items-center gap-2 px-6 py-2 rounded-xl shadow-lg transition-all border-none ${
-                    totalOffline > 0 ? 'bg-[#8b222a] text-[#ffffff]/90' : 'bg-[#2e7d32] text-white'
+                className={`flex items-center gap-2 px-5 py-2 rounded-xl shadow-lg transition-all border-none ${
+                    totalOffline > 0 ? 'bg-[#8b222a] text-white' : 'bg-[#2e7d32] text-white'
                 } hover:scale-105 active:scale-95`}
             >
-                <LightningIcon className={`w-5 h-5 ${totalOffline > 0 ? 'text-[#ffffff]/60' : 'text-white'}`} />
-                <span className="font-bold text-sm">
+                <LightningIcon className={`w-5 h-5 ${totalOffline > 0 ? 'text-white/70' : 'text-white'}`} />
+                <span className="font-bold text-sm tracking-tight">
                     {checking ? 'Verificando...' : (totalOffline > 0 ? `${totalOffline} Fuera de Línea` : 'Sistemas OK')}
                 </span>
             </button>
 
             {showModal && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-                    <div className="bg-[#f4f7f9] rounded-xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col max-h-[95vh] border border-gray-200">
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
+                    <div className="bg-[#f4f7f9] rounded-xl shadow-2xl w-full max-w-7xl overflow-hidden flex flex-col max-h-[96vh] border border-gray-200">
                         
-                        {/* Header Rojo */}
-                        <div className="bg-[#d32f2f] text-white p-6 relative shrink-0">
+                        {/* Header Rojo IDÉNTICO */}
+                        <div className="bg-[#d32f2f] text-white px-6 py-5 relative shrink-0">
                             <div className="flex items-center gap-3">
                                 <GlobeIcon className="w-6 h-6" />
-                                <h3 className="text-xl font-bold">Monitor de Sitios</h3>
+                                <h3 className="text-xl font-bold tracking-tight">Monitor de Sitios</h3>
                             </div>
-                            <p className="text-white/80 text-xs mt-1">Captura en tiempo real - {lastUpdated}</p>
-                            <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 hover:opacity-70 transition-opacity">
+                            <p className="text-white/80 text-[11px] mt-0.5">Captura en tiempo real - {lastUpdated}</p>
+                            <button onClick={() => setShowModal(false)} className="absolute top-1/2 -translate-y-1/2 right-6 hover:opacity-70 transition-opacity">
                                 <XIcon className="w-7 h-7" />
                             </button>
                         </div>
                         
-                        {/* Dashboard Stats */}
-                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-6 bg-white border-b border-gray-200 shrink-0">
-                             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                                <p className="text-[#6b7c93] text-[10px] font-bold uppercase mb-1">TOTAL SERVIDORES</p>
-                                <p className="text-3xl font-black text-[#1a2b4e]">{totalServers}</p>
+                        {/* Dashboard Stats IDÉNTICO */}
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-5 p-6 bg-white border-b border-gray-100 shrink-0">
+                             <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col">
+                                <p className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">TOTAL SERVIDORES</p>
+                                <p className="text-5xl font-black text-[#1a2b4e]">{totalServers}</p>
                              </div>
-                             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                                <p className="text-[#6b7c93] text-[10px] font-bold uppercase mb-1">EN LÍNEA</p>
-                                <p className="text-3xl font-black text-[#2e7d32]">{totalOnline}</p>
+                             <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col">
+                                <p className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">EN LÍNEA</p>
+                                <p className="text-5xl font-black text-[#2e7d32]">{totalOnline}</p>
                              </div>
-                             <div className="bg-[#fffafa] p-5 rounded-xl border border-red-100 shadow-sm">
-                                <p className="text-[#6b7c93] text-[10px] font-bold uppercase mb-1">FUERA DE LÍNEA</p>
-                                <p className="text-3xl font-black text-[#d32f2f]">{totalOffline}</p>
+                             <div className="bg-[#fffafa] p-6 rounded-xl border border-red-50 shadow-sm flex flex-col">
+                                <p className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">FUERA DE LÍNEA</p>
+                                <p className="text-5xl font-black text-[#d32f2f]">{totalOffline}</p>
                              </div>
-                             <div className="bg-blue-50/30 p-5 rounded-xl border border-blue-100 shadow-sm">
-                                <p className="text-[#6b7c93] text-[10px] font-bold uppercase mb-1">DISPONIBILIDAD</p>
-                                <p className="text-3xl font-black text-blue-600">{totalServers > 0 ? ((totalOnline / totalServers) * 100).toFixed(1) : 0}%</p>
+                             <div className="bg-blue-50/20 p-6 rounded-xl border border-blue-50 shadow-sm flex flex-col">
+                                <p className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">DISPONIBILIDAD</p>
+                                <p className="text-5xl font-black text-blue-600">{totalServers > 0 ? ((totalOnline / totalServers) * 100).toFixed(1) : 0}%</p>
                              </div>
                         </div>
 
-                        {/* Contenido principal */}
+                        {/* Contenido principal IDÉNTICO */}
                         <div className="overflow-y-auto grow p-6 bg-[#fbfcfd] flex flex-col md:flex-row gap-8">
                             
-                            {/* Columna Izquierda: Estado Actual */}
-                            <div className="flex-1 space-y-8">
-                                {totalOffline > 0 && (
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <LightningIcon className="w-5 h-5 text-[#d32f2f]" />
-                                            <h4 className="text-[#b71c1c] font-black text-lg">Alertas Críticas</h4>
-                                        </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            {offlineServers.map((s, idx) => (
-                                                <div key={idx} className="bg-white rounded-lg border-l-4 border-l-[#d32f2f] border border-gray-200 p-4 shadow-sm">
-                                                    <div className="flex justify-between items-start">
-                                                        <div>
-                                                            <p className="font-bold text-[#1a2b4e] text-sm">{s.club}</p>
-                                                            <p className="text-[10px] text-slate-400 font-bold uppercase">{s.country}</p>
-                                                        </div>
-                                                        <span className="text-[9px] font-black text-[#d32f2f] bg-[#ffebee] px-2 py-0.5 rounded uppercase">{s.name}</span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
+                            {/* Columna Izquierda: Desglose */}
+                            <div className="flex-1 space-y-6">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <GlobeIcon className="w-5 h-5 text-slate-400" />
+                                    <h4 className="text-slate-800 font-black text-lg tracking-tight">Desglose Geográfico</h4>
+                                </div>
                                 <div className="space-y-4">
-                                    <h4 className="text-slate-700 font-black text-lg flex items-center gap-2">
-                                        <GlobeIcon className="w-5 h-5 text-slate-400" />
-                                        Desglose Geográfico
-                                    </h4>
                                     {countryStats.map((stat) => (
                                         <div key={stat.name} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                                            <div className="bg-[#f8f9fa] px-6 py-3 flex justify-between items-center border-b border-gray-100">
-                                                <div className="flex items-center gap-3">
-                                                    <img src={`https://flagcdn.com/w40/${stat.code === 'dhl' ? 'un' : stat.code}.png`} className="w-5 rounded-sm" alt="" />
-                                                    <span className="font-bold text-slate-700 text-xs uppercase tracking-wider">{stat.name}</span>
+                                            <div className="bg-[#fcfdfe] px-6 py-3.5 flex justify-between items-center border-b border-gray-50">
+                                                <div className="flex items-center gap-4">
+                                                    <img src={`https://flagcdn.com/w40/${stat.code === 'dhl' ? 'un' : stat.code}.png`} className="w-5 h-auto rounded-sm shadow-sm" alt="" />
+                                                    <span className="font-black text-slate-700 text-xs uppercase tracking-widest">{stat.name}</span>
                                                 </div>
-                                                <div className="flex items-center gap-3">
+                                                <div className="flex items-center">
                                                     {stat.offline > 0 ? (
-                                                        <span className="bg-[#ffebee] text-[#d32f2f] px-2 py-1 rounded text-[9px] font-black uppercase tracking-tighter">
-                                                            {stat.offline} OFFLINE
+                                                        <span className="bg-[#ffebee] text-[#d32f2f] px-3 py-1 rounded text-[9px] font-black uppercase tracking-widest">
+                                                            {stat.offline} FUERA DE LÍNEA
                                                         </span>
                                                     ) : (
-                                                        <span className="bg-[#e8f5e9] text-[#2e7d32] px-2 py-1 rounded text-[9px] font-black uppercase tracking-tighter">
+                                                        <span className="bg-[#e8f5e9] text-[#2e7d32] px-3 py-1 rounded text-[9px] font-black uppercase tracking-widest">
                                                             SISTEMAS OK
                                                         </span>
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="p-3 flex flex-wrap gap-2">
+                                            <div className="p-4 flex flex-wrap gap-2.5">
                                                 {stat.clubs.map((club) => (
-                                                    <div key={club.name} className={`px-2 py-1 rounded border flex items-center gap-2 text-[10px] font-bold ${club.offlineCount > 0 ? 'bg-red-50 border-red-100 text-red-700' : 'bg-green-50/20 border-green-100 text-green-700'}`}>
+                                                    <div key={club.name} className={`px-3 py-1.5 rounded-lg border flex items-center gap-2.5 text-[10px] font-bold ${club.offlineCount > 0 ? 'bg-red-50 border-red-100 text-red-700' : 'bg-green-50/30 border-green-100 text-green-700'}`}>
                                                         <span>{club.name}</span>
                                                         <div className={`w-1.5 h-1.5 rounded-full ${club.offlineCount > 0 ? 'bg-[#d32f2f] animate-pulse' : 'bg-[#2e7d32]'}`}></div>
                                                     </div>
@@ -304,43 +293,50 @@ const ServerStatusSummary: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Columna Derecha: Reportes Históricos (Cada 5 min) */}
-                            <div className="w-full md:w-80 shrink-0 border-l md:pl-8 border-gray-200">
+                            {/* Columna Derecha: Reportes Históricos IDÉNTICO */}
+                            <div className="w-full md:w-80 shrink-0 md:border-l md:pl-8 border-gray-200">
                                 <div className="flex items-center gap-2 mb-6">
                                     <FileTextIcon className="w-5 h-5 text-blue-600" />
-                                    <h4 className="text-slate-800 font-black text-lg">Reportes (5 min)</h4>
+                                    <h4 className="text-slate-800 font-black text-lg tracking-tight">Reportes (5 min)</h4>
                                 </div>
                                 <div className="space-y-4">
                                     {reports.length === 0 ? (
-                                        <div className="bg-slate-50 border border-dashed border-slate-200 p-8 rounded-2xl text-center">
-                                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Esperando primer reporte automático...</p>
+                                        <div className="bg-slate-50/50 border-2 border-dashed border-slate-100 p-12 rounded-2xl flex flex-col items-center justify-center text-center">
+                                            <p className="text-slate-300 text-[10px] font-black uppercase tracking-widest leading-loose">
+                                                ESPERANDO PRIMER REPORTE<br/>
+                                                <span className="bg-blue-600 text-white px-2 py-0.5 rounded ml-1">AUTOMÁTICO...</span>
+                                            </p>
                                         </div>
                                     ) : (
                                         reports.map((report, idx) => (
-                                            <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all">
-                                                <div className="flex justify-between items-center mb-2">
+                                            <div key={idx} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm animate-in slide-in-from-right-4">
+                                                <div className="flex justify-between items-center mb-3">
                                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{report.timestamp}</span>
-                                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${parseFloat(report.percentage) > 95 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                                                        {report.percentage}%
+                                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded ${parseFloat(report.percentage) > 95 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                        {report.percentage}% OK
                                                     </span>
                                                 </div>
-                                                <div className="flex gap-4 mb-3">
+                                                <div className="flex gap-6 mb-3">
                                                     <div className="flex flex-col">
-                                                        <span className="text-[9px] text-slate-400 font-bold uppercase">Online</span>
-                                                        <span className="text-sm font-black text-green-600">{report.online}</span>
+                                                        <span className="text-[9px] text-slate-300 font-black uppercase tracking-widest">ONLINE</span>
+                                                        <span className="text-base font-black text-green-600">{report.online}</span>
                                                     </div>
                                                     <div className="flex flex-col">
-                                                        <span className="text-[9px] text-slate-400 font-bold uppercase">Offline</span>
-                                                        <span className="text-sm font-black text-red-600">{report.offline}</span>
+                                                        <span className="text-[9px] text-slate-300 font-black uppercase tracking-widest">OFFLINE</span>
+                                                        <span className="text-base font-black text-red-600">{report.offline}</span>
                                                     </div>
                                                 </div>
                                                 {report.offlineList.length > 0 && (
-                                                    <div className="border-t pt-2 mt-2">
-                                                        <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Sedes con fallo:</p>
-                                                        <div className="max-h-20 overflow-y-auto space-y-1">
-                                                            {report.offlineList.map((off, i) => (
-                                                                <p key={i} className="text-[9px] font-bold text-red-500">• {off.club} ({off.country})</p>
+                                                    <div className="border-t border-gray-50 pt-3 mt-2">
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Alertas detectadas:</p>
+                                                        <div className="max-h-24 overflow-y-auto space-y-1.5 pr-2">
+                                                            {report.offlineList.slice(0, 5).map((off, i) => (
+                                                                <p key={i} className="text-[9px] font-bold text-red-600 flex items-start gap-1">
+                                                                    <span className="mt-1 w-1 h-1 bg-red-400 rounded-full shrink-0"></span>
+                                                                    {off.club}
+                                                                </p>
                                                             ))}
+                                                            {report.offlineList.length > 5 && <p className="text-[8px] text-slate-400 italic font-bold">+ {report.offlineList.length - 5} más...</p>}
                                                         </div>
                                                     </div>
                                                 )}
@@ -351,19 +347,19 @@ const ServerStatusSummary: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Footer */}
-                        <div className="p-4 border-t bg-white flex justify-end items-center gap-3 shrink-0">
+                        {/* Footer IDÉNTICO */}
+                        <div className="p-5 border-t bg-white flex justify-end items-center gap-4 shrink-0 shadow-lg">
                             <button 
                                 onClick={() => generateSnapshotReport()} 
                                 disabled={checking} 
-                                className="bg-white border border-[#d1d5db] px-5 py-2 rounded-lg font-bold text-sm text-[#1a2b4e] hover:bg-slate-50 transition-colors flex items-center gap-2"
+                                className="bg-white border border-slate-200 px-6 py-2.5 rounded-xl font-bold text-sm text-[#1a2b4e] hover:bg-slate-50 transition-all flex items-center gap-2.5"
                             >
-                                <FileTextIcon className="w-4 h-4" />
+                                <FileTextIcon className="w-4 h-4 text-slate-400" />
                                 Generar Reporte Ahora
                             </button>
                             <button 
                                 onClick={() => setShowModal(false)} 
-                                className="bg-[#0b1626] text-white px-8 py-2 rounded-lg font-bold text-sm hover:opacity-90 transition-opacity"
+                                className="bg-[#0b1626] text-white px-10 py-2.5 rounded-xl font-bold text-sm hover:bg-[#1a2b4e] transition-all shadow-md"
                             >
                                 Cerrar
                             </button>
