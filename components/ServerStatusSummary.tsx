@@ -14,11 +14,13 @@ interface FlatServer extends ServerDetails {
 
 interface CountryStatus {
     name: string;
+    code: string;
     total: number;
     offline: number;
     clubs: {
         name: string;
         offlineCount: number;
+        totalInClub: number;
     }[];
 }
 
@@ -28,7 +30,7 @@ const ServerStatusSummary: React.FC = () => {
     const [offlineServers, setOfflineServers] = useState<FlatServer[]>([]);
     const [checking, setChecking] = useState(false);
     const [showModal, setShowModal] = useState(false);
-    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    const [lastUpdated, setLastUpdated] = useState<string>('');
 
     const getBackendUrl = () => {
         const saved = localStorage.getItem('saltex_backend_url');
@@ -42,8 +44,7 @@ const ServerStatusSummary: React.FC = () => {
             const timer = setTimeout(() => { 
                 resolve('offline'); 
                 img.src = ""; 
-            }, 3000);
-            
+            }, 3500);
             img.onload = () => { clearTimeout(timer); resolve('online'); };
             img.onerror = () => { clearTimeout(timer); resolve('online'); };
             img.src = `http://${ip}/favicon.ico?t=${Date.now()}`;
@@ -57,11 +58,6 @@ const ServerStatusSummary: React.FC = () => {
         
         try {
             const cloudRes = await fetch(`${backendUrl}/api/get-all-configs`);
-            const contentType = cloudRes.headers.get("content-type");
-            if (!cloudRes.ok || !contentType || !contentType.includes("application/json")) {
-                throw new Error("Invalid backend response");
-            }
-            
             const allConfigs = await cloudRes.json();
             let gatheredServers: FlatServer[] = [];
 
@@ -69,9 +65,7 @@ const ServerStatusSummary: React.FC = () => {
                 const configKey = `config_${countryCode}_${club.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 const config = allConfigs[configKey] || { servers: CLUB_SPECIFIC_DEFAULTS[club] || [] };
                 config.servers.forEach((s: any) => {
-                    if (s.ip && !s.ip.includes('X')) {
-                        gatheredServers.push({ ...s, club, country: countryName, countryCode });
-                    }
+                    gatheredServers.push({ ...s, club, country: countryName, countryCode });
                 });
             };
 
@@ -83,7 +77,7 @@ const ServerStatusSummary: React.FC = () => {
             const cloudCheckRes = await fetch(`${backendUrl}/api/check-status`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ servers: gatheredServers.map((s, i) => ({ id: i, ip: s.ip })) })
+                body: JSON.stringify({ servers: gatheredServers.filter(s => s.ip && !s.ip.includes('X')).map((s, i) => ({ id: i, ip: s.ip })) })
             }).catch(() => null);
 
             const cloudResults = cloudCheckRes && cloudCheckRes.ok ? await cloudCheckRes.json() : { results: [] };
@@ -91,20 +85,19 @@ const ServerStatusSummary: React.FC = () => {
             
             for (let i = 0; i < gatheredServers.length; i++) {
                 const s = gatheredServers[i];
-                const res = cloudResults.results?.find((r: any) => r.id === i);
-                let status = res ? res.status : 'offline';
-
-                if (status === 'offline') {
-                    status = await probeLocalVPN(s.ip);
-                }
-
-                if (status === 'offline') {
+                if (!s.ip || s.ip.includes('X')) {
                     finalOffline.push(s);
+                    continue;
                 }
+                const res = cloudResults.results?.find((r: any) => r.ip === s.ip);
+                let status = res ? res.status : 'offline';
+                if (status === 'offline') status = await probeLocalVPN(s.ip);
+                if (status === 'offline') finalOffline.push(s);
             }
 
             setOfflineServers(finalOffline);
-            setLastUpdated(new Date());
+            const now = new Date();
+            setLastUpdated(now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }).toLowerCase());
         } catch (error) {
             console.error("Global monitor error:", error);
         } finally {
@@ -114,126 +107,160 @@ const ServerStatusSummary: React.FC = () => {
 
     useEffect(() => {
         checkGlobalStatus();
-        // Verificación global cada 30 segundos para mantener el resumen actualizado
-        const interval = setInterval(checkGlobalStatus, 30000);
+        const interval = setInterval(checkGlobalStatus, 15000);
         return () => clearInterval(interval);
     }, [checkGlobalStatus]);
 
     const getCountryStats = (): CountryStatus[] => {
         const stats: Record<string, CountryStatus> = {};
         allServers.forEach(server => {
-            if (!stats[server.country]) stats[server.country] = { name: server.country, total: 0, offline: 0, clubs: [] };
+            if (!stats[server.country]) {
+                stats[server.country] = { name: server.country, code: server.countryCode, total: 0, offline: 0, clubs: [] };
+            }
             stats[server.country].total++;
             const isOffline = offlineServers.some(os => os.ip === server.ip && os.club === server.club);
             if (isOffline) stats[server.country].offline++;
+
             let clubEntry = stats[server.country].clubs.find(c => c.name === server.club);
             if (!clubEntry) {
-                clubEntry = { name: server.club, offlineCount: 0 };
+                clubEntry = { name: server.club, offlineCount: 0, totalInClub: 0 };
                 stats[server.country].clubs.push(clubEntry);
             }
+            clubEntry.totalInClub++;
             if (isOffline) clubEntry.offlineCount++;
         });
-        return Object.values(stats).sort((a, b) => b.offline - a.offline);
+        return Object.values(stats);
     };
 
     const countryStats = getCountryStats();
-    const hasIssues = offlineServers.length > 0;
+    const onlineCount = allServers.length - offlineServers.length;
 
     return (
         <>
             <button 
                 onClick={() => setShowModal(true)}
-                className={`flex items-center space-x-2 text-xs sm:text-sm font-black px-4 py-2 rounded-xl shadow-lg transition-all border ${
-                    checking ? 'bg-blue-50 text-blue-600 border-blue-200 animate-pulse' : 
-                    hasIssues ? 'bg-red-600 text-white border-red-700' : 'bg-green-600 text-white border-green-700'
+                className={`flex items-center space-x-2 text-sm font-black px-4 py-2 rounded-xl shadow-lg transition-all border ${
+                    checking ? 'bg-blue-50 text-blue-600 border-blue-200' : 
+                    offlineServers.length > 0 ? 'bg-red-600 text-white border-red-700' : 'bg-green-600 text-white border-green-700'
                 }`}
             >
-                {checking ? <div className="w-4 h-4 border-2 border-blue-400 border-t-blue-600 rounded-full animate-spin"></div> : <ActivityIcon className="w-5 h-5" />}
-                <span className="hidden md:inline uppercase tracking-widest text-[10px]">
-                    {checking ? 'Sincronizando' : (hasIssues ? `${offlineServers.length} Problemas` : 'Sistemas OK')}
-                </span>
-                <span className="md:hidden">
-                     {checking ? '...' : (hasIssues ? `${offlineServers.length} OFF` : 'OK')}
+                {checking ? <div className="w-4 h-4 border-2 border-blue-400 border-t-blue-600 rounded-full animate-spin"></div> : <GlobeIcon className="w-5 h-5" />}
+                <span className="uppercase tracking-widest text-[10px]">
+                    {checking ? 'Verificando' : (offlineServers.length > 0 ? `${offlineServers.length} Alertas` : 'Sistemas OK')}
                 </span>
             </button>
 
             {showModal && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]">
-                        <div className={`${hasIssues ? 'bg-red-600' : 'bg-[#0d1a2e]'} text-white p-8 flex justify-between items-center`}>
-                            <div>
-                                <h3 className="font-black text-2xl uppercase italic tracking-tighter flex items-center"><GlobeIcon className="w-8 h-8 mr-3" />Monitor de Infraestructura</h3>
-                                <p className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] mt-1">{checking ? 'Validando conexiones remotas...' : `Último Escaneo: ${lastUpdated?.toLocaleTimeString() || '--:--'}`}</p>
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-[#f4f7f9] rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[92vh]">
+                        {/* Header Rojo */}
+                        <div className="bg-[#d32f2f] text-white p-6 relative">
+                            <div className="flex items-center gap-3">
+                                <GlobeIcon className="w-7 h-7" />
+                                <h3 className="text-2xl font-bold tracking-tight">Monitor de Sitios</h3>
                             </div>
-                            <button onClick={() => setShowModal(false)} className="bg-white/10 p-2 rounded-full hover:bg-white/20"><XIcon className="w-8 h-8" /></button>
+                            <p className="text-white/80 text-sm mt-1">Última actualización: {lastUpdated}</p>
+                            <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 hover:opacity-70 transition-opacity">
+                                <XIcon className="w-8 h-8" />
+                            </button>
                         </div>
                         
-                        <div className="p-8 bg-slate-50 border-b flex flex-wrap gap-6">
-                             <div className="flex-1 min-w-[180px] bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                                <div className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] mb-2">Nodos Totales</div>
-                                <div className="text-4xl font-black text-slate-800 tracking-tighter italic">{allServers.length}</div>
+                        {/* Tarjetas de Resumen */}
+                        <div className="grid grid-cols-3 gap-4 p-6 bg-white border-b border-gray-100">
+                             <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">TOTAL SERVIDORES</p>
+                                <p className="text-5xl font-black text-slate-800">{allServers.length}</p>
                              </div>
-                             <div className="flex-1 min-w-[180px] bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                                <div className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] mb-2">Estables</div>
-                                <div className="text-4xl font-black text-green-600 tracking-tighter italic">{allServers.length - offlineServers.length}</div>
+                             <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">EN LÍNEA</p>
+                                <p className="text-5xl font-black text-green-600">{onlineCount}</p>
                              </div>
-                             <div className={`flex-1 min-w-[180px] bg-white p-6 rounded-3xl shadow-sm border ${hasIssues ? 'border-red-200 bg-red-50' : 'border-slate-100'}`}>
-                                <div className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] mb-2">Alertas Críticas</div>
-                                <div className={`text-4xl font-black tracking-tighter italic ${hasIssues ? 'text-red-600' : 'text-slate-200'}`}>{offlineServers.length}</div>
+                             <div className="bg-white p-6 rounded-xl border border-red-100 bg-red-50/30 shadow-sm">
+                                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">FUERA DE LÍNEA</p>
+                                <p className="text-5xl font-black text-red-600">{offlineServers.length}</p>
                              </div>
                         </div>
 
-                        <div className="overflow-y-auto flex-grow p-8 space-y-8 bg-white">
-                            {hasIssues && (
+                        <div className="overflow-y-auto grow p-6 space-y-8">
+                            {/* Servidores con problemas */}
+                            {offlineServers.length > 0 && (
                                 <div>
-                                    <h4 className="text-red-600 font-black text-sm uppercase tracking-[0.2em] mb-4 flex items-center"><ActivityIcon className="w-5 h-5 mr-2" />Nodos Fuera de Servicio</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <ActivityIcon className="w-5 h-5 text-red-600" />
+                                        <h4 className="text-red-700 font-bold text-lg">Servidores con problemas</h4>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                                         {offlineServers.map((s, idx) => (
-                                            <div key={idx} className="bg-slate-900 rounded-2xl p-4 border border-white/5 shadow-xl group">
-                                                <div className="font-black text-white text-xs truncate group-hover:text-red-400 transition-colors">{s.club}</div>
-                                                <div className="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1">{s.country}</div>
-                                                <div className="mt-3 text-[10px] font-mono text-red-500 bg-red-500/10 p-2 rounded-lg border border-red-500/20">{s.ip}</div>
+                                            <div key={idx} className="bg-white rounded-lg border-l-4 border-l-red-600 border border-gray-100 p-4 shadow-sm flex flex-col justify-between">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <p className="font-bold text-slate-800 text-sm">{s.club}</p>
+                                                        <p className="text-[10px] text-slate-400">{s.country}</p>
+                                                    </div>
+                                                    <span className="text-[9px] font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded uppercase tracking-tighter">FUERA DE LÍNEA</span>
+                                                </div>
+                                                <div className="bg-slate-50 p-2 rounded text-[11px] font-mono text-slate-500 border border-slate-100">
+                                                    {s.name}: {s.ip}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
-                            <div>
-                                <h4 className="text-slate-800 font-black text-sm uppercase tracking-[0.2em] mb-6">Estado de Infraestructura Regional</h4>
-                                <div className="space-y-4">
-                                    {countryStats.map((stat) => (
-                                        <div key={stat.name} className="bg-slate-50 rounded-[2rem] border border-slate-100 overflow-hidden">
-                                            <div className="bg-white px-8 py-5 flex justify-between items-center border-b border-slate-100">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="font-black text-slate-800 uppercase italic tracking-tighter">{stat.name}</span>
-                                                </div>
-                                                <div className="flex items-center gap-4">
-                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.total} Nodos</span>
-                                                    {stat.offline > 0 ? (
-                                                        <span className="bg-red-500 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest animate-pulse">{stat.offline} Alertas</span>
-                                                    ) : (
-                                                        <span className="bg-green-500 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Estable</span>
-                                                    )}
-                                                </div>
+
+                            {/* Desglose por País */}
+                            <div className="space-y-4">
+                                {countryStats.map((stat) => (
+                                    <div key={stat.name} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                                        <div className="bg-slate-50/50 px-6 py-3 flex justify-between items-center border-b border-gray-100">
+                                            <div className="flex items-center gap-3">
+                                                <img src={`https://flagcdn.com/w20/${stat.code}.png`} className="w-5 rounded-sm" alt="" />
+                                                <span className="font-bold text-slate-700 text-sm">{stat.name}</span>
                                             </div>
-                                            <div className="p-6 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
-                                                {stat.clubs.map((club) => (
-                                                    <div key={club.name} className={`text-[9px] p-3 rounded-xl border flex flex-col gap-2 font-black uppercase tracking-tighter transition-all ${club.offlineCount > 0 ? 'bg-red-500 text-white border-red-600 shadow-lg shadow-red-500/20' : 'bg-white border-slate-200 text-slate-400 opacity-60'}`}>
-                                                        <span className="truncate">{club.name}</span>
-                                                        <div className={`h-1 rounded-full w-full ${club.offlineCount > 0 ? 'bg-white/40' : 'bg-slate-200'}`}>
-                                                            <div className={`h-full rounded-full ${club.offlineCount > 0 ? 'bg-white' : 'bg-green-500'}`} style={{ width: '100%' }}></div>
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                            <div className="flex items-center gap-4">
+                                                <span className="text-[11px] text-slate-400 font-medium">{stat.total} Servers</span>
+                                                {stat.offline > 0 ? (
+                                                    <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-[10px] font-bold uppercase">{stat.offline} Fuera de Línea</span>
+                                                ) : (
+                                                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-bold uppercase">100% En Línea</span>
+                                                )}
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
+                                        <div className="p-4 flex flex-wrap gap-2">
+                                            {stat.clubs.map((club) => (
+                                                <div 
+                                                    key={club.name} 
+                                                    className={`px-3 py-1.5 rounded-lg border flex items-center gap-2 text-[11px] font-medium transition-all ${
+                                                        club.offlineCount > 0 
+                                                        ? 'bg-red-50 border-red-100 text-red-700' 
+                                                        : 'bg-green-50/30 border-green-100 text-green-700'
+                                                    }`}
+                                                >
+                                                    <span>{club.name}</span>
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${club.offlineCount > 0 ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                        <div className="p-8 border-t bg-slate-50 flex justify-end items-center gap-4">
-                            <button onClick={checkGlobalStatus} disabled={checking} className="bg-white border-2 border-slate-200 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all hover:bg-slate-100 active:scale-95 disabled:opacity-50">Sincronizar</button>
-                            <button onClick={() => setShowModal(false)} className="bg-[#0d1a2e] text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-slate-800 active:scale-95">Cerrar Monitor</button>
+
+                        {/* Footer con Botones */}
+                        <div className="p-4 border-t bg-white flex justify-end items-center gap-3">
+                            <button 
+                                onClick={checkGlobalStatus} 
+                                disabled={checking} 
+                                className="bg-white border border-gray-200 px-6 py-2.5 rounded-lg font-bold text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                            >
+                                {checking ? 'Actualizando...' : 'Actualizar Ahora'}
+                            </button>
+                            <button 
+                                onClick={() => setShowModal(false)} 
+                                className="bg-[#0b1626] text-white px-8 py-2.5 rounded-lg font-bold text-sm hover:bg-slate-800 transition-colors"
+                            >
+                                Cerrar
+                            </button>
                         </div>
                     </div>
                 </div>
