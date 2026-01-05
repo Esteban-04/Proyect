@@ -36,7 +36,6 @@ const TVIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBack, canEdit }) => {
   const { t } = useLanguage();
-  const [selectedServer, setSelectedServer] = useState<ServerDetails | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [serverToDelete, setServerToDelete] = useState<number | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -71,29 +70,24 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
   useEffect(() => { loadCloudData(); }, [loadCloudData]);
 
-  // Detector de VPN local mejorado con mayor timeout y lógica de error robusta
-  const probeLocalVPN = (ip: string): Promise<'online' | 'offline'> => {
+  const probeLocalVPN = useCallback((ip: string): Promise<'online' | 'offline'> => {
       if (!ip || ip.includes('X') || ip === 'N/A' || ip === '0.0.0.0') return Promise.resolve('offline');
       return new Promise((resolve) => {
           const img = new Image();
-          const timeout = 5000; // Aumentado a 5 segundos para conexiones VPN lentas
+          const timeout = 4000;
           const timer = setTimeout(() => { 
-              img.src = ""; // Abortar
+              img.src = ""; 
               resolve('offline'); 
           }, timeout);
-
           img.onload = () => { clearTimeout(timer); resolve('online'); };
-          // En navegadores, si hay un error de conexión pero es rápido, suele significar que la IP es alcanzable
-          // pero el servidor web no está activo, lo cual es suficiente para marcarlo como "online" en contexto de VPN.
           img.onerror = () => { clearTimeout(timer); resolve('online'); };
           img.src = `http://${ip}/favicon.ico?t=${Date.now()}`;
       });
-  };
+  }, []);
 
-  const checkServerStatus = async (isManual = false) => {
+  const checkServerStatus = useCallback(async (isManual = false) => {
     if (isVerifying || servers.length === 0) return;
     setIsVerifying(true);
-    setServers(prev => prev.map(s => ({ ...s, status: 'checking' })));
     const backendUrl = getBackendUrl();
 
     try {
@@ -117,7 +111,15 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
     } finally {
         setIsVerifying(false);
     }
-  };
+  }, [isVerifying, servers, probeLocalVPN, t]);
+
+  // Efecto para verificación automática cada 10 segundos
+  useEffect(() => {
+    const timer = setInterval(() => {
+        checkServerStatus(false);
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [checkServerStatus]);
 
   const handleSave = async () => {
     if (!canEdit) return;
@@ -154,27 +156,27 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
   const confirmDeleteServer = () => { if (serverToDelete !== null) { setServers(prev => prev.filter(s => s.id !== serverToDelete)); setServerToDelete(null); } };
 
-  const inputStyle = "bg-transparent border-none text-white focus:ring-1 focus:ring-blue-500/50 rounded px-1 transition-all outline-none w-full placeholder-white/20";
+  const inputStyle = "bg-transparent border-none text-white focus:ring-1 focus:ring-blue-500/30 rounded px-1 transition-all outline-none w-full placeholder-white/10";
 
   return (
-    <div className="w-full flex flex-col items-center relative px-2 py-4 bg-gray-50/10">
+    <div className="w-full flex flex-col items-center relative px-2 py-2 bg-transparent">
       {successMessage && <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] bg-green-500 text-white px-8 py-4 rounded-2xl shadow-2xl font-black animate-bounce text-sm uppercase">{successMessage}</div>}
       
-      <div className="flex flex-col items-center justify-center mb-12 text-center">
-        <div className="flex items-center gap-4 mb-2">
-            <img src={`https://flagcdn.com/w80/${country.code}.png`} className="h-8 rounded-sm shadow-md" alt="Flag" />
-            <h2 className="text-5xl font-black text-[#0d1a2e] tracking-tighter uppercase italic">{clubName}</h2>
+      <div className="flex flex-col items-center justify-center mb-6 text-center">
+        <div className="flex items-center gap-3 mb-1">
+            <img src={`https://flagcdn.com/w80/${country.code}.png`} className="h-6 rounded-sm" alt="Flag" />
+            <h2 className="text-3xl font-black text-[#0d1a2e] tracking-tight uppercase italic">{clubName}</h2>
         </div>
       </div>
       
-      <div className="mb-10 w-full flex justify-end max-w-6xl items-center gap-4">
-          <button onClick={() => checkServerStatus(true)} disabled={isVerifying} className="flex items-center gap-2 bg-white border border-slate-200 px-8 py-3 rounded-2xl shadow-sm hover:bg-slate-50 transition-all group">
-            <ActivityIcon className={`w-5 h-5 text-slate-400 group-hover:text-blue-500 ${isVerifying ? 'animate-spin' : ''}`} />
-            <span className="text-xs font-black text-slate-600 uppercase tracking-widest">{isVerifying ? t('statusChecking') : t('checkStatusButton')}</span>
+      <div className="mb-6 w-full flex justify-end max-w-6xl items-center gap-4">
+          <button onClick={() => checkServerStatus(true)} disabled={isVerifying} className="flex items-center gap-2 bg-white border border-slate-200 px-5 py-2 rounded-xl shadow-sm hover:bg-slate-50 transition-all group">
+            <ActivityIcon className={`w-4 h-4 text-slate-400 group-hover:text-blue-500 ${isVerifying ? 'animate-spin' : ''}`} />
+            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{isVerifying ? t('statusChecking') : t('checkStatusButton')}</span>
           </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full max-w-7xl px-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-6xl px-4">
         {servers.map((server, index) => {
             const isOddTotal = servers.length % 2 !== 0;
             const isFirstAndOdd = index === 0 && isOddTotal;
@@ -183,102 +185,102 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
             return (
                 <div 
                     key={server.id} 
-                    className={`group bg-[#0d1a2e] rounded-3xl p-10 text-white shadow-2xl relative border border-white/5 transition-all duration-300 ${isFirstAndOdd ? 'md:col-span-2' : ''}`}
+                    className={`group bg-[#0d1a2e] rounded-2xl p-6 text-white shadow-xl relative border border-white/5 transition-all duration-300 ${isFirstAndOdd ? 'md:col-span-2' : ''}`}
                 >
-                    <div className="absolute top-8 left-8">
-                        <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border-2 ${server.status === 'online' ? 'bg-green-600/20 border-green-500/30 text-green-400' : 'bg-red-600/20 border-red-500/30 text-red-400'}`}>
-                            <div className={`w-2.5 h-2.5 rounded-full ${server.status === 'online' ? 'bg-green-400 shadow-[0_0_10px_#4ade80]' : 'bg-red-400 shadow-[0_0_10px_#f87171]'}`}></div>
-                            <span className="text-[11px] font-black tracking-[0.1em] uppercase">{server.status === 'online' ? t('statusOnline') : t('statusOffline')}</span>
+                    <div className="absolute top-5 left-5">
+                        <div className={`flex items-center gap-2 px-3 py-1 rounded-lg border ${server.status === 'online' ? 'bg-green-600/20 border-green-500/30 text-green-400' : 'bg-red-600/20 border-red-500/30 text-red-400'}`}>
+                            <div className={`w-2 h-2 rounded-full ${server.status === 'online' ? 'bg-green-400 shadow-[0_0_8px_#4ade80]' : 'bg-red-400 shadow-[0_0_8px_#f87171]'}`}></div>
+                            <span className="text-[9px] font-black tracking-widest uppercase">{server.status === 'online' ? t('statusOnline') : t('statusOffline')}</span>
                         </div>
                     </div>
 
                     {canEdit && (
-                        <button onClick={(e) => { e.stopPropagation(); setServerToDelete(server.id); }} className="absolute top-8 right-8 text-slate-600 hover:text-red-400 transition-colors p-2">
-                            <TrashIcon className="w-6 h-6" />
+                        <button onClick={(e) => { e.stopPropagation(); setServerToDelete(server.id); }} className="absolute top-5 right-5 text-slate-600 hover:text-red-400 transition-colors">
+                            <TrashIcon className="w-5 h-5" />
                         </button>
                     )}
                     
-                    <div className="mt-12">
-                        <div className="text-center mb-12">
+                    <div className="mt-8">
+                        <div className="text-center mb-6">
                             <input 
                               value={serverTitle}
                               onChange={(e) => handleServerFieldChange(server.id, 'name', e.target.value)}
                               readOnly={!canEdit}
-                              className="text-2xl font-black uppercase tracking-[0.25em] text-white/90 bg-transparent border-none text-center focus:ring-0 w-full outline-none"
+                              className="text-lg font-black uppercase tracking-[0.2em] text-white/90 bg-transparent border-none text-center focus:ring-0 w-full outline-none"
                             />
-                            <div className="w-full h-px bg-white/10 mt-8"></div>
+                            <div className="w-full h-px bg-white/5 mt-4"></div>
                         </div>
 
-                        <div className={`space-y-12 ${isFirstAndOdd ? 'grid md:grid-cols-2 md:gap-x-16 md:space-y-0' : ''}`}>
-                            <div className="space-y-6">
-                                <div className="flex items-center gap-3 text-slate-400">
-                                    <MonitorIcon className="w-5 h-5" />
-                                    <span className="text-xs font-black uppercase tracking-widest leading-none">{t('remoteDesktopLabel')}</span>
+                        <div className={`space-y-6 ${isFirstAndOdd ? 'grid md:grid-cols-2 md:gap-x-12 md:space-y-0' : ''}`}>
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 text-slate-500">
+                                    <MonitorIcon className="w-4 h-4" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest leading-none">{t('remoteDesktopLabel')}</span>
                                 </div>
-                                <div className="pl-8 space-y-4">
+                                <div className="pl-6 space-y-2">
                                     <input 
                                       value={server.ip || ''} 
                                       onChange={(e) => handleServerFieldChange(server.id, 'ip', e.target.value)}
                                       readOnly={!canEdit}
                                       placeholder="192.168.0.1"
-                                      className={`${inputStyle} text-3xl font-black tracking-tight`}
+                                      className={`${inputStyle} text-2xl font-black tracking-tight`}
                                     />
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-slate-400 font-bold uppercase shrink-0">{t('userLabel')}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] text-slate-500 font-bold uppercase shrink-0">{t('userLabel')}</span>
                                         <input 
                                           value={server.user || ''} 
                                           onChange={(e) => handleServerFieldChange(server.id, 'user', e.target.value)}
                                           readOnly={!canEdit}
-                                          className={`${inputStyle} text-base font-bold`}
+                                          className={`${inputStyle} text-sm font-bold`}
                                         />
                                     </div>
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3 w-full">
-                                            <span className="text-xs text-slate-400 font-bold uppercase shrink-0">{t('finalPasswordLabel')}</span>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2 w-full">
+                                            <span className="text-[10px] text-slate-500 font-bold uppercase shrink-0">{t('finalPasswordLabel')}</span>
                                             <input 
                                               type={visiblePasswords[`srv_${server.id}_p`] ? 'text' : 'password'}
                                               value={server.password || ''} 
                                               onChange={(e) => handleServerFieldChange(server.id, 'password', e.target.value)}
                                               readOnly={!canEdit}
-                                              className={`${inputStyle} text-base font-bold tracking-widest`}
+                                              className={`${inputStyle} text-sm font-bold tracking-widest`}
                                             />
                                         </div>
-                                        <button onClick={(e) => toggleVisibility(e, `srv_${server.id}_p`)} className="text-slate-500 hover:text-white transition-colors">
-                                            {visiblePasswords[`srv_${server.id}_p`] ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                                        <button onClick={(e) => toggleVisibility(e, `srv_${server.id}_p`)} className="text-slate-600 hover:text-white transition-colors">
+                                            {visiblePasswords[`srv_${server.id}_p`] ? <EyeOffIcon className="h-4 h-4" /> : <EyeIcon className="h-4 h-4" />}
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className={`space-y-6 pt-10 border-t border-white/5 ${isFirstAndOdd ? 'md:pt-0 md:border-t-0 md:border-l md:pl-16' : ''}`}>
-                                <div className="flex items-center gap-3 text-slate-400">
-                                    <TVIcon className="w-5 h-5" />
-                                    <span className="text-xs font-black uppercase tracking-widest leading-none">TeamViewer:</span>
+                            <div className={`space-y-4 pt-6 border-t border-white/5 ${isFirstAndOdd ? 'md:pt-0 md:border-t-0 md:border-l md:pl-10' : ''}`}>
+                                <div className="flex items-center gap-2 text-slate-500">
+                                    <TVIcon className="w-4 h-4" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest leading-none">TeamViewer:</span>
                                 </div>
-                                <div className="pl-8 space-y-4">
-                                    <div className="flex items-center gap-4">
-                                        <span className="text-xs text-slate-400 font-bold uppercase shrink-0">{t('idLabel')}</span>
+                                <div className="pl-6 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] text-slate-500 font-bold uppercase shrink-0">{t('idLabel')}</span>
                                         <input 
                                           value={server.teamviewerId || ''} 
                                           onChange={(e) => handleServerFieldChange(server.id, 'teamviewerId', e.target.value)}
                                           readOnly={!canEdit}
-                                          placeholder="674 654 075"
-                                          className={`${inputStyle} text-2xl font-black tracking-tight`}
+                                          placeholder="000 000 000"
+                                          className={`${inputStyle} text-xl font-black tracking-tight`}
                                         />
                                     </div>
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3 w-full">
-                                            <span className="text-xs text-slate-400 font-bold uppercase shrink-0">{t('finalPasswordLabel')}</span>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2 w-full">
+                                            <span className="text-[10px] text-slate-500 font-bold uppercase shrink-0">{t('finalPasswordLabel')}</span>
                                             <input 
                                               type={visiblePasswords[`srv_${server.id}_tv`] ? 'text' : 'password'}
                                               value={server.teamviewerPassword || ''} 
                                               onChange={(e) => handleServerFieldChange(server.id, 'teamviewerPassword', e.target.value)}
                                               readOnly={!canEdit}
-                                              className={`${inputStyle} text-base font-bold tracking-widest`}
+                                              className={`${inputStyle} text-sm font-bold tracking-widest`}
                                             />
                                         </div>
-                                        <button onClick={(e) => toggleVisibility(e, `srv_${server.id}_tv`)} className="text-slate-500 hover:text-white transition-colors">
-                                            {visiblePasswords[`srv_${server.id}_tv`] ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                                        <button onClick={(e) => toggleVisibility(e, `srv_${server.id}_tv`)} className="text-slate-600 hover:text-white transition-colors">
+                                            {visiblePasswords[`srv_${server.id}_tv`] ? <EyeOffIcon className="h-4 h-4" /> : <EyeIcon className="h-4 h-4" />}
                                         </button>
                                     </div>
                                 </div>
@@ -290,16 +292,16 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         })}
       </div>
 
-      <div className="mt-20 mb-16 w-full max-w-4xl flex flex-col sm:flex-row gap-6 justify-center px-4">
-        <button onClick={onBack} className="w-full sm:w-56 bg-white text-[#0d1a2e] border-2 border-slate-200 font-black py-5 rounded-2xl shadow-xl hover:bg-slate-50 transition-all uppercase tracking-widest text-xs">{t('backButton')}</button>
+      <div className="mt-12 mb-8 w-full max-w-4xl flex flex-col sm:flex-row gap-4 justify-center px-4">
+        <button onClick={onBack} className="w-full sm:w-48 bg-white text-[#0d1a2e] border-2 border-slate-200 font-black py-3 rounded-xl shadow-lg hover:bg-slate-50 transition-all uppercase tracking-widest text-[10px]">{t('backButton')}</button>
         {canEdit && (
             <>
-                <button onClick={handleAddServer} className="w-full sm:w-72 bg-blue-600 text-white font-black py-5 rounded-2xl shadow-2xl hover:bg-blue-700 transition-all flex items-center justify-center text-xs uppercase tracking-widest gap-3">
-                    <PlusIcon className="w-6 h-6" />
+                <button onClick={handleAddServer} className="w-full sm:w-56 bg-blue-600 text-white font-black py-3 rounded-xl shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center text-[10px] uppercase tracking-widest gap-2">
+                    <PlusIcon className="w-4 h-4" />
                     {t('addServerButton')}
                 </button>
-                <button onClick={handleSave} className="w-full sm:w-56 bg-[#0d1a2e] text-white font-black py-5 rounded-2xl shadow-2xl hover:bg-slate-800 transition-all flex items-center justify-center text-xs uppercase tracking-widest gap-3">
-                    <SaveIcon className="w-6 h-6" />
+                <button onClick={handleSave} className="w-full sm:w-48 bg-[#0d1a2e] text-white font-black py-3 rounded-xl shadow-xl hover:bg-slate-800 transition-all flex items-center justify-center text-[10px] uppercase tracking-widest gap-2">
+                    <SaveIcon className="w-4 h-4" />
                     {t('saveButton')}
                 </button>
             </>
@@ -308,11 +310,11 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
       {serverToDelete !== null && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl">
-              <div className="bg-white p-14 rounded-[2.5rem] shadow-2xl max-w-md w-full text-center border border-slate-100">
-                  <h3 className="text-3xl font-black text-[#0d1a2e] mb-6 uppercase italic tracking-tighter">{t('deleteServerConfirm')}</h3>
-                  <div className="flex gap-4 mt-10">
-                      <button onClick={() => setServerToDelete(null)} className="flex-1 py-5 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest">{t('noButton')}</button>
-                      <button onClick={confirmDeleteServer} className="flex-1 py-5 bg-red-600 text-white rounded-2xl font-black text-xs uppercase shadow-2xl tracking-widest">{t('yesButton')}</button>
+              <div className="bg-white p-10 rounded-[2rem] shadow-2xl max-sm w-full text-center border border-slate-100">
+                  <h3 className="text-2xl font-black text-[#0d1a2e] mb-6 uppercase italic tracking-tighter">{t('deleteServerConfirm')}</h3>
+                  <div className="flex gap-4 mt-8">
+                      <button onClick={() => setServerToDelete(null)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest">{t('noButton')}</button>
+                      <button onClick={confirmDeleteServer} className="flex-1 py-4 bg-red-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-2xl tracking-widest">{t('yesButton')}</button>
                   </div>
               </div>
           </div>

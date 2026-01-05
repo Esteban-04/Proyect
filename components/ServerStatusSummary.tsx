@@ -30,7 +30,6 @@ const ServerStatusSummary: React.FC = () => {
     const [showModal, setShowModal] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-    // Obtener la URL del backend desde el almacenamiento o usar relativa
     const getBackendUrl = () => {
         const saved = localStorage.getItem('saltex_backend_url');
         return (saved && saved.trim() !== '') ? saved : window.location.origin;
@@ -43,10 +42,10 @@ const ServerStatusSummary: React.FC = () => {
             const timer = setTimeout(() => { 
                 resolve('offline'); 
                 img.src = ""; 
-            }, 3500); // Tiempo de espera para red local
+            }, 3000);
             
             img.onload = () => { clearTimeout(timer); resolve('online'); };
-            img.onerror = () => { clearTimeout(timer); resolve('online'); }; // Si hay error de carga, hubo contacto con la IP
+            img.onerror = () => { clearTimeout(timer); resolve('online'); };
             img.src = `http://${ip}/favicon.ico?t=${Date.now()}`;
         });
     };
@@ -57,13 +56,10 @@ const ServerStatusSummary: React.FC = () => {
         const backendUrl = getBackendUrl();
         
         try {
-            // 1. Obtener configuraciones desde el Cloud
             const cloudRes = await fetch(`${backendUrl}/api/get-all-configs`);
-            
-            // Validar que la respuesta sea JSON
             const contentType = cloudRes.headers.get("content-type");
             if (!cloudRes.ok || !contentType || !contentType.includes("application/json")) {
-                throw new Error("Respuesta del servidor no es JSON válido");
+                throw new Error("Invalid backend response");
             }
             
             const allConfigs = await cloudRes.json();
@@ -84,8 +80,6 @@ const ServerStatusSummary: React.FC = () => {
 
             setAllServers(gatheredServers);
 
-            // 2. Verificación Híbrida
-            // Primero intentamos por el backend (para IPs públicas)
             const cloudCheckRes = await fetch(`${backendUrl}/api/check-status`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -95,13 +89,11 @@ const ServerStatusSummary: React.FC = () => {
             const cloudResults = cloudCheckRes && cloudCheckRes.ok ? await cloudCheckRes.json() : { results: [] };
             const finalOffline: FlatServer[] = [];
             
-            // Verificamos cada servidor (Loteado para no saturar)
             for (let i = 0; i < gatheredServers.length; i++) {
                 const s = gatheredServers[i];
                 const res = cloudResults.results?.find((r: any) => r.id === i);
                 let status = res ? res.status : 'offline';
 
-                // Si el Cloud dice offline, probamos localmente (VPN)
                 if (status === 'offline') {
                     status = await probeLocalVPN(s.ip);
                 }
@@ -122,7 +114,8 @@ const ServerStatusSummary: React.FC = () => {
 
     useEffect(() => {
         checkGlobalStatus();
-        const interval = setInterval(checkGlobalStatus, 1000 * 60 * 10); // Cada 10 min
+        // Verificación global cada 30 segundos para mantener el resumen actualizado
+        const interval = setInterval(checkGlobalStatus, 30000);
         return () => clearInterval(interval);
     }, [checkGlobalStatus]);
 
