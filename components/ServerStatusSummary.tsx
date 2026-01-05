@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { COUNTRIES, DHL_DATA } from '../constants';
 import { CLUB_SPECIFIC_DEFAULTS } from '../config/serverDefaults';
 import { ServerDetails } from '../types';
-import { ActivityIcon, XIcon, GlobeIcon } from '../assets/icons';
+import { XIcon, GlobeIcon } from '../assets/icons';
 import { useLanguage } from '../context/LanguageContext';
 
 interface FlatServer extends ServerDetails {
@@ -24,6 +24,12 @@ interface CountryStatus {
     }[];
 }
 
+const LightningIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+  </svg>
+);
+
 const ServerStatusSummary: React.FC = () => {
     const { t } = useLanguage();
     const [allServers, setAllServers] = useState<FlatServer[]>([]);
@@ -31,6 +37,7 @@ const ServerStatusSummary: React.FC = () => {
     const [checking, setChecking] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<string>('');
+    const checkingRef = useRef(false);
 
     const getBackendUrl = () => {
         const saved = localStorage.getItem('saltex_backend_url');
@@ -44,15 +51,16 @@ const ServerStatusSummary: React.FC = () => {
             const timer = setTimeout(() => { 
                 resolve('offline'); 
                 img.src = ""; 
-            }, 3500);
+            }, 3000);
             img.onload = () => { clearTimeout(timer); resolve('online'); };
             img.onerror = () => { clearTimeout(timer); resolve('online'); };
             img.src = `http://${ip}/favicon.ico?t=${Date.now()}`;
         });
     };
 
-    const checkGlobalStatus = useCallback(async () => {
-        if (checking) return;
+    const checkGlobalStatus = useCallback(async (isManual = false) => {
+        if (checkingRef.current && !isManual) return;
+        checkingRef.current = true;
         setChecking(true);
         const backendUrl = getBackendUrl();
         
@@ -74,17 +82,17 @@ const ServerStatusSummary: React.FC = () => {
 
             setAllServers(gatheredServers);
 
+            const serversToPing = gatheredServers.filter(s => s.ip && !s.ip.includes('X'));
             const cloudCheckRes = await fetch(`${backendUrl}/api/check-status`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ servers: gatheredServers.filter(s => s.ip && !s.ip.includes('X')).map((s, i) => ({ id: i, ip: s.ip })) })
+                body: JSON.stringify({ servers: serversToPing.map((s, i) => ({ id: i, ip: s.ip })) })
             }).catch(() => null);
 
             const cloudResults = cloudCheckRes && cloudCheckRes.ok ? await cloudCheckRes.json() : { results: [] };
             const finalOffline: FlatServer[] = [];
             
-            for (let i = 0; i < gatheredServers.length; i++) {
-                const s = gatheredServers[i];
+            for (const s of gatheredServers) {
                 if (!s.ip || s.ip.includes('X')) {
                     finalOffline.push(s);
                     continue;
@@ -97,17 +105,18 @@ const ServerStatusSummary: React.FC = () => {
 
             setOfflineServers(finalOffline);
             const now = new Date();
-            setLastUpdated(now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }).toLowerCase());
+            setLastUpdated(now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }));
         } catch (error) {
             console.error("Global monitor error:", error);
         } finally {
             setChecking(false);
+            checkingRef.current = false;
         }
-    }, [checking]);
+    }, []);
 
     useEffect(() => {
         checkGlobalStatus();
-        const interval = setInterval(checkGlobalStatus, 15000);
+        const interval = setInterval(() => checkGlobalStatus(false), 10000);
         return () => clearInterval(interval);
     }, [checkGlobalStatus]);
 
@@ -118,7 +127,7 @@ const ServerStatusSummary: React.FC = () => {
                 stats[server.country] = { name: server.country, code: server.countryCode, total: 0, offline: 0, clubs: [] };
             }
             stats[server.country].total++;
-            const isOffline = offlineServers.some(os => os.ip === server.ip && os.club === server.club);
+            const isOffline = offlineServers.some(os => os.ip === server.ip && os.club === server.club && os.name === server.name);
             if (isOffline) stats[server.country].offline++;
 
             let clubEntry = stats[server.country].clubs.find(c => c.name === server.club);
@@ -133,73 +142,76 @@ const ServerStatusSummary: React.FC = () => {
     };
 
     const countryStats = getCountryStats();
-    const onlineCount = allServers.length - offlineServers.length;
+    const totalServers = allServers.length;
+    const totalOffline = offlineServers.length;
+    const totalOnline = totalServers - totalOffline;
 
     return (
         <>
+            {/* Botón Rojo Principal idéntico a la imagen */}
             <button 
                 onClick={() => setShowModal(true)}
-                className={`flex items-center space-x-2 text-sm font-black px-4 py-2 rounded-xl shadow-lg transition-all border ${
-                    checking ? 'bg-blue-50 text-blue-600 border-blue-200' : 
-                    offlineServers.length > 0 ? 'bg-red-600 text-white border-red-700' : 'bg-green-600 text-white border-green-700'
-                }`}
+                className={`flex items-center gap-2 px-6 py-2 rounded-xl shadow-lg transition-all border-none ${
+                    totalOffline > 0 ? 'bg-[#8b222a] text-[#ffffff]/90' : 'bg-[#2e7d32] text-white'
+                } hover:scale-105 active:scale-95`}
             >
-                {checking ? <div className="w-4 h-4 border-2 border-blue-400 border-t-blue-600 rounded-full animate-spin"></div> : <GlobeIcon className="w-5 h-5" />}
-                <span className="uppercase tracking-widest text-[10px]">
-                    {checking ? 'Verificando' : (offlineServers.length > 0 ? `${offlineServers.length} Alertas` : 'Sistemas OK')}
+                <LightningIcon className={`w-5 h-5 ${totalOffline > 0 ? 'text-[#ffffff]/60' : 'text-white'}`} />
+                <span className="font-bold text-sm">
+                    {checking ? 'Verificando...' : (totalOffline > 0 ? `${totalOffline} Fuera de Línea` : 'Sistemas OK')}
                 </span>
             </button>
 
             {showModal && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-[#f4f7f9] rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[92vh]">
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                    <div className="bg-[#f4f7f9] rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[92vh] border border-gray-200">
+                        
                         {/* Header Rojo */}
-                        <div className="bg-[#d32f2f] text-white p-6 relative">
+                        <div className="bg-[#d32f2f] text-white p-6 relative shrink-0">
                             <div className="flex items-center gap-3">
-                                <GlobeIcon className="w-7 h-7" />
-                                <h3 className="text-2xl font-bold tracking-tight">Monitor de Sitios</h3>
+                                <GlobeIcon className="w-6 h-6" />
+                                <h3 className="text-xl font-bold">Monitor de Sitios</h3>
                             </div>
-                            <p className="text-white/80 text-sm mt-1">Última actualización: {lastUpdated}</p>
+                            <p className="text-white/80 text-xs mt-1">Última actualización: {lastUpdated}</p>
                             <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 hover:opacity-70 transition-opacity">
-                                <XIcon className="w-8 h-8" />
+                                <XIcon className="w-7 h-7" />
                             </button>
                         </div>
                         
                         {/* Tarjetas de Resumen */}
-                        <div className="grid grid-cols-3 gap-4 p-6 bg-white border-b border-gray-100">
-                             <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">TOTAL SERVIDORES</p>
-                                <p className="text-5xl font-black text-slate-800">{allServers.length}</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-6 bg-white border-b border-gray-200 shrink-0">
+                             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                                <p className="text-[#6b7c93] text-[11px] font-bold uppercase mb-2">TOTAL SERVIDORES</p>
+                                <p className="text-4xl font-bold text-[#1a2b4e]">{totalServers}</p>
                              </div>
-                             <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">EN LÍNEA</p>
-                                <p className="text-5xl font-black text-green-600">{onlineCount}</p>
+                             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                                <p className="text-[#6b7c93] text-[11px] font-bold uppercase mb-2">EN LÍNEA</p>
+                                <p className="text-4xl font-bold text-[#2e7d32]">{totalOnline}</p>
                              </div>
-                             <div className="bg-white p-6 rounded-xl border border-red-100 bg-red-50/30 shadow-sm">
-                                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">FUERA DE LÍNEA</p>
-                                <p className="text-5xl font-black text-red-600">{offlineServers.length}</p>
+                             <div className="bg-[#fffafa] p-6 rounded-xl border border-red-100 shadow-sm">
+                                <p className="text-[#6b7c93] text-[11px] font-bold uppercase mb-2">FUERA DE LÍNEA</p>
+                                <p className="text-4xl font-bold text-[#d32f2f]">{totalOffline}</p>
                              </div>
                         </div>
 
-                        <div className="overflow-y-auto grow p-6 space-y-8">
+                        {/* Contenido principal con scroll */}
+                        <div className="overflow-y-auto grow p-6 space-y-8 bg-[#fbfcfd]">
+                            
                             {/* Servidores con problemas */}
-                            {offlineServers.length > 0 && (
+                            {totalOffline > 0 && (
                                 <div>
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <ActivityIcon className="w-5 h-5 text-red-600" />
-                                        <h4 className="text-red-700 font-bold text-lg">Servidores con problemas</h4>
+                                    <div className="flex items-center gap-2 mb-5">
+                                        <LightningIcon className="w-5 h-5 text-[#d32f2f]" />
+                                        <h4 className="text-[#b71c1c] font-bold text-lg">Servidores con problemas</h4>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                                         {offlineServers.map((s, idx) => (
-                                            <div key={idx} className="bg-white rounded-lg border-l-4 border-l-red-600 border border-gray-100 p-4 shadow-sm flex flex-col justify-between">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <div>
-                                                        <p className="font-bold text-slate-800 text-sm">{s.club}</p>
-                                                        <p className="text-[10px] text-slate-400">{s.country}</p>
-                                                    </div>
-                                                    <span className="text-[9px] font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded uppercase tracking-tighter">FUERA DE LÍNEA</span>
+                                            <div key={idx} className="bg-white rounded-lg border-l-4 border-l-[#d32f2f] border border-gray-100 p-4 shadow-sm relative">
+                                                <div className="mb-4">
+                                                    <p className="font-bold text-[#1a2b4e] text-base">{s.club}</p>
+                                                    <p className="text-xs text-slate-400">{s.country}</p>
                                                 </div>
-                                                <div className="bg-slate-50 p-2 rounded text-[11px] font-mono text-slate-500 border border-slate-100">
+                                                <span className="absolute top-4 right-4 text-[9px] font-bold text-[#d32f2f] bg-[#ffebee] px-2 py-0.5 rounded uppercase">FUERA DE LÍNEA</span>
+                                                <div className="bg-[#f8f9fa] p-2 rounded text-[11px] font-mono text-slate-500 border border-slate-100">
                                                     {s.name}: {s.ip}
                                                 </div>
                                             </div>
@@ -212,17 +224,25 @@ const ServerStatusSummary: React.FC = () => {
                             <div className="space-y-4">
                                 {countryStats.map((stat) => (
                                     <div key={stat.name} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                                        <div className="bg-slate-50/50 px-6 py-3 flex justify-between items-center border-b border-gray-100">
+                                        <div className="bg-[#f8f9fa] px-6 py-3 flex justify-between items-center border-b border-gray-100">
                                             <div className="flex items-center gap-3">
-                                                <img src={`https://flagcdn.com/w20/${stat.code}.png`} className="w-5 rounded-sm" alt="" />
+                                                <img 
+                                                  src={`https://flagcdn.com/w40/${stat.code === 'dhl' ? 'un' : stat.code}.png`} 
+                                                  className="w-5 h-auto rounded-sm" 
+                                                  alt="" 
+                                                />
                                                 <span className="font-bold text-slate-700 text-sm">{stat.name}</span>
                                             </div>
                                             <div className="flex items-center gap-4">
                                                 <span className="text-[11px] text-slate-400 font-medium">{stat.total} Servers</span>
                                                 {stat.offline > 0 ? (
-                                                    <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-[10px] font-bold uppercase">{stat.offline} Fuera de Línea</span>
+                                                    <span className="bg-[#ffebee] text-[#d32f2f] px-3 py-1 rounded-lg text-[10px] font-bold">
+                                                        {stat.offline} Fuera de Línea
+                                                    </span>
                                                 ) : (
-                                                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-bold uppercase">100% En Línea</span>
+                                                    <span className="bg-[#e8f5e9] text-[#2e7d32] px-3 py-1 rounded-lg text-[10px] font-bold">
+                                                        100% En Línea
+                                                    </span>
                                                 )}
                                             </div>
                                         </div>
@@ -232,12 +252,12 @@ const ServerStatusSummary: React.FC = () => {
                                                     key={club.name} 
                                                     className={`px-3 py-1.5 rounded-lg border flex items-center gap-2 text-[11px] font-medium transition-all ${
                                                         club.offlineCount > 0 
-                                                        ? 'bg-red-50 border-red-100 text-red-700' 
-                                                        : 'bg-green-50/30 border-green-100 text-green-700'
+                                                        ? 'bg-[#fff5f5] border-red-100 text-[#d32f2f]' 
+                                                        : 'bg-[#e8f5e9]/20 border-green-100 text-[#2e7d32]'
                                                     }`}
                                                 >
                                                     <span>{club.name}</span>
-                                                    <div className={`w-1.5 h-1.5 rounded-full ${club.offlineCount > 0 ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${club.offlineCount > 0 ? 'bg-[#d32f2f]' : 'bg-[#2e7d32]'}`}></div>
                                                 </div>
                                             ))}
                                         </div>
@@ -246,18 +266,18 @@ const ServerStatusSummary: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Footer con Botones */}
-                        <div className="p-4 border-t bg-white flex justify-end items-center gap-3">
+                        {/* Footer con Botones Estilizados */}
+                        <div className="p-4 border-t bg-white flex justify-end items-center gap-3 shrink-0">
                             <button 
-                                onClick={checkGlobalStatus} 
+                                onClick={() => checkGlobalStatus(true)} 
                                 disabled={checking} 
-                                className="bg-white border border-gray-200 px-6 py-2.5 rounded-lg font-bold text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                                className="bg-white border border-[#d1d5db] px-5 py-2 rounded-lg font-bold text-sm text-[#1a2b4e] hover:bg-slate-50 transition-colors"
                             >
                                 {checking ? 'Actualizando...' : 'Actualizar Ahora'}
                             </button>
                             <button 
                                 onClick={() => setShowModal(false)} 
-                                className="bg-[#0b1626] text-white px-8 py-2.5 rounded-lg font-bold text-sm hover:bg-slate-800 transition-colors"
+                                className="bg-[#0b1626] text-white px-8 py-2 rounded-lg font-bold text-sm hover:opacity-90 transition-opacity"
                             >
                                 Cerrar
                             </button>
