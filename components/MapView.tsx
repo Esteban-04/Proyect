@@ -13,6 +13,7 @@ const MapView: React.FC<MapViewProps> = ({ countries, selectedCountryCode, onSel
   const { t } = useLanguage();
   const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
 
+  // Coordenadas calibradas para el centro de cada país en el SVG
   const markerPositions: Record<string, { x: number, y: number }> = {
     'gt': { x: 195, y: 242 },
     'hn': { x: 222, y: 238 },
@@ -55,17 +56,16 @@ const MapView: React.FC<MapViewProps> = ({ countries, selectedCountryCode, onSel
   return (
     <div className="relative w-full aspect-[4/3] sm:aspect-[2/1] bg-slate-50 rounded-2xl overflow-hidden border border-slate-200 shadow-inner select-none">
       
-      <div className="absolute top-4 left-4 sm:top-8 sm:left-10 z-10 pointer-events-none">
+      <div className="absolute top-4 left-4 z-10 pointer-events-none">
         <div className="flex items-center gap-2 mb-1">
-            <div className="w-2 h-2 sm:w-3 sm:h-3 bg-blue-600 rounded-full animate-pulse shadow-[0_0_10px_rgba(37,99,235,0.5)]"></div>
-            <h3 className="text-[#0d1a2e] font-black text-xl sm:text-3xl tracking-tighter uppercase leading-none">Global Monitor</h3>
+            <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse shadow-[0_0_10px_rgba(37,99,235,0.5)]"></div>
+            <h3 className="text-[#0d1a2e] font-black text-xl tracking-tighter uppercase leading-none">Mapa de Monitoreo</h3>
         </div>
-        <p className="text-slate-400 text-[9px] sm:text-[11px] font-bold tracking-[0.2em] sm:tracking-[0.3em] uppercase">{t('monitorSummaryCountry')}</p>
       </div>
 
       <svg 
         viewBox="0 0 1000 500" 
-        className="w-full h-full object-contain sm:object-fill"
+        className="w-full h-full object-contain"
         xmlns="http://www.w3.org/2000/svg"
       >
         <rect width="1000" height="500" fill="#f8fafc" />
@@ -118,10 +118,12 @@ const MapView: React.FC<MapViewProps> = ({ countries, selectedCountryCode, onSel
                     cx={pos.x}
                     cy={pos.y}
                     r={isSelected ? 8 : isHovered ? 7 : 6}
-                    className="transition-all duration-300 shadow-xl"
+                    className="transition-all duration-300"
                     fill={isSelected || isHovered ? '#2563eb' : '#94a3b8'}
                     stroke="#ffffff"
                     strokeWidth="2"
+                    onMouseEnter={() => setHoveredCountry(country.code)}
+                    onMouseLeave={() => setHoveredCountry(null)}
                 />
             </g>
           );
@@ -146,36 +148,19 @@ const MapView: React.FC<MapViewProps> = ({ countries, selectedCountryCode, onSel
             }}
             className="absolute z-30 pointer-events-none -translate-y-[115%] -translate-x-1/2 flex flex-col items-center animate-in fade-in slide-in-from-bottom-2 duration-300"
           >
-            <div className="bg-white px-3 py-2 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl shadow-2xl border border-slate-100 flex items-center gap-2 sm:gap-4 min-w-[140px] sm:min-w-[180px]">
-                <div className="w-8 h-5 sm:w-10 sm:h-7 overflow-hidden rounded-md border border-slate-200 shadow-sm flex-shrink-0">
+            <div className="bg-white px-3 py-2 rounded-xl shadow-2xl border border-slate-100 flex items-center gap-2 min-w-[140px]">
+                <div className="w-8 h-5 overflow-hidden rounded-md border border-slate-200 flex-shrink-0">
                     <img src={`https://flagcdn.com/w40/${country.code}.png`} className="w-full h-full object-cover" />
                 </div>
                 <div className="flex flex-col flex-grow">
-                    <span className="text-[10px] sm:text-[12px] font-black text-slate-900 uppercase tracking-tight truncate max-w-[100px] sm:max-w-[120px]">{country.name}</span>
-                    <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5">
-                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-500 rounded-full"></div>
-                        <span className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider">{country.count} Sites</span>
-                    </div>
+                    <span className="text-[10px] font-black text-slate-900 uppercase truncate">{country.name}</span>
+                    <span className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">{country.count} Sedes</span>
                 </div>
             </div>
-            <div className="w-2 h-2 sm:w-3 sm:h-3 bg-white border-r border-b border-slate-100 rotate-45 -mt-1 sm:-mt-1.5"></div>
+            <div className="w-2 h-2 bg-white border-r border-b border-slate-100 rotate-45 -mt-1"></div>
           </div>
         );
       })}
-
-      <div className="absolute bottom-4 right-4 sm:bottom-8 sm:right-10 flex flex-col gap-2">
-          <div className="bg-white/90 backdrop-blur-md px-3 py-2 sm:px-6 sm:py-4 rounded-xl sm:rounded-2xl border border-slate-200 shadow-xl flex items-center gap-3 sm:gap-6">
-            <div className="flex items-center gap-2">
-                <div className="w-2 h-2 sm:w-3 sm:h-3 bg-blue-600 rounded-full"></div>
-                <span className="text-[8px] sm:text-[11px] font-black text-slate-700 uppercase tracking-widest">Active Site</span>
-            </div>
-            <div className="w-px h-4 sm:h-6 bg-slate-200"></div>
-            <div className="flex items-center gap-2">
-                <div className="w-2 h-2 sm:w-3 sm:h-3 bg-slate-300 rounded-full"></div>
-                <span className="text-[8px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest">Node</span>
-            </div>
-          </div>
-      </div>
     </div>
   );
 };
