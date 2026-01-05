@@ -30,16 +30,23 @@ const ServerStatusSummary: React.FC = () => {
     const [showModal, setShowModal] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-    const backendUrl = window.location.origin;
+    // Obtener la URL del backend desde el almacenamiento o usar relativa
+    const getBackendUrl = () => {
+        const saved = localStorage.getItem('saltex_backend_url');
+        return (saved && saved.trim() !== '') ? saved : window.location.origin;
+    };
 
-    // Detector Local (VPN) idéntico al de FinalSelection
     const probeLocalVPN = (ip: string): Promise<'online' | 'offline'> => {
-        if (!ip || ip.includes('X') || ip === 'N/A') return Promise.resolve('offline');
+        if (!ip || ip.includes('X') || ip === 'N/A' || ip === '0.0.0.0') return Promise.resolve('offline');
         return new Promise((resolve) => {
             const img = new Image();
-            const timer = setTimeout(() => { resolve('offline'); img.src = ""; }, 2500);
+            const timer = setTimeout(() => { 
+                resolve('offline'); 
+                img.src = ""; 
+            }, 3500); // Tiempo de espera para red local
+            
             img.onload = () => { clearTimeout(timer); resolve('online'); };
-            img.onerror = () => { clearTimeout(timer); resolve('online'); };
+            img.onerror = () => { clearTimeout(timer); resolve('online'); }; // Si hay error de carga, hubo contacto con la IP
             img.src = `http://${ip}/favicon.ico?t=${Date.now()}`;
         });
     };
@@ -47,15 +54,21 @@ const ServerStatusSummary: React.FC = () => {
     const checkGlobalStatus = useCallback(async () => {
         if (checking) return;
         setChecking(true);
+        const backendUrl = getBackendUrl();
         
         try {
-            // 1. Obtener TODOS los servidores guardados en Cloud
+            // 1. Obtener configuraciones desde el Cloud
             const cloudRes = await fetch(`${backendUrl}/api/get-all-configs`);
-            const allConfigs = await cloudRes.json();
             
+            // Validar que la respuesta sea JSON
+            const contentType = cloudRes.headers.get("content-type");
+            if (!cloudRes.ok || !contentType || !contentType.includes("application/json")) {
+                throw new Error("Respuesta del servidor no es JSON válido");
+            }
+            
+            const allConfigs = await cloudRes.json();
             let gatheredServers: FlatServer[] = [];
 
-            // Combinar datos del Cloud con los defaults (si no existen en Cloud)
             const processClub = (countryName: string, countryCode: string, club: string) => {
                 const configKey = `config_${countryCode}_${club.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 const config = allConfigs[configKey] || { servers: CLUB_SPECIFIC_DEFAULTS[club] || [] };
@@ -71,22 +84,24 @@ const ServerStatusSummary: React.FC = () => {
 
             setAllServers(gatheredServers);
 
-            // 2. Hybrid Check: Primero Cloud (públicas) y luego Browser (locales)
+            // 2. Verificación Híbrida
+            // Primero intentamos por el backend (para IPs públicas)
             const cloudCheckRes = await fetch(`${backendUrl}/api/check-status`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ servers: gatheredServers.map((s, i) => ({ id: i, ip: s.ip })) })
-            });
-            const cloudResults = cloudCheckRes.ok ? await cloudCheckRes.json() : { results: [] };
+            }).catch(() => null);
 
+            const cloudResults = cloudCheckRes && cloudCheckRes.ok ? await cloudCheckRes.json() : { results: [] };
             const finalOffline: FlatServer[] = [];
             
-            // Limitamos a lotes para no saturar el navegador con 138 imágenes a la vez
+            // Verificamos cada servidor (Loteado para no saturar)
             for (let i = 0; i < gatheredServers.length; i++) {
                 const s = gatheredServers[i];
                 const res = cloudResults.results?.find((r: any) => r.id === i);
                 let status = res ? res.status : 'offline';
 
+                // Si el Cloud dice offline, probamos localmente (VPN)
                 if (status === 'offline') {
                     status = await probeLocalVPN(s.ip);
                 }
@@ -99,19 +114,18 @@ const ServerStatusSummary: React.FC = () => {
             setOfflineServers(finalOffline);
             setLastUpdated(new Date());
         } catch (error) {
-            console.error("Global monitor error", error);
+            console.error("Global monitor error:", error);
         } finally {
             setChecking(false);
         }
-    }, [backendUrl, checking]);
+    }, [checking]);
 
     useEffect(() => {
         checkGlobalStatus();
-        const interval = setInterval(checkGlobalStatus, 1000 * 60 * 15); // Auto cada 15 min
+        const interval = setInterval(checkGlobalStatus, 1000 * 60 * 10); // Cada 10 min
         return () => clearInterval(interval);
     }, [checkGlobalStatus]);
 
-    // ... (El resto del renderizado es idéntico pero usando los nuevos datos filtrados)
     const getCountryStats = (): CountryStatus[] => {
         const stats: Record<string, CountryStatus> = {};
         allServers.forEach(server => {
@@ -143,7 +157,7 @@ const ServerStatusSummary: React.FC = () => {
             >
                 {checking ? <div className="w-4 h-4 border-2 border-blue-400 border-t-blue-600 rounded-full animate-spin"></div> : <ActivityIcon className="w-5 h-5" />}
                 <span className="hidden md:inline uppercase tracking-widest text-[10px]">
-                    {checking ? 'Actualizando' : (hasIssues ? `${offlineServers.length} Problemas` : 'Sistemas OK')}
+                    {checking ? 'Sincronizando' : (hasIssues ? `${offlineServers.length} Problemas` : 'Sistemas OK')}
                 </span>
                 <span className="md:hidden">
                      {checking ? '...' : (hasIssues ? `${offlineServers.length} OFF` : 'OK')}
@@ -155,23 +169,23 @@ const ServerStatusSummary: React.FC = () => {
                     <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]">
                         <div className={`${hasIssues ? 'bg-red-600' : 'bg-[#0d1a2e]'} text-white p-8 flex justify-between items-center`}>
                             <div>
-                                <h3 className="font-black text-2xl uppercase italic tracking-tighter flex items-center"><GlobeIcon className="w-8 h-8 mr-3" />Monitor Global de Infraestructura</h3>
-                                <p className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] mt-1">{checking ? 'Sincronizando con nodos remotos...' : `Último Escaneo: ${lastUpdated?.toLocaleTimeString()}`}</p>
+                                <h3 className="font-black text-2xl uppercase italic tracking-tighter flex items-center"><GlobeIcon className="w-8 h-8 mr-3" />Monitor de Infraestructura</h3>
+                                <p className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] mt-1">{checking ? 'Validando conexiones remotas...' : `Último Escaneo: ${lastUpdated?.toLocaleTimeString() || '--:--'}`}</p>
                             </div>
                             <button onClick={() => setShowModal(false)} className="bg-white/10 p-2 rounded-full hover:bg-white/20"><XIcon className="w-8 h-8" /></button>
                         </div>
                         
                         <div className="p-8 bg-slate-50 border-b flex flex-wrap gap-6">
                              <div className="flex-1 min-w-[180px] bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                                <div className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] mb-2">Total Nodos</div>
+                                <div className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] mb-2">Nodos Totales</div>
                                 <div className="text-4xl font-black text-slate-800 tracking-tighter italic">{allServers.length}</div>
                              </div>
                              <div className="flex-1 min-w-[180px] bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                                <div className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] mb-2">Saludable</div>
+                                <div className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] mb-2">Estables</div>
                                 <div className="text-4xl font-black text-green-600 tracking-tighter italic">{allServers.length - offlineServers.length}</div>
                              </div>
                              <div className={`flex-1 min-w-[180px] bg-white p-6 rounded-3xl shadow-sm border ${hasIssues ? 'border-red-200 bg-red-50' : 'border-slate-100'}`}>
-                                <div className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] mb-2">Crítico</div>
+                                <div className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] mb-2">Alertas Críticas</div>
                                 <div className={`text-4xl font-black tracking-tighter italic ${hasIssues ? 'text-red-600' : 'text-slate-200'}`}>{offlineServers.length}</div>
                              </div>
                         </div>
@@ -214,7 +228,7 @@ const ServerStatusSummary: React.FC = () => {
                                                     <div key={club.name} className={`text-[9px] p-3 rounded-xl border flex flex-col gap-2 font-black uppercase tracking-tighter transition-all ${club.offlineCount > 0 ? 'bg-red-500 text-white border-red-600 shadow-lg shadow-red-500/20' : 'bg-white border-slate-200 text-slate-400 opacity-60'}`}>
                                                         <span className="truncate">{club.name}</span>
                                                         <div className={`h-1 rounded-full w-full ${club.offlineCount > 0 ? 'bg-white/40' : 'bg-slate-200'}`}>
-                                                            <div className={`h-full rounded-full ${club.offlineCount > 0 ? 'bg-white' : 'bg-green-500'}`} style={{ width: club.offlineCount > 0 ? '100%' : '100%' }}></div>
+                                                            <div className={`h-full rounded-full ${club.offlineCount > 0 ? 'bg-white' : 'bg-green-500'}`} style={{ width: '100%' }}></div>
                                                         </div>
                                                     </div>
                                                 ))}

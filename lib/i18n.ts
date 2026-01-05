@@ -103,8 +103,8 @@ export const translations = {
     
     // Status Monitoring
     checkStatusButton: 'Verificar Estado',
-    statusOnline: 'En línea',
-    statusOffline: 'Fuera de línea',
+    statusOnline: 'EN LÍNEA',
+    statusOffline: 'FUERA DE LÍNEA',
     statusChecking: 'Verificando...',
     monitorTitle: 'Monitor de Sitios',
     monitorSystemOnline: 'Sistema En Línea',
@@ -239,8 +239,8 @@ export const translations = {
 
     // Status Monitoring
     checkStatusButton: 'Check Status',
-    statusOnline: 'Online',
-    statusOffline: 'Offline',
+    statusOnline: 'ONLINE',
+    statusOffline: 'OFFLINE',
     statusChecking: 'Checking...',
     monitorTitle: 'Site Monitor',
     monitorSystemOnline: 'System Online',
