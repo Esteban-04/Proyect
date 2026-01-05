@@ -125,22 +125,16 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         }
         
         setServers(loadedServers);
-        // Verificación INMEDIATA al cargar
-        if (loadedServers.length > 0) {
-          checkServerStatus(false, loadedServers);
-        }
+        // Se ELIMINA la verificación inmediata aquí para cumplir con la solicitud
     } catch (e) {
         const defaultServers = (CLUB_SPECIFIC_DEFAULTS[clubName] || []).map(s => ({ ...s, status: 'checking' as const }));
         setServers(defaultServers);
-        if (defaultServers.length > 0) {
-          checkServerStatus(false, defaultServers);
-        }
     }
-  }, [clubName, configKey, checkServerStatus]);
+  }, [clubName, configKey]);
 
   useEffect(() => { loadCloudData(); }, [loadCloudData]);
 
-  // Restored 10-second interval check
+  // Se mantiene el intervalo de 10 segundos tal como se solicitó
   useEffect(() => {
     const timer = setInterval(() => {
         checkServerStatus(false);

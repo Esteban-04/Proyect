@@ -163,10 +163,9 @@ const ServerStatusSummary: React.FC = () => {
     }, [checkGlobalStatus]);
 
     useEffect(() => {
-        // Immediate check on entry
-        checkGlobalStatus();
+        // Se ELIMINA la verificación inmediata al entrar (montar componente)
         
-        // Restore 10-second automatic status verification
+        // Se mantiene la verificación automática cada 10 segundos
         const statusInterval = setInterval(() => checkGlobalStatus(false), 10000);
         const reportInterval = setInterval(() => generateSnapshotReport(), 5 * 60 * 1000);
         return () => { 
