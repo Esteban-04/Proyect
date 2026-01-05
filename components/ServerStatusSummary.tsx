@@ -60,15 +60,13 @@ const ServerStatusSummary: React.FC = () => {
         return (saved && saved.trim() !== '') ? saved : window.location.origin;
     };
 
-    // VERIFICACIÓN MEJORADA: Ahora es mucho más estricta para evitar falsos positivos
     const probeLocalVPN = async (ip: string): Promise<'online' | 'offline'> => {
         if (!ip || ip.includes('X') || ip === 'N/A' || ip === '0.0.0.0') return 'offline';
         
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2500); // 2.5 segundos de gracia
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
         
         try {
-            // Intentamos un fetch silencioso. Si hay rechazo de conexión o timeout, es offline.
             await fetch(`http://${ip}/favicon.ico?t=${Date.now()}`, { 
                 mode: 'no-cors', 
                 signal: controller.signal 
@@ -77,8 +75,6 @@ const ServerStatusSummary: React.FC = () => {
             return 'online';
         } catch (e) {
             clearTimeout(timeoutId);
-            // Si el error es por CORS pero hubo respuesta, el navegador lo tira a catch pero es "online"
-            // Sin embargo, si es TypeError (Network Error), es realmente offline.
             const isNetworkError = e instanceof TypeError;
             return isNetworkError ? 'offline' : 'online';
         }
@@ -118,7 +114,6 @@ const ServerStatusSummary: React.FC = () => {
             const cloudResults = cloudCheckRes && cloudCheckRes.ok ? await cloudCheckRes.json() : { results: [] };
             const finalOffline: FlatServer[] = [];
             
-            // Verificación uno a uno
             for (const s of gatheredServers) {
                 if (!s.ip || s.ip.includes('X')) {
                     finalOffline.push(s);
@@ -127,7 +122,6 @@ const ServerStatusSummary: React.FC = () => {
                 const res = cloudResults.results?.find((r: any) => r.ip === s.ip);
                 let status = res ? res.status : 'offline';
                 
-                // Si la nube dice offline (lo cual pasará con IPs privadas), probamos localmente
                 if (status === 'offline') {
                     status = await probeLocalVPN(s.ip);
                 }
@@ -169,8 +163,10 @@ const ServerStatusSummary: React.FC = () => {
     }, [checkGlobalStatus]);
 
     useEffect(() => {
+        // Ejecución inmediata al montar
         checkGlobalStatus();
-        const statusInterval = setInterval(() => checkGlobalStatus(false), 10000);
+        // Se aumenta el intervalo de actualización a 60 segundos para evitar chequeos constantes de 10s
+        const statusInterval = setInterval(() => checkGlobalStatus(false), 60000);
         const reportInterval = setInterval(() => generateSnapshotReport(), 5 * 60 * 1000);
         return () => { clearInterval(statusInterval); clearInterval(reportInterval); };
     }, [checkGlobalStatus, generateSnapshotReport]);
@@ -219,7 +215,6 @@ const ServerStatusSummary: React.FC = () => {
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
                     <div className="bg-[#f4f7f9] rounded-xl shadow-2xl w-full max-w-7xl overflow-hidden flex flex-col max-h-[96vh] border border-gray-200">
                         
-                        {/* Header Rojo IDÉNTICO */}
                         <div className="bg-[#d32f2f] text-white px-6 py-5 relative shrink-0">
                             <div className="flex items-center gap-3">
                                 <GlobeIcon className="w-6 h-6" />
@@ -231,7 +226,6 @@ const ServerStatusSummary: React.FC = () => {
                             </button>
                         </div>
                         
-                        {/* Dashboard Stats IDÉNTICO */}
                         <div className="grid grid-cols-1 sm:grid-cols-4 gap-5 p-6 bg-white border-b border-gray-100 shrink-0">
                              <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col">
                                 <p className="text-slate-400 text-[10px] font-black uppercase mb-3 tracking-widest">TOTAL SERVIDORES</p>
@@ -251,10 +245,8 @@ const ServerStatusSummary: React.FC = () => {
                              </div>
                         </div>
 
-                        {/* Contenido principal IDÉNTICO */}
                         <div className="overflow-y-auto grow p-6 bg-[#fbfcfd] flex flex-col md:flex-row gap-8">
                             
-                            {/* Columna Izquierda: Desglose */}
                             <div className="flex-1 space-y-6">
                                 <div className="flex items-center gap-2 mb-2">
                                     <GlobeIcon className="w-5 h-5 text-slate-400" />
@@ -293,7 +285,6 @@ const ServerStatusSummary: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Columna Derecha: Reportes Históricos IDÉNTICO */}
                             <div className="w-full md:w-80 shrink-0 md:border-l md:pl-8 border-gray-200">
                                 <div className="flex items-center gap-2 mb-6">
                                     <FileTextIcon className="w-5 h-5 text-blue-600" />
@@ -347,7 +338,6 @@ const ServerStatusSummary: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Footer IDÉNTICO */}
                         <div className="p-5 border-t bg-white flex justify-end items-center gap-4 shrink-0 shadow-lg">
                             <button 
                                 onClick={() => generateSnapshotReport()} 

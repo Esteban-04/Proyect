@@ -118,7 +118,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         }
         
         setServers(loadedServers);
-        // Trigger verification immediately after loading data
+        // Verificación inmediata al entrar al sitio
         if (loadedServers.length > 0) {
           checkServerStatus(false, loadedServers);
         }
@@ -133,12 +133,8 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
   useEffect(() => { loadCloudData(); }, [loadCloudData]);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-        checkServerStatus(false);
-    }, 10000);
-    return () => clearInterval(timer);
-  }, [checkServerStatus]);
+  // Se ha eliminado el intervalo de 10 segundos para cumplir con la solicitud de no chequeo periódico
+  // y priorizar la verificación inmediata al entrar.
 
   const handleSave = async () => {
     if (!canEdit) return;
