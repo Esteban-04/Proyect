@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Country, ServerDetails } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { XIcon, SearchIcon, EyeIcon, EyeOffIcon, SaveIcon, PlusIcon, TrashIcon, ActivityIcon, GlobeIcon } from '../assets/icons';
@@ -38,10 +38,6 @@ const SERVER_CAMERA_DATA: CameraData[] = [
   { id: 1, name: 'VA | BOVEDA 1', ip: '192.168.2.187', manufacturer: 'Milesight', user: 'admin', password: 'password123', compression: 'H265' },
   { id: 2, name: 'VA | BOVEDA 2', ip: '192.168.2.188', manufacturer: 'Milesight', user: 'admin', password: 'password123', compression: 'H264' },
   { id: 3, name: 'VA | BOVEDA CLICK & GO', ip: '192.168.2.230', manufacturer: 'Vivotek', user: 'root', password: 'password123', compression: 'H265' },
-  { id: 4, name: 'VA | CONTEO 1', ip: '192.168.2.186', manufacturer: 'Milesight', user: 'admin', password: 'password123', compression: 'H265' },
-  { id: 5, name: 'VA | ENTRADA CONTEO', ip: '192.168.2.189', manufacturer: 'Milesight', user: 'admin', password: 'password123', compression: 'H265' },
-  { id: 6, name: 'FE | ENTRADA SOCIOS', ip: '192.168.2.120', manufacturer: 'Milesight', user: 'admin', password: 'password123', compression: 'H264' },
-  { id: 7, name: 'FE | FACIAL', ip: '192.168.2.224', manufacturer: 'Vivotek', user: 'root', password: 'password123', compression: 'H264' },
 ];
 
 const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBack, canEdit }) => {
@@ -51,7 +47,9 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [serverToDelete, setServerToDelete] = useState<number | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [verificationMode, setVerificationMode] = useState<'cloud' | 'local'>('local');
+  
+  // 'hybrid' es el modo por defecto que intenta Cloud y luego Local (VPN)
+  const [verificationMode, setVerificationMode] = useState<'hybrid' | 'cloud'>('hybrid');
 
   const [visibleTablePasswords, setVisibleTablePasswords] = useState<Record<number, boolean>>({});
   const [visibleCardPasswords, setVisibleCardPasswords] = useState<Record<number, boolean>>({});
@@ -60,10 +58,6 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const getStorageKey = (type: 'servers' | 'cameras') => {
       const safeClub = clubName.replace(/[^a-zA-Z0-9]/g, '_');
       return `config_${country.code}_${safeClub}_${type}`;
-  };
-
-  const getServerName = (id: number) => {
-      return `${t('serverNamePrefix')} ${String(id).padStart(2, '0')}`;
   };
 
   const [servers, setServers] = useState<ServerDetails[]>(() => {
@@ -87,46 +81,47 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       return SERVER_CAMERA_DATA;
   });
 
-  // TÉCNICA VPN: Intenta cargar una "imagen" (recurso) desde la IP local.
-  // Si dispara onload O onerror, significa que la IP es alcanzable (el navegador la vio).
-  const probeVpnConnectivity = (ip: string): Promise<'online' | 'offline'> => {
+  // TÉCNICA VPN AVANZADA: Intenta cargar un recurso desde el navegador. 
+  // Funciona con VPN porque el navegador tiene acceso a la red local.
+  const probeLocalIP = (ip: string): Promise<'online' | 'offline'> => {
       if (!ip || ip.includes('X') || ip === '0.0.0.0' || ip === 'N/A') return Promise.resolve('offline');
+      
       return new Promise((resolve) => {
+          // Usamos una técnica de carga de script/imagen para detectar presencia del host
+          // sin disparar bloqueos de CORS (Mixed Content)
           const img = new Image();
-          const timer = setTimeout(() => { resolve('offline'); }, 2000);
-          img.onload = () => { clearTimeout(timer); resolve('online'); };
-          img.onerror = () => { clearTimeout(timer); resolve('online'); }; // Error también significa que hubo respuesta del host
-          img.src = `http://${ip}/favicon.ico?t=${Date.now()}`;
+          const timeout = setTimeout(() => {
+              img.src = ""; // Abortar carga
+              resolve('offline');
+          }, 3500);
+
+          img.onload = () => { clearTimeout(timeout); resolve('online'); };
+          img.onerror = () => { 
+              // En muchos casos, un error 404 o 403 significa que el servidor RESPONDIO, por lo tanto está online.
+              clearTimeout(timeout); 
+              resolve('online'); 
+          };
+          
+          // Intentamos cargar algo común o simplemente tocar el puerto 80
+          img.src = `http://${ip}/favicon.ico?nocache=${Date.now()}`;
       });
   };
 
   const checkServerStatus = async (isManual = false) => {
     if (isVerifying) return;
     setIsVerifying(true);
+    
+    // Resetear estados a 'verificando'
     setServers(prev => prev.map(s => ({ ...s, status: 'checking' })));
-
-    // Failsafe global de 15 segundos para evitar que la UI se cuelgue
-    const verificationTimeout = setTimeout(() => {
-        setIsVerifying(false);
-        setServers(prev => prev.map(s => s.status === 'checking' ? { ...s, status: 'offline' } : s));
-    }, 15000);
 
     const backendUrl = localStorage.getItem('saltex_backend_url') || window.location.origin;
 
     try {
-        // En modo LOCAL (VPN), el navegador es el que "pregunta" a la IP
-        if (verificationMode === 'local') {
-            const results = await Promise.all(servers.map(async (s) => {
-                const status = await probeVpnConnectivity(s.ip);
-                return { id: s.id, status };
-            }));
-            setServers(prev => prev.map(s => {
-                const res = results.find(r => r.id === s.id);
-                return { ...s, status: res ? res.status : 'offline' };
-            }));
-        } else {
-            // Modo CLOUD (Pregunta el servidor de Railway)
-            const payload = servers.map(s => ({ id: s.id, ip: s.ip }));
+        // 1. Primero intentamos vía Backend (siempre es bueno tener la info del server)
+        const payload = servers.map(s => ({ id: s.id, ip: s.ip }));
+        let cloudResults: any[] = [];
+        
+        try {
             const response = await fetch(`${backendUrl}/api/check-status`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -134,18 +129,36 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
             });
             if (response.ok) {
                 const data = await response.json();
-                const results = data.results || [];
-                setServers(prev => prev.map(s => {
-                    const result = results.find((r: any) => r.id === s.id);
-                    return { ...s, status: result ? result.status : 'offline' };
-                }));
+                cloudResults = data.results || [];
             }
+        } catch (e) {
+            console.warn("Cloud check failed, falling back to local only");
         }
+
+        // 2. Procesamiento híbrido: Si el cloud falla o dice offline, el navegador prueba localmente
+        const finalStatuses = await Promise.all(servers.map(async (server) => {
+            const cloudRes = cloudResults.find(r => r.id === server.id);
+            let status = cloudRes ? cloudRes.status : 'offline';
+
+            // Si el modo es híbrido y el cloud no lo ve, el navegador intenta por VPN
+            if (verificationMode === 'hybrid' && status === 'offline') {
+                const localStatus = await probeLocalIP(server.ip);
+                status = localStatus;
+            }
+
+            return { id: server.id, status };
+        }));
+
+        setServers(prev => prev.map(s => {
+            const res = finalStatuses.find(f => f.id === s.id);
+            return { ...s, status: res ? res.status : 'offline' };
+        }));
+
         if (isManual) showSuccess(t('saveSuccess'));
     } catch (error) {
-        console.error("Verification failed:", error);
+        console.error("Critical verification error:", error);
+        setServers(prev => prev.map(s => ({ ...s, status: 'offline' })));
     } finally {
-        clearTimeout(verificationTimeout);
         setIsVerifying(false);
     }
   };
@@ -201,56 +214,59 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   if (selectedServer) {
     const filteredData = cameras.filter(camera => camera.name.toLowerCase().includes(searchTerm.toLowerCase()) || camera.ip.includes(searchTerm));
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black bg-opacity-75 backdrop-blur-sm">
-        <div className="w-full max-w-7xl bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col h-[95vh] sm:h-auto sm:max-h-[90vh]">
-          <div className="bg-[#0d1a2e] text-white p-4 flex justify-between items-center shrink-0">
-            <h2 className="text-lg sm:text-xl font-bold truncate pr-4">{t('modalTitle', getServerName(selectedServer.id), clubName)}</h2>
-            <button onClick={() => setSelectedServer(null)} className="text-gray-300 hover:text-white shrink-0"><XIcon className="h-6 w-6" /></button>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md">
+        <div className="w-full max-w-7xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[90vh]">
+          <div className="bg-[#0d1a2e] text-white p-6 flex justify-between items-center shrink-0">
+            <div>
+                <h2 className="text-xl font-black uppercase tracking-widest">{selectedServer.name}</h2>
+                <p className="text-blue-400 text-xs font-bold uppercase">{clubName} - {country.name}</p>
+            </div>
+            <button onClick={() => setSelectedServer(null)} className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition-all"><XIcon className="h-6 w-6" /></button>
           </div>
-          <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row items-center gap-4 shrink-0">
+          <div className="p-4 border-b bg-slate-50 flex items-center shrink-0">
             <div className="relative w-full max-w-md">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon className="h-5 w-5 text-gray-400" /></div>
-                <input type="text" placeholder={t('searchPlaceholder')} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-white text-sm" />
+                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <input type="text" placeholder={t('searchPlaceholder')} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 rounded-xl border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-blue-500 text-sm" />
             </div>
           </div>
-          <div className="flex-grow overflow-auto p-0">
-             <div className="min-w-[800px]">
-                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-100 sticky top-0 z-10">
+          <div className="flex-grow overflow-auto">
+             <div className="min-w-[900px]">
+                 <table className="min-w-full divide-y divide-slate-100">
+                  <thead className="bg-slate-50 sticky top-0 z-10">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">#</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">{t('colName')}</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase">{t('colIp')}</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase">{t('colManufacturer')}</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase">{t('colUser')}</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase">{t('colPassword')}</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase">{t('colCompression')}</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">#</th>
+                      <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Cámara</th>
+                      <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">IP</th>
+                      <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Marca</th>
+                      <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">User</th>
+                      <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Pass</th>
+                      <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Codec</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="divide-y divide-slate-50">
                     {filteredData.map((camera) => (
-                      <tr key={camera.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm font-bold text-gray-700">{camera.id}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{camera.name}</td>
-                        <td className="px-4 py-3"><input type="text" value={camera.ip} readOnly={!canEdit} onChange={(e) => handleCameraChange(camera.id, 'ip', e.target.value)} className="w-full bg-transparent border-none text-center text-sm" /></td>
-                        <td className="px-4 py-3"><input type="text" value={camera.manufacturer} readOnly={!canEdit} onChange={(e) => handleCameraChange(camera.id, 'manufacturer', e.target.value)} className="w-full bg-transparent border-none text-center text-sm" /></td>
-                        <td className="px-4 py-3"><input type="text" value={camera.user} readOnly={!canEdit} onChange={(e) => handleCameraChange(camera.id, 'user', e.target.value)} className="w-full bg-transparent border-none text-center text-sm" /></td>
+                      <tr key={camera.id} className="hover:bg-blue-50/30 transition-colors">
+                        <td className="px-6 py-4 text-sm font-bold text-slate-700">{camera.id}</td>
+                        <td className="px-6 py-4 text-sm font-black text-[#0d1a2e]">{camera.name}</td>
+                        <td className="px-4 py-3"><input type="text" value={camera.ip} readOnly={!canEdit} onChange={(e) => handleCameraChange(camera.id, 'ip', e.target.value)} className="w-full bg-transparent border-none text-center font-mono text-xs" /></td>
+                        <td className="px-4 py-3"><input type="text" value={camera.manufacturer} readOnly={!canEdit} onChange={(e) => handleCameraChange(camera.id, 'manufacturer', e.target.value)} className="w-full bg-transparent border-none text-center text-xs uppercase font-bold" /></td>
+                        <td className="px-4 py-3"><input type="text" value={camera.user} readOnly={!canEdit} onChange={(e) => handleCameraChange(camera.id, 'user', e.target.value)} className="w-full bg-transparent border-none text-center text-xs" /></td>
                         <td className="px-4 py-3">
                             <div className="flex items-center space-x-2 justify-center">
-                                 <input type={visibleTablePasswords[camera.id] ? 'text' : 'password'} value={camera.password} readOnly={!canEdit} onChange={(e) => handleCameraChange(camera.id, 'password', e.target.value)} className="w-full bg-transparent border-none text-center text-sm" />
-                                <button onClick={() => toggleTablePassword(camera.id)} className="text-gray-400 hover:text-gray-600">{visibleTablePasswords[camera.id] ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}</button>
+                                 <input type={visibleTablePasswords[camera.id] ? 'text' : 'password'} value={camera.password} readOnly={!canEdit} onChange={(e) => handleCameraChange(camera.id, 'password', e.target.value)} className="w-full bg-transparent border-none text-center text-xs" />
+                                <button onClick={() => toggleTablePassword(camera.id)} className="text-slate-300 hover:text-blue-500">{visibleTablePasswords[camera.id] ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}</button>
                             </div>
                         </td>
-                        <td className="px-4 py-3"><input type="text" value={camera.compression} readOnly={!canEdit} onChange={(e) => handleCameraChange(camera.id, 'compression', e.target.value)} className="w-full bg-transparent border-none text-center text-sm" /></td>
+                        <td className="px-4 py-3"><input type="text" value={camera.compression} readOnly={!canEdit} onChange={(e) => handleCameraChange(camera.id, 'compression', e.target.value)} className="w-full bg-transparent border-none text-center text-[10px] font-black text-blue-500" /></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
              </div>
           </div>
-          <div className="p-4 bg-gray-50 border-t flex justify-end gap-3 shrink-0">
-             <button onClick={() => setSelectedServer(null)} className="bg-white border px-6 py-2.5 rounded-lg font-bold text-sm">Cerrar</button>
-            {canEdit && <button onClick={handleSave} className="bg-[#0d1a2e] text-white px-6 py-2.5 rounded-lg flex items-center shadow-lg font-bold text-sm"><SaveIcon className="w-4 h-4 mr-2" />Guardar</button>}
+          <div className="p-6 bg-slate-50 border-t flex justify-end gap-3 shrink-0">
+             <button onClick={() => setSelectedServer(null)} className="px-8 py-3 bg-white border border-slate-200 rounded-xl font-black text-xs uppercase tracking-widest text-slate-500 hover:bg-slate-100">Cerrar</button>
+            {canEdit && <button onClick={handleSave} className="px-8 py-3 bg-[#0d1a2e] text-white rounded-xl flex items-center shadow-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800"><SaveIcon className="w-4 h-4 mr-2" />Guardar Cambios</button>}
           </div>
         </div>
       </div>
@@ -258,76 +274,123 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   }
 
   return (
-    <div className="w-full flex flex-col items-center relative px-2">
-      {successMessage && <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] bg-green-500 text-white px-6 py-3 rounded-lg shadow-2xl font-bold animate-bounce text-sm">{successMessage}</div>}
+    <div className="w-full flex flex-col items-center relative px-2 py-4">
+      {successMessage && <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] bg-green-500 text-white px-8 py-4 rounded-2xl shadow-2xl font-black animate-bounce text-sm uppercase tracking-widest">Success! {successMessage}</div>}
       
-      <div className="flex flex-col items-center justify-center mb-6 text-center">
-        <h2 className="text-2xl sm:text-3xl font-black text-[#0d1a2e] tracking-tight">{clubName}</h2>
-        <div className="h-1 w-20 bg-blue-600 mt-2 rounded-full"></div>
+      <div className="flex flex-col items-center justify-center mb-10 text-center">
+        <h2 className="text-3xl sm:text-4xl font-black text-[#0d1a2e] tracking-tighter uppercase italic drop-shadow-sm">{clubName}</h2>
+        <div className="flex items-center gap-3 mt-2">
+            <img src={`https://flagcdn.com/w40/${country.code}.png`} className="h-4 rounded-sm border" />
+            <div className="h-1 w-16 bg-blue-600 rounded-full"></div>
+            <span className="text-slate-400 text-xs font-black uppercase tracking-[0.2em]">{country.name}</span>
+        </div>
       </div>
       
-      <div className="mb-6 w-full flex flex-col sm:flex-row justify-center sm:justify-end max-w-5xl items-center gap-3">
-          <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto shadow-inner">
-              <button onClick={() => setVerificationMode('cloud')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${verificationMode === 'cloud' ? 'bg-[#0d1a2e] text-white shadow-sm' : 'text-slate-400'}`}>Cloud Check</button>
-              <button onClick={() => setVerificationMode('local')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${verificationMode === 'local' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400'}`}>VPN Check (Local)</button>
+      <div className="mb-8 w-full flex flex-col sm:flex-row justify-center sm:justify-between max-w-5xl items-center gap-6 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
+          <div className="flex bg-slate-100 p-1.5 rounded-2xl w-full sm:w-auto shadow-inner">
+              <button onClick={() => setVerificationMode('cloud')} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${verificationMode === 'cloud' ? 'bg-[#0d1a2e] text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>Cloud (Admin)</button>
+              <button onClick={() => setVerificationMode('hybrid')} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${verificationMode === 'hybrid' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>VPN (Hybrid)</button>
           </div>
-          <button onClick={() => checkServerStatus(true)} disabled={isVerifying} className="w-full sm:w-auto flex items-center justify-center space-x-2 text-sm font-bold text-gray-700 bg-white px-6 py-3 rounded-xl shadow-sm border border-gray-200 transition-all hover:shadow-md disabled:opacity-50">
-            {isVerifying ? <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div> : <ActivityIcon className="w-5 h-5" />}
-            <span>{isVerifying ? t('statusChecking') : t('checkStatusButton')}</span>
-          </button>
+          
+          <div className="flex items-center gap-4 w-full sm:w-auto">
+              <div className="hidden lg:flex flex-col items-end mr-2">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Network Health</span>
+                  <span className="text-xs font-bold text-slate-600 italic">Modo: {verificationMode === 'hybrid' ? 'Local VPN active' : 'Server Cloud only'}</span>
+              </div>
+              <button onClick={() => checkServerStatus(true)} disabled={isVerifying} className="w-full sm:w-auto flex items-center justify-center space-x-3 text-xs font-black uppercase tracking-widest text-white bg-[#0d1a2e] px-10 py-4 rounded-2xl shadow-xl hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50">
+                {isVerifying ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <ActivityIcon className="w-5 h-5" />}
+                <span>{isVerifying ? 'Scanning...' : 'Verify Status'}</span>
+              </button>
+          </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 w-full max-w-5xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-5xl">
         {servers.map((server) => (
-            <div key={server.id} onClick={() => setSelectedServer(server)} className="rounded-2xl p-5 sm:p-6 text-white shadow-xl cursor-pointer hover:shadow-2xl transition-all border relative group bg-[#0d1a2e] border-[#1a2b4e] hover:border-blue-500/50">
-                {canEdit && <button onClick={(e) => handleDeleteClick(e, server.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-400 p-2 rounded-full hover:bg-white/10 z-20"><TrashIcon className="w-5 h-5" /></button>}
-                <div className="border-b border-white/10 pb-3 mb-4 flex flex-col items-center">
-                    <div className="flex justify-start w-full mb-3">
-                        <div className={`inline-flex items-center px-3 py-1 rounded-full border shadow-sm ${server.status === 'offline' ? 'bg-red-600 border-red-400' : server.status === 'online' ? 'bg-green-600 border-green-500' : 'bg-gray-600 border-gray-500 animate-pulse'}`}>
-                            <span className="w-2 h-2 rounded-full mr-2 bg-white"></span>
-                            <span className="text-[10px] font-black tracking-widest uppercase">{server.status === 'offline' ? t('statusOffline') : server.status === 'online' ? t('statusOnline') : t('statusChecking')}</span>
+            <div key={server.id} onClick={() => setSelectedServer(server)} className="group bg-[#0d1a2e] rounded-[2rem] p-6 sm:p-8 text-white shadow-2xl cursor-pointer hover:shadow-blue-500/20 transition-all border border-slate-800 relative overflow-hidden active:scale-[0.98]">
+                {/* Indicador de Status Visual Grande */}
+                <div className={`absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-full blur-3xl opacity-20 transition-colors ${server.status === 'online' ? 'bg-green-500' : server.status === 'offline' ? 'bg-red-500' : 'bg-slate-500'}`}></div>
+
+                {canEdit && <button onClick={(e) => handleDeleteClick(e, server.id)} className="absolute top-4 right-4 text-slate-600 hover:text-red-400 p-2 rounded-xl hover:bg-white/5 z-20 transition-colors"><TrashIcon className="w-5 h-5" /></button>}
+                
+                <div className="relative z-10">
+                    <div className="flex justify-between items-start mb-6">
+                        <div className={`inline-flex items-center px-4 py-1.5 rounded-full border shadow-sm ${server.status === 'offline' ? 'bg-red-500/10 border-red-500/50 text-red-400' : server.status === 'online' ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-slate-500/10 border-slate-500/50 text-slate-400 animate-pulse'}`}>
+                            <div className={`w-2 h-2 rounded-full mr-2 ${server.status === 'online' ? 'bg-green-400' : server.status === 'offline' ? 'bg-red-400' : 'bg-slate-400'}`}></div>
+                            <span className="text-[10px] font-black tracking-[0.2em] uppercase">{server.status === 'offline' ? 'Offline' : server.status === 'online' ? 'Online' : 'Checking'}</span>
+                        </div>
+                        <h3 className="text-xl font-black italic tracking-tighter text-slate-500 opacity-50 group-hover:opacity-100 transition-opacity">0{server.id}</h3>
+                    </div>
+
+                    <div className="mb-8">
+                        <h4 className="text-2xl font-black uppercase tracking-tight mb-2 group-hover:text-blue-400 transition-colors">{server.name}</h4>
+                        <div className="flex items-center text-slate-500 font-mono text-lg bg-slate-900/50 p-3 rounded-xl border border-white/5">
+                            <RemoteDesktopIcon className="w-5 h-5 mr-3 text-blue-500" />
+                            <input type="text" value={server.ip || ''} readOnly={!canEdit} onChange={(e) => handleServerChange(server.id, 'ip', e.target.value)} onClick={(e) => e.stopPropagation()} className="bg-transparent border-none w-full text-white placeholder-slate-700 outline-none" placeholder="0.0.0.0" />
                         </div>
                     </div>
-                    <h3 className="text-lg sm:text-xl font-black uppercase tracking-widest">{getServerName(server.id)}</h3>
-                </div>
-                <div className="flex flex-col space-y-5 px-1">
-                    <div>
-                        <div className="flex items-center mb-1 text-blue-400"><RemoteDesktopIcon className="w-4 h-4 mr-2" /><span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Escritorio Remoto:</span></div>
-                        <div className="pl-6">
-                            <input type="text" value={server.ip || ''} readOnly={!canEdit} onChange={(e) => handleServerChange(server.id, 'ip', e.target.value)} onClick={(e) => e.stopPropagation()} className="text-xl sm:text-2xl font-black bg-transparent border-none w-full text-white placeholder-white/20" />
-                            <div className="flex items-center text-xs text-gray-400 mt-2 font-bold"><span className="mr-2 opacity-60">USER:</span><input type="text" value={server.user || ''} readOnly={!canEdit} onChange={(e) => handleServerChange(server.id, 'user', e.target.value)} onClick={(e) => e.stopPropagation()} className="bg-transparent border-none text-white" /></div>
-                            <div className="flex items-center text-xs text-gray-400 mt-1 font-bold"><span className="mr-2 opacity-60">PASS:</span><div className="flex items-center flex-grow"><input type={visibleCardPasswords[server.id] ? 'text' : 'password'} value={server.password || ''} readOnly={!canEdit} onChange={(e) => handleServerChange(server.id, 'password', e.target.value)} onClick={(e) => e.stopPropagation()} className="bg-transparent border-none w-full text-white" /><button onClick={(e) => toggleCardPassword(e, server.id)} className="ml-2 text-gray-500 hover:text-white">{visibleCardPasswords[server.id] ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}</button></div></div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white/5 p-4 rounded-2xl border border-white/5 group-hover:bg-white/10 transition-all">
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Acceso RDP</span>
+                            <div className="text-xs font-bold text-slate-300 flex flex-col gap-1">
+                                <span className="truncate opacity-60">U: {server.user}</span>
+                                <div className="flex items-center justify-between">
+                                    <span className="truncate opacity-60">P: {visibleCardPasswords[server.id] ? server.password : '••••••'}</span>
+                                    <button onClick={(e) => toggleCardPassword(e, server.id)} className="text-slate-500 hover:text-white transition-colors">{visibleCardPasswords[server.id] ? <EyeOffIcon className="h-3 w-3" /> : <EyeIcon className="h-3 w-3" />}</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-white/5 p-4 rounded-2xl border border-white/5 group-hover:bg-white/10 transition-all">
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2 block">TeamViewer</span>
+                            <div className="text-xs font-bold text-slate-300 flex flex-col gap-1">
+                                <span className="truncate opacity-60">ID: {server.teamviewerId || '---'}</span>
+                                <div className="flex items-center justify-between">
+                                    <span className="truncate opacity-60">P: {visibleTvPasswords[server.id] ? server.teamviewerPassword : '••••••'}</span>
+                                    <button onClick={(e) => toggleTvPassword(e, server.id)} className="text-slate-500 hover:text-white transition-colors">{visibleTvPasswords[server.id] ? <EyeOffIcon className="h-3 w-3" /> : <EyeIcon className="h-3 w-3" />}</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        <div className="flex items-center mb-1 text-blue-400"><div className="bg-blue-500/20 rounded-full p-1 mr-2"><TeamViewerIcon className="w-3 h-3 text-blue-400" /></div><span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">TeamViewer:</span></div>
-                        <div className="pl-6">
-                            <div className="flex items-center text-lg sm:text-xl font-black mb-1"><span className="mr-2 text-gray-500 text-xs font-bold opacity-60 uppercase">ID:</span><input type="text" value={server.teamviewerId || ''} readOnly={!canEdit} onChange={(e) => handleServerChange(server.id, 'teamviewerId', e.target.value)} onClick={(e) => e.stopPropagation()} className="bg-transparent border-none w-full text-white" /></div>
-                            <div className="flex items-center text-xs text-gray-400 font-bold"><span className="mr-2 opacity-60 uppercase">PASS:</span><div className="flex items-center flex-grow"><input type={visibleTvPasswords[server.id] ? 'text' : 'password'} value={server.teamviewerPassword || ''} readOnly={!canEdit} onChange={(e) => handleServerChange(server.id, 'teamviewerPassword', e.target.value)} onClick={(e) => e.stopPropagation()} className="bg-transparent border-none w-full text-white" /><button onClick={(e) => toggleTvPassword(e, server.id)} className="ml-2 text-gray-500 hover:text-white">{visibleTvPasswords[server.id] ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}</button></div></div>
+                    
+                    {server.ip && !server.ip.includes('X') && server.ip !== 'N/A' && (
+                        <div className="mt-6 flex justify-center">
+                            <a 
+                                href={`http://${server.ip}`} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                onClick={(e) => e.stopPropagation()} 
+                                className="flex items-center gap-2 text-[10px] font-black text-blue-500 hover:text-blue-400 uppercase tracking-[0.2em] opacity-60 hover:opacity-100 transition-all"
+                            >
+                                <GlobeIcon className="w-4 h-4" /> Open Web UI
+                            </a>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
         ))}
       </div>
 
-      <div className="mt-8 mb-4 w-full max-w-5xl flex flex-col sm:flex-row gap-3">
-        <button onClick={onBack} className="flex-1 bg-white text-[#0d1a2e] border-2 border-[#0d1a2e] font-black py-3 rounded-xl shadow-md hover:bg-gray-50 text-sm uppercase tracking-widest">Volver</button>
+      <div className="mt-12 mb-10 w-full max-w-5xl flex flex-col sm:flex-row gap-4">
+        <button onClick={onBack} className="flex-1 bg-white text-[#0d1a2e] border-2 border-slate-200 font-black py-4 rounded-2xl shadow-lg hover:bg-slate-50 text-xs uppercase tracking-widest transition-all">Volver al Mapa</button>
         {canEdit && (
             <>
-                <button onClick={handleAddServer} className="flex-1 bg-blue-600 text-white font-black py-3 rounded-xl shadow-lg hover:bg-blue-700 transition-colors flex items-center justify-center text-sm uppercase tracking-widest"><PlusIcon className="w-5 h-5 mr-2" />Agregar</button>
-                <button onClick={handleSave} className="flex-1 bg-[#0d1a2e] text-white font-black py-3 rounded-xl shadow-lg hover:bg-[#1a2b4e] transition-colors flex items-center justify-center text-sm uppercase tracking-widest"><SaveIcon className="w-5 h-5 mr-2" />Guardar</button>
+                <button onClick={handleAddServer} className="flex-1 bg-blue-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center text-xs uppercase tracking-widest"><PlusIcon className="w-5 h-5 mr-2" />Añadir Servidor</button>
+                <button onClick={handleSave} className="flex-1 bg-[#0d1a2e] text-white font-black py-4 rounded-2xl shadow-xl hover:bg-slate-800 transition-all flex items-center justify-center text-xs uppercase tracking-widest"><SaveIcon className="w-5 h-5 mr-2" />Guardar Cambios</button>
             </>
         )}
       </div>
 
       {serverToDelete !== null && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
-              <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
-                  <h3 className="text-xl font-black text-slate-800 mb-2">¿Eliminar servidor?</h3>
-                  <div className="flex gap-4 mt-6">
-                      <button onClick={() => setServerToDelete(null)} className="flex-1 py-3 bg-slate-100 text-slate-500 rounded-xl font-bold">No</button>
-                      <button onClick={confirmDeleteServer} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg">Sí</button>
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md">
+              <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-md w-full text-center animate-in zoom-in duration-300">
+                  <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <TrashIcon className="w-10 h-10" />
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-800 mb-2">¿Eliminar Servidor?</h3>
+                  <p className="text-slate-400 text-sm mb-8 font-medium">Esta acción no se puede deshacer y eliminará toda la configuración de cámaras.</p>
+                  <div className="flex gap-4">
+                      <button onClick={() => setServerToDelete(null)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest">No, cancelar</button>
+                      <button onClick={confirmDeleteServer} className="flex-1 py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl">Sí, eliminar</button>
                   </div>
               </div>
           </div>

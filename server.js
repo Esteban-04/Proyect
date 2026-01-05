@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 8080;
 const CONFIG_FILE = path.join(__dirname, 'config.json');
 
 // --- Configuración Inicial ---
@@ -38,7 +38,7 @@ if (fs.existsSync(CONFIG_FILE)) {
 app.use(cors());
 app.use(express.json());
 
-const checkTcpPort = (host, port = 80, timeout = 1500) => {
+const checkTcpPort = (host, port = 80, timeout = 1200) => {
     return new Promise((resolve) => {
         const socket = new net.Socket();
         let status = false;
@@ -52,41 +52,34 @@ const checkTcpPort = (host, port = 80, timeout = 1500) => {
 };
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', msg: "SALTEX Monitor Backend Active" });
+    res.json({ status: 'ok', uptime: process.uptime() });
 });
 
 app.post('/api/check-status', async (req, res) => {
     const { servers } = req.body;
     if (!servers || !Array.isArray(servers)) return res.status(400).send();
 
-    // Limitamos el tiempo total de respuesta para no colgar el frontend
-    const results = await Promise.race([
-        Promise.all(servers.map(async (server) => {
-            if (!server.ip || server.ip.includes('X') || server.ip === '0.0.0.0') {
-                return { id: server.id, status: 'offline' };
-            }
-            try {
-                // Intento 1: Ping
-                const resPing = await ping.promise.probe(server.ip, { timeout: 1 });
-                if (resPing.alive) return { id: server.id, status: 'online' };
+    // Railway limita el tiempo de respuesta, así que pingeamos rápido
+    const results = await Promise.all(servers.map(async (server) => {
+        if (!server.ip || server.ip.includes('X') || server.ip === '0.0.0.0' || server.ip === 'N/A') {
+            return { id: server.id, status: 'offline' };
+        }
+        try {
+            // Intento 1: Ping rápido (ICMP)
+            const resPing = await ping.promise.probe(server.ip, { timeout: 1 });
+            if (resPing.alive) return { id: server.id, status: 'online' };
 
-                // Intento 2: TCP 80
-                const isTcp80 = await checkTcpPort(server.ip, 80);
-                if (isTcp80) return { id: server.id, status: 'online' };
+            // Intento 2: Puerto 80 (TCP)
+            const isTcp80 = await checkTcpPort(server.ip, 80);
+            if (isTcp80) return { id: server.id, status: 'online' };
 
-                // Intento 3: TCP 443
-                const isTcp443 = await checkTcpPort(server.ip, 443);
-                if (isTcp443) return { id: server.id, status: 'online' };
+            return { id: server.id, status: 'offline' };
+        } catch (e) {
+            return { id: server.id, status: 'offline' };
+        }
+    }));
 
-                return { id: server.id, status: 'offline' };
-            } catch (e) {
-                return { id: server.id, status: 'offline' };
-            }
-        })),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 12000))
-    ]).catch(() => servers.map(s => ({ id: s.id, status: 'offline' })));
-
-    res.json({ results: Array.isArray(results) ? results : [] });
+    res.json({ results });
 });
 
 app.use(express.static(path.join(__dirname, 'dist')));
