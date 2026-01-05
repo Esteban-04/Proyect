@@ -50,43 +50,30 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
     return (saved && saved.trim() !== '') ? saved : window.location.origin;
   };
 
-  const loadCloudData = useCallback(async () => {
-    const backendUrl = getBackendUrl();
-    try {
-        const response = await fetch(`${backendUrl}/api/get-config/${configKey}`);
-        if (!response.ok) throw new Error("Invalid response");
-        const data = await response.json();
-        if (data.servers && data.servers.length > 0) {
-            setServers(data.servers.map((s: any) => ({ ...s, status: s.status || 'checking' })));
-            setCameras(data.cameras || []);
-        } else {
-            setServers((CLUB_SPECIFIC_DEFAULTS[clubName] || []).map(s => ({ ...s, status: 'checking' })));
-            setCameras([]);
-        }
-    } catch (e) {
-        setServers((CLUB_SPECIFIC_DEFAULTS[clubName] || []).map(s => ({ ...s, status: 'checking' })));
-    }
-  }, [clubName, configKey]);
-
-  useEffect(() => { loadCloudData(); }, [loadCloudData]);
-
-  const probeLocalVPN = useCallback((ip: string): Promise<'online' | 'offline'> => {
-      if (!ip || ip.includes('X') || ip === 'N/A' || ip === '0.0.0.0') return Promise.resolve('offline');
-      return new Promise((resolve) => {
-          const img = new Image();
-          const timeout = 4000;
-          const timer = setTimeout(() => { 
-              img.src = ""; 
-              resolve('offline'); 
-          }, timeout);
-          img.onload = () => { clearTimeout(timer); resolve('online'); };
-          img.onerror = () => { clearTimeout(timer); resolve('online'); };
-          img.src = `http://${ip}/favicon.ico?t=${Date.now()}`;
-      });
+  const probeLocalVPN = useCallback(async (ip: string): Promise<'online' | 'offline'> => {
+      if (!ip || ip.includes('X') || ip === 'N/A' || ip === '0.0.0.0') return 'offline';
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      
+      try {
+          await fetch(`http://${ip}/favicon.ico?t=${Date.now()}`, { 
+              mode: 'no-cors', 
+              signal: controller.signal 
+          });
+          clearTimeout(timeoutId);
+          return 'online';
+      } catch (e) {
+          clearTimeout(timeoutId);
+          const isNetworkError = e instanceof TypeError;
+          return isNetworkError ? 'offline' : 'online';
+      }
   }, []);
 
-  const checkServerStatus = useCallback(async (isManual = false) => {
-    if (isVerifying || servers.length === 0) return;
+  const checkServerStatus = useCallback(async (isManual = false, serverListOverride?: ServerDetails[]) => {
+    const listToProcess = serverListOverride || servers;
+    if (isVerifying || listToProcess.length === 0) return;
+    
     setIsVerifying(true);
     const backendUrl = getBackendUrl();
 
@@ -94,12 +81,12 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         const cloudRes = await fetch(`${backendUrl}/api/check-status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ servers })
+            body: JSON.stringify({ servers: listToProcess })
         }).catch(() => null);
         
         const cloudData = cloudRes && cloudRes.ok ? await cloudRes.json() : { results: [] };
 
-        const updated = await Promise.all(servers.map(async (s) => {
+        const updated = await Promise.all(listToProcess.map(async (s) => {
             const res = cloudData.results.find((r: any) => r.id === s.id);
             let status = res ? res.status : 'offline';
             if (status === 'offline') status = await probeLocalVPN(s.ip);
@@ -113,7 +100,39 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
     }
   }, [isVerifying, servers, probeLocalVPN, t]);
 
-  // Efecto para verificación automática cada 10 segundos
+  const loadCloudData = useCallback(async () => {
+    const backendUrl = getBackendUrl();
+    try {
+        const response = await fetch(`${backendUrl}/api/get-config/${configKey}`);
+        let loadedServers: ServerDetails[] = [];
+        
+        if (!response.ok) throw new Error("Invalid response");
+        const data = await response.json();
+        
+        if (data.servers && data.servers.length > 0) {
+            loadedServers = data.servers.map((s: any) => ({ ...s, status: s.status || 'checking' }));
+            setCameras(data.cameras || []);
+        } else {
+            loadedServers = (CLUB_SPECIFIC_DEFAULTS[clubName] || []).map(s => ({ ...s, status: 'checking' }));
+            setCameras([]);
+        }
+        
+        setServers(loadedServers);
+        // Trigger verification immediately after loading data
+        if (loadedServers.length > 0) {
+          checkServerStatus(false, loadedServers);
+        }
+    } catch (e) {
+        const defaultServers = (CLUB_SPECIFIC_DEFAULTS[clubName] || []).map(s => ({ ...s, status: 'checking' }));
+        setServers(defaultServers);
+        if (defaultServers.length > 0) {
+          checkServerStatus(false, defaultServers);
+        }
+    }
+  }, [clubName, configKey, checkServerStatus]);
+
+  useEffect(() => { loadCloudData(); }, [loadCloudData]);
+
   useEffect(() => {
     const timer = setInterval(() => {
         checkServerStatus(false);
@@ -188,9 +207,11 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                     className={`group bg-[#0d1a2e] rounded-2xl p-6 text-white shadow-xl relative border border-white/5 transition-all duration-300 ${isFirstAndOdd ? 'md:col-span-2' : ''}`}
                 >
                     <div className="absolute top-5 left-5">
-                        <div className={`flex items-center gap-2 px-3 py-1 rounded-lg border ${server.status === 'online' ? 'bg-green-600/20 border-green-500/30 text-green-400' : 'bg-red-600/20 border-red-500/30 text-red-400'}`}>
-                            <div className={`w-2 h-2 rounded-full ${server.status === 'online' ? 'bg-green-400 shadow-[0_0_8px_#4ade80]' : 'bg-red-400 shadow-[0_0_8px_#f87171]'}`}></div>
-                            <span className="text-[9px] font-black tracking-widest uppercase">{server.status === 'online' ? t('statusOnline') : t('statusOffline')}</span>
+                        <div className={`flex items-center gap-2 px-3 py-1 rounded-lg border ${server.status === 'online' ? 'bg-green-600/20 border-green-500/30 text-green-400' : server.status === 'checking' ? 'bg-blue-600/20 border-blue-500/30 text-blue-400' : 'bg-red-600/20 border-red-500/30 text-red-400'}`}>
+                            <div className={`w-2 h-2 rounded-full ${server.status === 'online' ? 'bg-green-400 shadow-[0_0_8px_#4ade80]' : server.status === 'checking' ? 'bg-blue-400 animate-pulse' : 'bg-red-400 shadow-[0_0_8px_#f87171]'}`}></div>
+                            <span className="text-[9px] font-black tracking-widest uppercase">
+                                {server.status === 'online' ? t('statusOnline') : server.status === 'checking' ? t('statusChecking') : t('statusOffline')}
+                            </span>
                         </div>
                     </div>
 
