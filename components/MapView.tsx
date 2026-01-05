@@ -13,34 +13,50 @@ const MapView: React.FC<MapViewProps> = ({ countries, selectedCountryCode, onSel
   const { t } = useLanguage();
   const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
 
-  // Coordenadas normalizadas (0-1000 x 0-500) para un mapa de Centroamérica y Caribe
+  // Coordenadas calibradas para un ViewBox de 800x500 (Región Centro y Caribe)
   const markerPositions: Record<string, { x: number, y: number }> = {
-    'gt': { x: 150, y: 220 },
-    'bz': { x: 175, y: 195 },
-    'sv': { x: 175, y: 250 },
-    'hn': { x: 230, y: 220 },
-    'ni': { x: 260, y: 270 },
-    'cr': { x: 300, y: 320 },
-    'pa': { x: 360, y: 330 },
-    'co': { x: 450, y: 450 },
-    'jm': { x: 290, y: 140 },
-    'do': { x: 440, y: 140 },
-    'aw': { x: 420, y: 280 },
-    'vi': { x: 520, y: 130 },
-    'bb': { x: 620, y: 240 },
-    'tt': { x: 590, y: 290 },
+    'gt': { x: 120, y: 220 },
+    'sv': { x: 140, y: 260 },
+    'hn': { x: 190, y: 230 },
+    'ni': { x: 220, y: 280 },
+    'cr': { x: 260, y: 330 },
+    'pa': { x: 330, y: 340 },
+    'co': { x: 420, y: 440 },
+    'jm': { x: 260, y: 140 },
+    'do': { x: 420, y: 140 },
+    'aw': { x: 400, y: 290 },
+    'vi': { x: 500, y: 130 },
+    'bb': { x: 620, y: 250 },
+    'tt': { x: 580, y: 300 },
+  };
+
+  // Polígonos simplificados pero representativos para cada país
+  const countryPaths: Record<string, string> = {
+    'gt': "M100,210 L140,210 L140,240 L115,250 L100,230 Z",
+    'sv': "M130,255 L155,255 L155,265 L130,265 Z",
+    'hn': "M150,210 L210,210 L225,245 L165,250 Z",
+    'ni': "M210,245 L245,245 L255,295 L200,285 Z",
+    'cr': "M250,300 L285,300 L295,340 L245,340 Z",
+    'pa': "M300,325 L360,325 L375,350 L310,350 Z",
+    'co': "M380,360 L460,360 L520,480 L400,500 L370,420 Z",
+    'jm': "M240,135 L285,135 L285,150 L240,150 Z",
+    'do': "M400,130 L470,130 L470,155 L400,155 Z",
+    'aw': "M390,285 L415,285 L415,300 L390,300 Z",
+    'tt': "M565,290 L600,290 L600,315 L565,315 Z",
+    'bb': "M610,240 L635,240 L635,260 L610,260 Z",
+    'vi': "M490,120 L530,120 L530,140 L490,140 Z"
   };
 
   return (
-    <div className="relative w-full aspect-[2/1] bg-[#eef2f7] rounded-3xl overflow-hidden border border-slate-200 shadow-2xl select-none group">
-      {/* HUD de Información */}
-      <div className="absolute top-6 left-6 z-10">
-        <div className="bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-white/50">
-            <div className="flex items-center gap-3 mb-1">
-                <div className="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></div>
-                <h3 className="text-[#0d1a2e] font-black text-lg tracking-tighter uppercase italic">Network Map</h3>
+    <div className="relative w-full aspect-[2/1] bg-[#0d1a2e] rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl select-none group">
+      {/* HUD de Operaciones */}
+      <div className="absolute top-8 left-8 z-20 pointer-events-none">
+        <div className="bg-white/5 backdrop-blur-xl p-6 rounded-3xl border border-white/10 shadow-2xl">
+            <div className="flex items-center gap-4 mb-2">
+                <div className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse shadow-[0_0_15px_rgba(59,130,246,0.8)]"></div>
+                <h3 className="text-white font-black text-2xl tracking-tighter uppercase italic leading-none">Global Map</h3>
             </div>
-            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Global Operations Center</p>
+            <p className="text-blue-400/60 text-[10px] font-black uppercase tracking-[0.3em]">Saltex Infrastructure Monitor</p>
         </div>
       </div>
 
@@ -49,31 +65,42 @@ const MapView: React.FC<MapViewProps> = ({ countries, selectedCountryCode, onSel
         className="w-full h-full object-cover"
         xmlns="http://www.w3.org/2000/svg"
       >
-        {/* Fondo Oceánico con gradiente */}
+        <rect width="800" height="500" fill="#0d1a2e" />
+
+        {/* Rejilla de Red (Estética Cyberpunk) */}
         <defs>
-          <radialGradient id="oceanGrad" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#f8fafc" />
-            <stop offset="100%" stopColor="#e2e8f0" />
-          </radialGradient>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5" strokeOpacity="0.05" />
+          </pattern>
         </defs>
-        <rect width="800" height="500" fill="url(#oceanGrad)" />
+        <rect width="800" height="500" fill="url(#grid)" />
 
-        {/* Formas simplificadas de continentes para contexto visual */}
-        <g fill="#cbd5e1" opacity="0.4">
-          {/* Norteamérica (México) */}
-          <path d="M0,0 L180,0 L120,180 L50,220 L0,200 Z" />
-          {/* Sudamérica */}
-          <path d="M400,350 L550,340 L750,450 L650,500 L400,500 Z" />
-        </g>
+        {/* Dibujado de Países */}
+        {countries.map(country => {
+          const path = countryPaths[country.code];
+          if (!path) return null;
 
-        {/* Conexiones de red visuales (Estética) */}
-        <g stroke="#94a3b8" strokeWidth="0.5" strokeDasharray="4 4" opacity="0.3">
-            {Object.values(markerPositions).map((pos, i) => (
-                <line key={i} x1="400" y1="250" x2={pos.x} y2={pos.y} />
-            ))}
-        </g>
+          const isSelected = selectedCountryCode === country.code;
+          const isHovered = hoveredCountry === country.code;
 
-        {/* Marcadores de Países */}
+          return (
+            <path
+              key={`path-${country.code}`}
+              d={path}
+              className="transition-all duration-500 cursor-pointer"
+              style={{
+                fill: isSelected ? 'rgba(37, 99, 235, 0.4)' : isHovered ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.03)',
+                stroke: isSelected ? '#2563eb' : isHovered ? '#3b82f6' : 'rgba(255,255,255,0.1)',
+                strokeWidth: isSelected || isHovered ? 2 : 1
+              }}
+              onMouseEnter={() => setHoveredCountry(country.code)}
+              onMouseLeave={() => setHoveredCountry(null)}
+              onClick={() => onSelectCountry(country)}
+            />
+          );
+        })}
+
+        {/* Marcadores de Sedes */}
         {countries.map(country => {
           const pos = markerPositions[country.code];
           if (!pos) return null;
@@ -82,47 +109,44 @@ const MapView: React.FC<MapViewProps> = ({ countries, selectedCountryCode, onSel
           const isSelected = selectedCountryCode === country.code;
 
           return (
-            <g 
-              key={`marker-${country.code}`} 
-              className="cursor-pointer group/marker"
-              onMouseEnter={() => setHoveredCountry(country.code)}
-              onMouseLeave={() => setHoveredCountry(null)}
-              onClick={() => onSelectCountry(country)}
-            >
-                {/* Aura de selección */}
+            <g key={`marker-${country.code}`} className="cursor-pointer" onClick={() => onSelectCountry(country)}>
                 {(isHovered || isSelected) && (
-                    <circle cx={pos.x} cy={pos.y} r="25" fill="#2563eb" className="animate-ping opacity-10" />
+                    <circle cx={pos.x} cy={pos.y} r="30" fill="#2563eb" className="animate-ping opacity-10" />
                 )}
-                
-                {/* Base del marcador */}
                 <circle
                     cx={pos.x}
                     cy={pos.y}
-                    r={isSelected ? 10 : isHovered ? 8 : 6}
-                    fill={isSelected ? '#2563eb' : isHovered ? '#3b82f6' : '#ffffff'}
-                    stroke={isSelected || isHovered ? '#ffffff' : '#94a3b8'}
-                    strokeWidth={isSelected || isHovered ? 3 : 2}
-                    className="transition-all duration-300 shadow-lg"
+                    r={isSelected ? 10 : isHovered ? 8 : 5}
+                    className="transition-all duration-300"
+                    fill={isSelected ? '#2563eb' : isHovered ? '#3b82f6' : 'rgba(255,255,255,0.4)'}
+                    stroke="#0d1a2e"
+                    strokeWidth="2"
+                    onMouseEnter={() => setHoveredCountry(country.code)}
+                    onMouseLeave={() => setHoveredCountry(null)}
                 />
-
-                {/* Etiqueta de país (Tooltip nativo del SVG) */}
-                <text 
-                  x={pos.x} 
-                  y={pos.y + 25} 
-                  textAnchor="middle" 
-                  className={`text-[10px] font-black uppercase tracking-tighter transition-all duration-300 pointer-events-none ${isSelected || isHovered ? 'fill-blue-700 opacity-100 translate-y-1' : 'fill-slate-400 opacity-0'}`}
-                >
-                  {country.name}
-                </text>
             </g>
           );
         })}
       </svg>
 
-      {/* Indicador de Leyenda */}
-      <div className="absolute bottom-6 right-6 flex items-center gap-4 bg-white/80 backdrop-blur-md px-4 py-2 rounded-xl border border-white/50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-         <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-600"></div> Seleccionado</div>
-         <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-slate-300"></div> Disponible</div>
+      {/* Leyenda y Tooltips */}
+      <div className="absolute bottom-8 right-8 flex flex-col items-end gap-2">
+         {hoveredCountry && (
+             <div className="bg-white p-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-right-4 duration-300">
+                 <img src={`https://flagcdn.com/w40/${hoveredCountry}.png`} className="w-8 rounded-sm shadow-md" />
+                 <div>
+                     <p className="text-slate-900 font-black uppercase text-xs tracking-widest leading-none mb-1">
+                        {countries.find(c => c.code === hoveredCountry)?.name}
+                     </p>
+                     <p className="text-blue-600 font-bold text-[10px] uppercase">
+                        {countries.find(c => c.code === hoveredCountry)?.count} Sedes Activas
+                     </p>
+                 </div>
+             </div>
+         )}
+         <div className="bg-white/5 backdrop-blur-md px-6 py-2 rounded-xl border border-white/10 text-[9px] font-black text-white/40 uppercase tracking-[0.3em]">
+             Interactive Global Access Node
+         </div>
       </div>
     </div>
   );
