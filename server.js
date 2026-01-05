@@ -14,65 +14,51 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 const DATA_FILE = path.join(__dirname, 'data.json');
 
-// Inicializar archivo de datos si no existe
+// Inicializar base de datos JSON
 if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify({ configs: {}, users: [] }, null, 2));
+    fs.writeFileSync(DATA_FILE, JSON.stringify({ configs: {} }, null, 2));
 }
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
 
-// --- Utilidades de Persistencia ---
-const readData = () => JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-const writeData = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+const readDb = () => JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+const writeDb = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 
-// --- API Endpoints ---
-
-// Salud del sistema
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', persistence: fs.existsSync(DATA_FILE) });
-});
-
-// Guardar configuración de una sede (Clubs/Servidores)
+// API: Guardar configuración
 app.post('/api/save-config', (req, res) => {
     const { key, servers, cameras } = req.body;
-    const data = readData();
-    data.configs[key] = { servers, cameras, updatedAt: new Date().toISOString() };
-    writeData(data);
+    const db = readDb();
+    db.configs[key] = { servers, cameras, timestamp: Date.now() };
+    writeDb(db);
     res.json({ success: true });
 });
 
-// Obtener configuración de una sede
+// API: Obtener una configuración
 app.get('/api/get-config/:key', (req, res) => {
-    const data = readData();
-    res.json(data.configs[req.params.key] || { servers: [], cameras: [] });
+    const db = readDb();
+    res.json(db.configs[req.params.key] || { servers: [], cameras: [] });
 });
 
-// Chequeo de estado desde la nube (Cloud Check)
+// API: Obtener todas las configuraciones (Para el Resumen Global)
+app.get('/api/get-all-configs', (req, res) => {
+    const db = readDb();
+    res.json(db.configs);
+});
+
+// API: Chequeo desde la nube (Cloud Check)
 app.post('/api/check-status', async (req, res) => {
     const { servers } = req.body;
     if (!servers) return res.status(400).send();
 
     const results = await Promise.all(servers.map(async (server) => {
-        if (!server.ip || server.ip.includes('X') || server.ip === '0.0.0.0' || server.ip === 'N/A') {
+        // Railway solo puede pinglear IPs públicas. 192.168 siempre dará offline aquí.
+        if (!server.ip || server.ip.startsWith('192.168') || server.ip === 'N/A') {
             return { id: server.id, status: 'offline' };
         }
         try {
-            // Intento 1: ICMP Ping
             const resPing = await ping.promise.probe(server.ip, { timeout: 1 });
-            if (resPing.alive) return { id: server.id, status: 'online' };
-
-            // Intento 2: Puerto 80 (TCP)
-            const socket = new net.Socket();
-            const isOnline = await new Promise((resolve) => {
-                socket.setTimeout(1000);
-                socket.on('connect', () => { socket.destroy(); resolve(true); });
-                socket.on('timeout', () => { socket.destroy(); resolve(false); });
-                socket.on('error', () => { socket.destroy(); resolve(false); });
-                socket.connect(80, server.ip);
-            });
-            
-            return { id: server.id, status: isOnline ? 'online' : 'offline' };
+            return { id: server.id, status: resPing.alive ? 'online' : 'offline' };
         } catch (e) {
             return { id: server.id, status: 'offline' };
         }
@@ -80,7 +66,7 @@ app.post('/api/check-status', async (req, res) => {
     res.json({ results });
 });
 
-// Servir frontend
+// Servir estáticos
 const distPath = path.join(__dirname, 'dist');
 if (fs.existsSync(distPath)) {
     app.use(express.static(distPath));
@@ -88,5 +74,5 @@ if (fs.existsSync(distPath)) {
 }
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 SALTEX Monitor Cloud Server active on port ${PORT}`);
+    console.log(`🚀 SALTEX Cloud Backend running on port ${PORT}`);
 });

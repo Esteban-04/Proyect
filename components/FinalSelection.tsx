@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Country, ServerDetails } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { XIcon, SearchIcon, EyeIcon, EyeOffIcon, SaveIcon, PlusIcon, TrashIcon, ActivityIcon, GlobeIcon } from '../assets/icons';
@@ -51,57 +51,56 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const [cameras, setCameras] = useState<CameraData[]>([]);
 
   const configKey = `config_${country.code}_${clubName.replace(/[^a-zA-Z0-9]/g, '_')}`;
-  const backendUrl = localStorage.getItem('saltex_backend_url') || window.location.origin;
+  const backendUrl = window.location.origin;
 
-  // Cargar datos desde la nube al iniciar
-  useEffect(() => {
-    const loadCloudData = async () => {
-        try {
-            const response = await fetch(`${backendUrl}/api/get-config/${configKey}`);
-            const data = await response.json();
-            
-            if (data.servers && data.servers.length > 0) {
-                setServers(data.servers.map((s: any) => ({ ...s, status: 'checking' })));
-                setCameras(data.cameras || []);
-            } else {
-                // Fallback a locales si no hay en nube
-                setServers((CLUB_SPECIFIC_DEFAULTS[clubName] || []).map(s => ({ ...s, status: 'checking' })));
-                setCameras([]);
-            }
-        } catch (e) {
-            console.error("Error loading cloud data", e);
+  // Cargar datos desde el Cloud
+  const loadCloudData = useCallback(async () => {
+    try {
+        const response = await fetch(`${backendUrl}/api/get-config/${configKey}`);
+        const data = await response.json();
+        
+        if (data.servers && data.servers.length > 0) {
+            setServers(data.servers.map((s: any) => ({ ...s, status: 'checking' })));
+            setCameras(data.cameras || []);
+        } else {
+            setServers((CLUB_SPECIFIC_DEFAULTS[clubName] || []).map(s => ({ ...s, status: 'checking' })));
+            setCameras([]);
         }
-    };
-    loadCloudData();
-  }, [configKey]);
+    } catch (e) {
+        setServers((CLUB_SPECIFIC_DEFAULTS[clubName] || []).map(s => ({ ...s, status: 'checking' })));
+    }
+  }, [clubName, configKey]);
 
-  // TÉCNICA VPN FINAL: Intenta cargar un recurso para detectar presencia en red local
+  useEffect(() => { loadCloudData(); }, [loadCloudData]);
+
+  // Detector Local (VPN): Salta bloqueos Mixed Content usando Image probing
   const probeLocalVPN = (ip: string): Promise<'online' | 'offline'> => {
       if (!ip || ip.includes('X') || ip === 'N/A') return Promise.resolve('offline');
       return new Promise((resolve) => {
           const img = new Image();
-          const timeout = setTimeout(() => { resolve('offline'); }, 2500);
-          img.onload = () => { clearTimeout(timeout); resolve('online'); };
-          img.onerror = () => { clearTimeout(timeout); resolve('online'); }; // Contacto hubo, aunque sea error 404
-          img.src = `http://${ip}/favicon.ico?t=${Date.now()}`;
+          const timer = setTimeout(() => { resolve('offline'); img.src = ""; }, 3000);
+          img.onload = () => { clearTimeout(timer); resolve('online'); };
+          img.onerror = () => { clearTimeout(timer); resolve('online'); }; // Error significa que la IP respondió
+          img.src = `http://${ip}/favicon.ico?nocache=${Date.now()}`;
       });
   };
 
   const checkServerStatus = async (isManual = false) => {
-    if (isVerifying) return;
+    if (isVerifying || servers.length === 0) return;
     setIsVerifying(true);
     setServers(prev => prev.map(s => ({ ...s, status: 'checking' })));
 
     try {
-        // 1. Check Cloud
+        // Check Cloud API (Solo sirve para IPs públicas)
         const cloudRes = await fetch(`${backendUrl}/api/check-status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ servers })
-        });
-        const cloudData = cloudRes.ok ? await cloudRes.json() : { results: [] };
+        }).catch(() => null);
+        
+        const cloudData = cloudRes && cloudRes.ok ? await cloudRes.json() : { results: [] };
 
-        // 2. Hybrid Check (VPN Local)
+        // Hybrid: El navegador pinglea las IPs locales
         const updated = await Promise.all(servers.map(async (s) => {
             const res = cloudData.results.find((r: any) => r.id === s.id);
             let status = res ? res.status : 'offline';
@@ -113,7 +112,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         }));
 
         setServers(updated as ServerDetails[]);
-        if (isManual) showSuccess("Escaneo finalizado");
+        if (isManual) showSuccess("Estado actualizado");
     } catch (error) {
         console.error("Status check error", error);
     } finally {
@@ -122,8 +121,10 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   };
 
   useEffect(() => {
-    if (servers.length > 0) checkServerStatus(false);
-  }, [verificationMode, servers.length === 0]);
+    if (servers.length > 0 && servers.every(s => s.status === 'checking')) {
+        checkServerStatus(false);
+    }
+  }, [servers, verificationMode]);
 
   const handleSave = async () => {
     if (!canEdit) return;
@@ -133,9 +134,9 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ key: configKey, servers, cameras })
         });
-        if (res.ok) showSuccess("Guardado en la Nube");
+        if (res.ok) showSuccess("Sincronizado con la Nube");
     } catch (e) {
-        console.error("Cloud save failed", e);
+        showSuccess("Error al guardar en nube");
     }
   };
 
@@ -144,29 +145,17 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
+  // ... (Mismo código de gestión de contraseñas y cámaras que tenías)
   const toggleTablePassword = (id: number) => setVisibleTablePasswords(prev => ({ ...prev, [id]: !prev[id] }));
   const toggleCardPassword = (e: React.MouseEvent, id: number) => { e.stopPropagation(); setVisibleCardPasswords(prev => ({ ...prev, [id]: !prev[id] })); };
   const toggleTvPassword = (e: React.MouseEvent, id: number) => { e.stopPropagation(); setVisibleTvPasswords(prev => ({ ...prev, [id]: !prev[id] })); };
-
-  const handleCameraChange = (id: number, field: keyof CameraData, value: string) => {
-      setCameras(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
-  };
-
-  const handleServerChange = (id: number, field: keyof ServerDetails, value: string) => {
-      setServers(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
-  };
-
+  const handleCameraChange = (id: number, field: keyof CameraData, value: string) => setCameras(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
+  const handleServerChange = (id: number, field: keyof ServerDetails, value: string) => setServers(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
   const handleAddServer = () => {
       const newId = servers.length > 0 ? Math.max(...servers.map(s => s.id)) + 1 : 1;
       setServers([...servers, { id: newId, name: `SERVER_${String(newId).padStart(2, '0')}`, ip: '', user: 'administrator', password: 'Completeview!', teamviewerId: '', teamviewerPassword: '', status: 'checking' }]);
   };
-
-  const confirmDeleteServer = () => {
-      if (serverToDelete !== null) {
-          setServers(prev => prev.filter(s => s.id !== serverToDelete));
-          setServerToDelete(null);
-      }
-  };
+  const confirmDeleteServer = () => { if (serverToDelete !== null) { setServers(prev => prev.filter(s => s.id !== serverToDelete)); setServerToDelete(null); } };
 
   if (selectedServer) {
     const filteredData = cameras.filter(camera => camera.name.toLowerCase().includes(searchTerm.toLowerCase()) || camera.ip.includes(searchTerm));
@@ -228,7 +217,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
   return (
     <div className="w-full flex flex-col items-center relative px-2 py-4">
-      {successMessage && <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] bg-green-500 text-white px-8 py-4 rounded-2xl shadow-2xl font-black animate-bounce text-sm uppercase">¡{successMessage}!</div>}
+      {successMessage && <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] bg-green-500 text-white px-8 py-4 rounded-2xl shadow-2xl font-black animate-bounce text-sm uppercase">{successMessage}</div>}
       
       <div className="flex flex-col items-center justify-center mb-10 text-center">
         <h2 className="text-3xl sm:text-4xl font-black text-[#0d1a2e] tracking-tighter uppercase italic drop-shadow-sm">{clubName}</h2>

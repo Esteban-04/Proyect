@@ -9,7 +9,7 @@ import { useLanguage } from '../context/LanguageContext';
 interface FlatServer extends ServerDetails {
     club: string;
     country: string;
-    type: 'pricesmart' | 'dhl';
+    countryCode: string;
 }
 
 interface CountryStatus {
@@ -29,92 +29,89 @@ const ServerStatusSummary: React.FC = () => {
     const [checking, setChecking] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-    const [backendDisconnected, setBackendDisconnected] = useState(false);
 
-    const getServersForClub = (countryCode: string, clubName: string): ServerDetails[] => {
-        const safeClub = clubName.replace(/[^a-zA-Z0-9]/g, '_');
-        const key = `config_${countryCode}_${safeClub}_servers`;
-        try {
-            const saved = localStorage.getItem(key);
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-            }
-        } catch (e) {}
-        return CLUB_SPECIFIC_DEFAULTS[clubName] || [];
+    const backendUrl = window.location.origin;
+
+    // Detector Local (VPN) idéntico al de FinalSelection
+    const probeLocalVPN = (ip: string): Promise<'online' | 'offline'> => {
+        if (!ip || ip.includes('X') || ip === 'N/A') return Promise.resolve('offline');
+        return new Promise((resolve) => {
+            const img = new Image();
+            const timer = setTimeout(() => { resolve('offline'); img.src = ""; }, 2500);
+            img.onload = () => { clearTimeout(timer); resolve('online'); };
+            img.onerror = () => { clearTimeout(timer); resolve('online'); };
+            img.src = `http://${ip}/favicon.ico?t=${Date.now()}`;
+        });
     };
 
     const checkGlobalStatus = useCallback(async () => {
         if (checking) return;
         setChecking(true);
-        let gatheredServers: FlatServer[] = [];
+        
+        try {
+            // 1. Obtener TODOS los servidores guardados en Cloud
+            const cloudRes = await fetch(`${backendUrl}/api/get-all-configs`);
+            const allConfigs = await cloudRes.json();
+            
+            let gatheredServers: FlatServer[] = [];
 
-        COUNTRIES.forEach(c => {
-            c.clubs?.forEach(club => {
-                const svs = getServersForClub(c.code, club);
-                svs.forEach(s => {
-                    if(s.ip && !s.ip.includes('X')) {
-                        gatheredServers.push({ ...s, club: club, country: c.name, type: 'pricesmart' });
+            // Combinar datos del Cloud con los defaults (si no existen en Cloud)
+            const processClub = (countryName: string, countryCode: string, club: string) => {
+                const configKey = `config_${countryCode}_${club.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                const config = allConfigs[configKey] || { servers: CLUB_SPECIFIC_DEFAULTS[club] || [] };
+                config.servers.forEach((s: any) => {
+                    if (s.ip && !s.ip.includes('X')) {
+                        gatheredServers.push({ ...s, club, country: countryName, countryCode });
                     }
                 });
-            });
-        });
+            };
 
-        DHL_DATA.clubs?.forEach(club => {
-            const svs = getServersForClub(DHL_DATA.code, club);
-            svs.forEach(s => {
-                if(s.ip && !s.ip.includes('X')) {
-                    gatheredServers.push({ ...s, club: club, country: 'DHL Global', type: 'dhl' });
-                }
-            });
-        });
+            COUNTRIES.forEach(c => c.clubs?.forEach(club => processClub(c.name, c.code, club)));
+            DHL_DATA.clubs?.forEach(club => processClub('DHL Global', DHL_DATA.code, club));
 
-        setAllServers(gatheredServers);
-        
-        if (gatheredServers.length === 0) {
-            setChecking(false);
-            setLastUpdated(new Date());
-            return;
-        }
+            setAllServers(gatheredServers);
 
-        const payload = gatheredServers.map((s, i) => ({ id: i, ip: s.ip }));
-
-        try {
-            const backendUrl = localStorage.getItem('saltex_backend_url') || '';
-            const apiEndpoint = backendUrl ? `${backendUrl}/api/check-status` : '/api/check-status';
-
-            const response = await fetch(apiEndpoint, {
+            // 2. Hybrid Check: Primero Cloud (públicas) y luego Browser (locales)
+            const cloudCheckRes = await fetch(`${backendUrl}/api/check-status`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ servers: payload })
+                body: JSON.stringify({ servers: gatheredServers.map((s, i) => ({ id: i, ip: s.ip })) })
             });
+            const cloudResults = cloudCheckRes.ok ? await cloudCheckRes.json() : { results: [] };
 
-            if (response && response.ok) {
-                const data = await response.json();
-                const results = data.results || [];
-                const offline = gatheredServers.filter((_, i) => {
-                    const res = results.find((r: any) => r.id === i);
-                    return res && res.status === 'offline';
-                });
-                setOfflineServers(offline);
-                setBackendDisconnected(false);
-            } else {
-                setBackendDisconnected(true);
+            const finalOffline: FlatServer[] = [];
+            
+            // Limitamos a lotes para no saturar el navegador con 138 imágenes a la vez
+            for (let i = 0; i < gatheredServers.length; i++) {
+                const s = gatheredServers[i];
+                const res = cloudResults.results?.find((r: any) => r.id === i);
+                let status = res ? res.status : 'offline';
+
+                if (status === 'offline') {
+                    status = await probeLocalVPN(s.ip);
+                }
+
+                if (status === 'offline') {
+                    finalOffline.push(s);
+                }
             }
+
+            setOfflineServers(finalOffline);
+            setLastUpdated(new Date());
         } catch (error) {
-            setBackendDisconnected(true);
+            console.error("Global monitor error", error);
         } finally {
             setChecking(false);
-            setLastUpdated(new Date());
         }
-    }, [checking, t]);
+    }, [backendUrl, checking]);
 
     useEffect(() => {
         checkGlobalStatus();
-        const interval = setInterval(checkGlobalStatus, 1000 * 60 * 10); // Cada 10 min por defecto
+        const interval = setInterval(checkGlobalStatus, 1000 * 60 * 15); // Auto cada 15 min
         return () => clearInterval(interval);
     }, [checkGlobalStatus]);
 
+    // ... (El resto del renderizado es idéntico pero usando los nuevos datos filtrados)
     const getCountryStats = (): CountryStatus[] => {
         const stats: Record<string, CountryStatus> = {};
         allServers.forEach(server => {
@@ -139,85 +136,86 @@ const ServerStatusSummary: React.FC = () => {
         <>
             <button 
                 onClick={() => setShowModal(true)}
-                className={`flex items-center space-x-2 text-xs sm:text-sm font-semibold px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg shadow-md transition-all duration-300 border ${
-                    backendDisconnected ? 'bg-amber-100 text-amber-700 border-amber-300' :
+                className={`flex items-center space-x-2 text-xs sm:text-sm font-black px-4 py-2 rounded-xl shadow-lg transition-all border ${
                     checking ? 'bg-blue-50 text-blue-600 border-blue-200 animate-pulse' : 
-                    hasIssues ? 'bg-red-600 text-white border-red-700' : 'bg-green-600 text-white border-green-700 hover:bg-green-700'
+                    hasIssues ? 'bg-red-600 text-white border-red-700' : 'bg-green-600 text-white border-green-700'
                 }`}
             >
-                {checking ? <div className="w-4 h-4 border-2 border-blue-400 border-t-blue-600 rounded-full animate-spin"></div> : <ActivityIcon className="w-4 h-4 sm:w-5 sm:h-5" />}
-                <span className="hidden sm:inline">
-                    {backendDisconnected ? 'Backend Offline' : checking ? t('monitorChecking') : (hasIssues ? `${offlineServers.length} ${t('monitorOffline')}` : t('monitorSystemOnline'))}
+                {checking ? <div className="w-4 h-4 border-2 border-blue-400 border-t-blue-600 rounded-full animate-spin"></div> : <ActivityIcon className="w-5 h-5" />}
+                <span className="hidden md:inline uppercase tracking-widest text-[10px]">
+                    {checking ? 'Actualizando' : (hasIssues ? `${offlineServers.length} Problemas` : 'Sistemas OK')}
                 </span>
-                <span className="sm:hidden">
-                     {backendDisconnected ? 'ERR' : checking ? '...' : (hasIssues ? `${offlineServers.length} OFF` : 'OK')}
+                <span className="md:hidden">
+                     {checking ? '...' : (hasIssues ? `${offlineServers.length} OFF` : 'OK')}
                 </span>
             </button>
 
             {showModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-70 backdrop-blur-sm">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[85vh]">
-                        <div className={`${hasIssues ? 'bg-red-600' : 'bg-[#0d1a2e]'} text-white p-4 sm:p-6 flex justify-between items-center`}>
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+                    <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className={`${hasIssues ? 'bg-red-600' : 'bg-[#0d1a2e]'} text-white p-8 flex justify-between items-center`}>
                             <div>
-                                <h3 className="font-bold text-xl sm:text-2xl flex items-center"><GlobeIcon className="w-6 h-6 mr-2" />{t('monitorTitle')}</h3>
-                                <p className="text-white/80 text-sm mt-1">{backendDisconnected ? '⚠️ Backend no responde' : checking ? t('monitorStatusUpdate') : `${t('monitorLastUpdate')}: ${lastUpdated?.toLocaleTimeString()}`}</p>
+                                <h3 className="font-black text-2xl uppercase italic tracking-tighter flex items-center"><GlobeIcon className="w-8 h-8 mr-3" />Monitor Global de Infraestructura</h3>
+                                <p className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] mt-1">{checking ? 'Sincronizando con nodos remotos...' : `Último Escaneo: ${lastUpdated?.toLocaleTimeString()}`}</p>
                             </div>
-                            <button onClick={() => setShowModal(false)} className="text-white/70 hover:text-white"><XIcon className="w-8 h-8" /></button>
+                            <button onClick={() => setShowModal(false)} className="bg-white/10 p-2 rounded-full hover:bg-white/20"><XIcon className="w-8 h-8" /></button>
                         </div>
                         
-                        <div className="p-4 sm:p-6 bg-gray-50 border-b flex flex-wrap gap-4">
-                             <div className="flex-1 min-w-[140px] bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                                <div className="text-gray-500 text-[10px] font-black uppercase tracking-wider">{t('monitorTotalServers')}</div>
-                                <div className="text-3xl font-black text-gray-800">{allServers.length}</div>
+                        <div className="p-8 bg-slate-50 border-b flex flex-wrap gap-6">
+                             <div className="flex-1 min-w-[180px] bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                                <div className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] mb-2">Total Nodos</div>
+                                <div className="text-4xl font-black text-slate-800 tracking-tighter italic">{allServers.length}</div>
                              </div>
-                             <div className="flex-1 min-w-[140px] bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                                <div className="text-gray-500 text-[10px] font-black uppercase tracking-wider">{t('monitorOnline')}</div>
-                                <div className="text-3xl font-black text-green-600">{allServers.length - offlineServers.length}</div>
+                             <div className="flex-1 min-w-[180px] bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                                <div className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] mb-2">Saludable</div>
+                                <div className="text-4xl font-black text-green-600 tracking-tighter italic">{allServers.length - offlineServers.length}</div>
                              </div>
-                             <div className={`flex-1 min-w-[140px] bg-white p-4 rounded-lg shadow-sm border ${hasIssues ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
-                                <div className="text-gray-500 text-[10px] font-black uppercase tracking-wider">{t('monitorOffline')}</div>
-                                <div className={`text-3xl font-black ${hasIssues ? 'text-red-600' : 'text-gray-400'}`}>{offlineServers.length}</div>
+                             <div className={`flex-1 min-w-[180px] bg-white p-6 rounded-3xl shadow-sm border ${hasIssues ? 'border-red-200 bg-red-50' : 'border-slate-100'}`}>
+                                <div className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] mb-2">Crítico</div>
+                                <div className={`text-4xl font-black tracking-tighter italic ${hasIssues ? 'text-red-600' : 'text-slate-200'}`}>{offlineServers.length}</div>
                              </div>
                         </div>
 
-                        <div className="overflow-y-auto flex-grow p-4 sm:p-6 space-y-6">
-                            {backendDisconnected && (
-                                <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg text-amber-800 text-sm">
-                                    <p className="font-bold">⚠️ Error de Comunicación</p>
-                                    <p className="mt-1">El backend de monitoreo no responde. Verifica que el servidor backend esté encendido.</p>
-                                </div>
-                            )}
+                        <div className="overflow-y-auto flex-grow p-8 space-y-8 bg-white">
                             {hasIssues && (
                                 <div>
-                                    <h4 className="text-red-700 font-bold text-lg mb-3 flex items-center"><ActivityIcon className="w-5 h-5 mr-2" />{t('monitorIssuesTitle')}</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    <h4 className="text-red-600 font-black text-sm uppercase tracking-[0.2em] mb-4 flex items-center"><ActivityIcon className="w-5 h-5 mr-2" />Nodos Fuera de Servicio</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                         {offlineServers.map((s, idx) => (
-                                            <div key={idx} className="bg-white border-l-4 border-red-500 rounded shadow-sm p-3">
-                                                <div className="font-bold text-gray-900 text-sm truncate">{s.club}</div>
-                                                <div className="text-[10px] text-gray-500 uppercase font-bold">{s.country}</div>
-                                                <div className="mt-2 text-xs font-mono text-gray-600 truncate bg-gray-50 p-1 rounded border border-gray-100">{s.ip}</div>
+                                            <div key={idx} className="bg-slate-900 rounded-2xl p-4 border border-white/5 shadow-xl group">
+                                                <div className="font-black text-white text-xs truncate group-hover:text-red-400 transition-colors">{s.club}</div>
+                                                <div className="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1">{s.country}</div>
+                                                <div className="mt-3 text-[10px] font-mono text-red-500 bg-red-500/10 p-2 rounded-lg border border-red-500/20">{s.ip}</div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
                             <div>
-                                <h4 className="text-gray-800 font-bold text-lg mb-3">{t('monitorSummaryCountry')}</h4>
-                                <div className="space-y-3">
+                                <h4 className="text-slate-800 font-black text-sm uppercase tracking-[0.2em] mb-6">Estado de Infraestructura Regional</h4>
+                                <div className="space-y-4">
                                     {countryStats.map((stat) => (
-                                        <div key={stat.name} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                                            <div className="bg-gray-100 px-4 py-3 flex justify-between items-center">
-                                                <span className="font-bold text-gray-700">{stat.name}</span>
-                                                <div className="flex items-center space-x-3 text-[11px] font-black uppercase">
-                                                    <span className="text-gray-400">{stat.total} Servers</span>
-                                                    {stat.offline > 0 ? <span className="text-red-600">{stat.offline} OFF</span> : <span className="text-green-600">ONLINE</span>}
+                                        <div key={stat.name} className="bg-slate-50 rounded-[2rem] border border-slate-100 overflow-hidden">
+                                            <div className="bg-white px-8 py-5 flex justify-between items-center border-b border-slate-100">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="font-black text-slate-800 uppercase italic tracking-tighter">{stat.name}</span>
+                                                </div>
+                                                <div className="flex items-center gap-4">
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.total} Nodos</span>
+                                                    {stat.offline > 0 ? (
+                                                        <span className="bg-red-500 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest animate-pulse">{stat.offline} Alertas</span>
+                                                    ) : (
+                                                        <span className="bg-green-500 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Estable</span>
+                                                    )}
                                                 </div>
                                             </div>
-                                            <div className="p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                                            <div className="p-6 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
                                                 {stat.clubs.map((club) => (
-                                                    <div key={club.name} className={`text-[10px] p-2 rounded border flex items-center justify-between font-bold ${club.offlineCount > 0 ? 'bg-red-50 border-red-100 text-red-700' : 'bg-green-50 border-green-100 text-green-700'}`}>
-                                                        <span className="truncate mr-2">{club.name}</span>
-                                                        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${club.offlineCount > 0 ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                                                    <div key={club.name} className={`text-[9px] p-3 rounded-xl border flex flex-col gap-2 font-black uppercase tracking-tighter transition-all ${club.offlineCount > 0 ? 'bg-red-500 text-white border-red-600 shadow-lg shadow-red-500/20' : 'bg-white border-slate-200 text-slate-400 opacity-60'}`}>
+                                                        <span className="truncate">{club.name}</span>
+                                                        <div className={`h-1 rounded-full w-full ${club.offlineCount > 0 ? 'bg-white/40' : 'bg-slate-200'}`}>
+                                                            <div className={`h-full rounded-full ${club.offlineCount > 0 ? 'bg-white' : 'bg-green-500'}`} style={{ width: club.offlineCount > 0 ? '100%' : '100%' }}></div>
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -226,9 +224,9 @@ const ServerStatusSummary: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className="p-4 border-t bg-gray-50 flex justify-end items-center gap-3">
-                            <button onClick={checkGlobalStatus} disabled={checking} className="bg-white border border-gray-300 px-4 py-2 rounded-lg font-bold text-xs uppercase transition-colors hover:bg-gray-100 disabled:opacity-50">{checking ? t('monitorUpdating') : t('monitorUpdateNow')}</button>
-                            <button onClick={() => setShowModal(false)} className="bg-[#0d1a2e] text-white px-6 py-2 rounded-lg font-bold text-xs uppercase hover:bg-slate-800">{t('monitorClose')}</button>
+                        <div className="p-8 border-t bg-slate-50 flex justify-end items-center gap-4">
+                            <button onClick={checkGlobalStatus} disabled={checking} className="bg-white border-2 border-slate-200 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all hover:bg-slate-100 active:scale-95 disabled:opacity-50">Sincronizar</button>
+                            <button onClick={() => setShowModal(false)} className="bg-[#0d1a2e] text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-slate-800 active:scale-95">Cerrar Monitor</button>
                         </div>
                     </div>
                 </div>
