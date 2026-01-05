@@ -6,6 +6,7 @@ import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import net from 'net';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,12 +36,35 @@ if (fs.existsSync(CONFIG_FILE)) {
     }
 }
 
-let lastOfflineIps = new Set();
-
 app.use(cors());
 app.use(express.json());
 
-// --- Endpoints de API ---
+// Función para verificar si un puerto está abierto (TCP check)
+// Útil cuando el entorno de nube bloquea ICMP (ping)
+const checkTcpPort = (host, port = 80, timeout = 2000) => {
+    return new Promise((resolve) => {
+        const socket = new net.Socket();
+        let status = false;
+
+        socket.setTimeout(timeout);
+        socket.on('connect', () => {
+            status = true;
+            socket.destroy();
+        });
+        socket.on('timeout', () => {
+            socket.destroy();
+        });
+        socket.on('error', () => {
+            socket.destroy();
+        });
+        socket.on('close', () => {
+            resolve(status);
+        });
+
+        socket.connect(port, host);
+    });
+};
+
 app.get('/api/health', (req, res) => {
     res.json({ 
         status: 'ok', 
@@ -49,67 +73,48 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-app.post('/api/config-alerts', (req, res) => {
-    const { config } = req.body;
-    if (config) {
-        emailConfig = { ...emailConfig, ...config };
-        try {
-            fs.writeFileSync(CONFIG_FILE, JSON.stringify(emailConfig, null, 2));
-        } catch(e) {
-            console.error("No se pudo persistir la configuración en disco");
-        }
-        return res.json({ success: true });
-    }
-    res.status(400).json({ error: 'Configuración inválida' });
-});
-
-app.post('/api/test-email', async (req, res) => {
-    const { config } = req.body;
-    const testTransporter = nodemailer.createTransport({
-        host: config.host,
-        port: config.port,
-        secure: config.secure,
-        auth: { user: config.user, pass: config.pass },
-    });
-
-    try {
-        await testTransporter.sendMail({
-            from: `"SALTEX TEST" <${config.user}>`,
-            to: config.recipient,
-            subject: '🧪 SALTEX: Prueba de Conexión en la Nube',
-            text: 'Si recibes esto, tu backend en Railway está configurado correctamente.'
-        });
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
 app.post('/api/check-status', async (req, res) => {
     const { servers } = req.body;
-    if (!servers) return res.status(400).send();
+    if (!servers || !Array.isArray(servers)) return res.status(400).send();
+
+    console.log(`[${new Date().toISOString()}] Checking ${servers.length} servers...`);
 
     const results = await Promise.all(servers.map(async (server) => {
-        if (!server.ip || server.ip.includes('X')) return { id: server.id, status: 'offline' };
-        try {
-            // Nota: Algunos entornos de nube bloquean ICMP. Si el ping falla siempre, 
-            // considera usar chequeos de puerto TCP si es posible.
-            const resPing = await ping.promise.probe(server.ip, { timeout: 3 });
-            return { id: server.id, status: resPing.alive ? 'online' : 'offline', name: server.name, ip: server.ip };
-        } catch (e) {
+        if (!server.ip || server.ip.includes('X') || server.ip === '0.0.0.0' || server.ip === 'N/A') {
             return { id: server.id, status: 'offline' };
+        }
+
+        try {
+            // 1. Intento de PING tradicional
+            const resPing = await ping.promise.probe(server.ip, { timeout: 2 });
+            if (resPing.alive) {
+                return { id: server.id, status: 'online', ip: server.ip };
+            }
+
+            // 2. FALLBACK: Si falla el ping (común en cloud), intentamos conexión TCP al puerto 80
+            // Muchos servidores de cámaras o equipos de red tienen un servidor web en el 80 o 443.
+            const isTcpAlive = await checkTcpPort(server.ip, 80);
+            if (isTcpAlive) {
+                return { id: server.id, status: 'online', ip: server.ip };
+            }
+
+            // Intento con puerto 443 por si acaso
+            const isHttpsAlive = await checkTcpPort(server.ip, 443);
+            if (isHttpsAlive) {
+                return { id: server.id, status: 'online', ip: server.ip };
+            }
+
+            return { id: server.id, status: 'offline', ip: server.ip };
+        } catch (e) {
+            return { id: server.id, status: 'offline', ip: server.ip };
         }
     }));
 
-    lastOfflineIps = new Set(results.filter(r => r.status === 'offline' && r.ip).map(s => s.ip));
     res.json({ results });
 });
 
-// --- Servir Frontend (Vite Build) ---
-// Servimos los archivos estáticos de la carpeta /dist
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// Cualquier ruta que no sea de la API, sirve el index.html (SPA routing)
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });

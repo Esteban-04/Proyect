@@ -59,8 +59,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
   useEffect(() => {
     const checkBackend = async () => {
         try {
-            const apiPath = backendUrl ? `${backendUrl}/api/health` : '/api/health';
-            const res = await fetch(apiPath);
+            // Use window.location.origin as fallback to ensure relative calls work
+            const base = backendUrl || window.location.origin;
+            const res = await fetch(`${base}/api/health`);
             if (res.ok) setBackendStatus('online');
             else setBackendStatus('offline');
         } catch (e) { 
@@ -102,8 +103,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users));
       
       try {
-          const apiPath = backendUrl ? `${backendUrl}/api/config-alerts` : '/api/config-alerts';
-          await fetch(apiPath, {
+          const base = backendUrl || window.location.origin;
+          await fetch(`${base}/api/config-alerts`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ config: alertConfig })

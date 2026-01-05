@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Country, ServerDetails } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { XIcon, SearchIcon, EyeIcon, EyeOffIcon, SaveIcon, PlusIcon, TrashIcon, ActivityIcon } from '../assets/icons';
+import { XIcon, SearchIcon, EyeIcon, EyeOffIcon, SaveIcon, PlusIcon, TrashIcon, ActivityIcon, GlobeIcon } from '../assets/icons';
 import { CLUB_SPECIFIC_DEFAULTS } from '../config/serverDefaults';
 
 // --- Interfaces ---
@@ -67,6 +67,10 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const [searchTerm, setSearchTerm] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [serverToDelete, setServerToDelete] = useState<number | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationMode, setVerificationMode] = useState<'cloud' | 'local'>('cloud');
+  const [mixedContentWarning, setMixedContentWarning] = useState(false);
+
   const [visibleTablePasswords, setVisibleTablePasswords] = useState<Record<number, boolean>>({});
   const [visibleCardPasswords, setVisibleCardPasswords] = useState<Record<number, boolean>>({});
   const [visibleTvPasswords, setVisibleTvPasswords] = useState<Record<number, boolean>>({});
@@ -113,15 +117,48 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       return SERVER_CAMERA_DATA;
   });
 
-  const checkServerStatus = async (_isManual = false) => {
+  // Función para intentar conectar directamente desde el navegador (Útil con VPN)
+  const probeLocalConnectivity = async (ip: string): Promise<'online' | 'offline'> => {
+      if (!ip || ip.includes('X') || ip === '0.0.0.0') return 'offline';
+      
+      // Si estamos en HTTPS, el navegador bloqueará peticiones a HTTP locales (Mixed Content)
+      if (window.location.protocol === 'https:') {
+          setMixedContentWarning(true);
+          return 'offline';
+      }
+
+      try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2500);
+          
+          // Intentamos un fetch simple. Mode 'no-cors' permite ver si el servidor responde
+          // aunque no tengamos permisos CORS para leer la respuesta.
+          await fetch(`http://${ip}`, { 
+              mode: 'no-cors', 
+              signal: controller.signal,
+              cache: 'no-cache'
+          });
+          
+          clearTimeout(timeoutId);
+          return 'online';
+      } catch (e) {
+          return 'offline';
+      }
+  };
+
+  const checkServerStatus = async (isManual = false) => {
+    if (isVerifying) return;
+    setIsVerifying(true);
+    setMixedContentWarning(false);
     setServers(prev => prev.map(s => ({ ...s, status: 'checking' })));
 
-    const backendUrl = localStorage.getItem('saltex_backend_url') || '';
+    const backendUrl = localStorage.getItem('saltex_backend_url') || window.location.origin;
+    const isCloud = backendUrl.includes('railway.app') || backendUrl.includes('up.railway.app');
 
     try {
+        // 1. Verificación vía Backend (Cloud)
         const payload = servers.map(s => ({ id: s.id, ip: s.ip }));
-        const apiPath = backendUrl ? `${backendUrl}/api/check-status` : '/api/check-status';
-        const response = await fetch(apiPath, {
+        const response = await fetch(`${backendUrl}/api/check-status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ servers: payload })
@@ -132,18 +169,41 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         const data = await response.json();
         const results = data.results || [];
 
-        setServers(prev => prev.map(s => {
+        // 2. Si el backend dice offline y estamos en la nube, intentamos probe local (VPN)
+        const updatedServers = await Promise.all(servers.map(async (s) => {
             const result = results.find((r: any) => r.id === s.id);
-            return { ...s, status: result ? result.status : 'offline' };
+            let status = result ? result.status : 'offline';
+
+            // Fallback local si el cloud no llega a la IP privada
+            if (status === 'offline' && isCloud && s.ip.startsWith('192.168')) {
+                const localStatus = await probeLocalConnectivity(s.ip);
+                if (localStatus === 'online') {
+                    status = 'online';
+                }
+            }
+            return { ...s, status };
         }));
+
+        setServers(updatedServers as ServerDetails[]);
         
+        if (isManual) showSuccess(t('saveSuccess'));
     } catch (error) {
-        setServers(prev => prev.map(s => ({ ...s, status: 'offline' })));
+        // Fallback total a local si falla el backend
+        const fallbackServers = await Promise.all(servers.map(async (s) => {
+             const localStatus = await probeLocalConnectivity(s.ip);
+             return { ...s, status: localStatus };
+        }));
+        setServers(fallbackServers as ServerDetails[]);
+        console.error("Verification failed:", error);
+    } finally {
+        setIsVerifying(false);
     }
   };
 
   useEffect(() => {
       checkServerStatus(false);
+      const interval = setInterval(() => checkServerStatus(false), 300000);
+      return () => clearInterval(interval);
   }, []);
 
   const showSuccess = (message: string) => {
@@ -214,7 +274,6 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
           showSuccess(t('saveSuccess'));
       } catch (e) {
           console.error("Error saving data:", e);
-          alert("Error al guardar los datos.");
       }
   };
 
@@ -290,12 +349,28 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         <div className="h-1 w-20 bg-blue-600 mt-2 rounded-full"></div>
       </div>
       
-      <div className="mb-6 w-full flex justify-center sm:justify-end max-w-5xl items-center">
-          <button onClick={() => checkServerStatus(true)} className="w-full sm:w-auto flex items-center justify-center space-x-2 text-sm font-bold text-gray-700 hover:text-[#0d1a2e] bg-white px-6 py-3 rounded-xl shadow-sm border border-gray-200 transition-all hover:shadow-md active:scale-95"><ActivityIcon className="w-5 h-5" /><span>{t('checkStatusButton')}</span></button>
+      {mixedContentWarning && (
+          <div className="w-full max-w-5xl mb-6 bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center gap-4 text-amber-800">
+              <ActivityIcon className="w-6 h-6 shrink-0" />
+              <div className="text-xs font-bold uppercase tracking-widest">
+                  ⚠️ El navegador bloquea pruebas locales por HTTPS. Usa la versión HTTP o corre la App localmente para usar la VPN.
+              </div>
+          </div>
+      )}
+
+      <div className="mb-6 w-full flex flex-col sm:flex-row justify-center sm:justify-end max-w-5xl items-center gap-3">
+          <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+              <button onClick={() => setVerificationMode('cloud')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${verificationMode === 'cloud' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400'}`}>Cloud Only</button>
+              <button onClick={() => setVerificationMode('local')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${verificationMode === 'local' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400'}`}>Hybrid (VPN)</button>
+          </div>
+          <button onClick={() => checkServerStatus(true)} disabled={isVerifying} className="w-full sm:w-auto flex items-center justify-center space-x-2 text-sm font-bold text-gray-700 hover:text-[#0d1a2e] bg-white px-6 py-3 rounded-xl shadow-sm border border-gray-200 transition-all hover:shadow-md active:scale-95 disabled:opacity-50">
+            {isVerifying ? <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div> : <ActivityIcon className="w-5 h-5" />}
+            <span>{isVerifying ? t('statusChecking') : t('checkStatusButton')}</span>
+          </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 w-full max-w-5xl">
-        {servers.map((server, _index) => (
+        {servers.map((server) => (
             <div key={server.id} onClick={() => setSelectedServer(server)} className="rounded-2xl p-5 sm:p-6 text-white shadow-xl cursor-pointer hover:shadow-2xl transition-all border relative group bg-[#0d1a2e] border-[#1a2b4e] hover:border-blue-500/50">
                 {canEdit && <button onClick={(e) => handleDeleteClick(e, server.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-400 p-2 rounded-full hover:bg-white/10 z-20"><TrashIcon className="w-5 h-5" /></button>}
                 <div className="border-b border-white/10 pb-3 mb-4 flex flex-col items-center">
@@ -324,6 +399,13 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                         </div>
                     </div>
                 </div>
+                {server.ip && !server.ip.includes('X') && (
+                    <div className="mt-4 pt-4 border-t border-white/5 flex justify-center">
+                        <a href={`http://${server.ip}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-2 text-[10px] font-bold text-blue-400 hover:text-blue-300 uppercase tracking-widest opacity-60 hover:opacity-100 transition-all">
+                            <GlobeIcon className="w-4 h-4" /> Abrir Interfaz Web
+                        </a>
+                    </div>
+                )}
             </div>
         ))}
       </div>
@@ -337,6 +419,21 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
             </>
         )}
       </div>
+
+      {serverToDelete !== null && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+              <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
+                  <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <TrashIcon className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-800 mb-2">{t('deleteServerConfirm')}</h3>
+                  <div className="flex gap-4 mt-6">
+                      <button onClick={() => setServerToDelete(null)} className="flex-1 py-3 bg-slate-100 text-slate-500 rounded-xl font-bold">{t('noButton')}</button>
+                      <button onClick={confirmDeleteServer} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg">{t('yesButton')}</button>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 };
