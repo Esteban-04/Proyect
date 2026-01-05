@@ -125,7 +125,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         }
         
         setServers(loadedServers);
-        // Verificación INMEDIATA al cargar el sitio
+        // Verificación INMEDIATA al cargar
         if (loadedServers.length > 0) {
           checkServerStatus(false, loadedServers);
         }
@@ -140,7 +140,13 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
   useEffect(() => { loadCloudData(); }, [loadCloudData]);
 
-  // Se eliminaron todos los intervalos. La verificación ocurre solo al entrar o al presionar el botón.
+  // Restored 10-second interval check
+  useEffect(() => {
+    const timer = setInterval(() => {
+        checkServerStatus(false);
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [checkServerStatus]);
 
   const handleSave = async () => {
     if (!canEdit) return;
