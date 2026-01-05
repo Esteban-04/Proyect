@@ -95,7 +95,7 @@ const ServerStatusSummary: React.FC = () => {
                 const configKey = `config_${countryCode}_${club.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 const config = allConfigs[configKey] || { servers: CLUB_SPECIFIC_DEFAULTS[club] || [] };
                 config.servers.forEach((s: any) => {
-                    gatheredServers.push({ ...s, club, country: countryName, countryCode });
+                    gatheredServers.push({ ...s, club, country: countryName, countryCode } as FlatServer);
                 });
             };
 
@@ -120,7 +120,7 @@ const ServerStatusSummary: React.FC = () => {
                     continue;
                 }
                 const res = cloudResults.results?.find((r: any) => r.ip === s.ip);
-                let status = res ? res.status : 'offline';
+                let status: ServerDetails['status'] = res ? (res.status as ServerDetails['status']) : 'offline';
                 
                 if (status === 'offline') {
                     status = await probeLocalVPN(s.ip);

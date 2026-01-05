@@ -88,13 +88,18 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
         const updated = await Promise.all(listToProcess.map(async (s) => {
             const res = cloudData.results.find((r: any) => r.id === s.id);
-            let status = res ? res.status : 'offline';
-            if (status === 'offline') status = await probeLocalVPN(s.ip);
-            return { ...s, status };
+            // Fix: Explicitly type status to match ServerDetails status union
+            let status: ServerDetails['status'] = res ? (res.status as ServerDetails['status']) : 'offline';
+            if (status === 'offline') {
+                status = await probeLocalVPN(s.ip);
+            }
+            return { ...s, status } as ServerDetails;
         }));
 
-        setServers(updated as ServerDetails[]);
+        setServers(updated);
         if (isManual) showSuccess(t('saveSuccess'));
+    } catch (error) {
+        console.error("Status check error:", error);
     } finally {
         setIsVerifying(false);
     }
@@ -110,10 +115,13 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         const data = await response.json();
         
         if (data.servers && data.servers.length > 0) {
-            loadedServers = data.servers.map((s: any) => ({ ...s, status: s.status || 'checking' }));
+            loadedServers = data.servers.map((s: any) => ({ 
+                ...s, 
+                status: (s.status as ServerDetails['status']) || 'checking' 
+            })) as ServerDetails[];
             setCameras(data.cameras || []);
         } else {
-            loadedServers = (CLUB_SPECIFIC_DEFAULTS[clubName] || []).map(s => ({ ...s, status: 'checking' }));
+            loadedServers = (CLUB_SPECIFIC_DEFAULTS[clubName] || []).map(s => ({ ...s, status: 'checking' as const }));
             setCameras([]);
         }
         
@@ -123,7 +131,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
           checkServerStatus(false, loadedServers);
         }
     } catch (e) {
-        const defaultServers = (CLUB_SPECIFIC_DEFAULTS[clubName] || []).map(s => ({ ...s, status: 'checking' }));
+        const defaultServers = (CLUB_SPECIFIC_DEFAULTS[clubName] || []).map(s => ({ ...s, status: 'checking' as const }));
         setServers(defaultServers);
         if (defaultServers.length > 0) {
           checkServerStatus(false, defaultServers);
@@ -132,9 +140,6 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   }, [clubName, configKey, checkServerStatus]);
 
   useEffect(() => { loadCloudData(); }, [loadCloudData]);
-
-  // Se ha eliminado el intervalo de 10 segundos para cumplir con la solicitud de no chequeo periódico
-  // y priorizar la verificación inmediata al entrar.
 
   const handleSave = async () => {
     if (!canEdit) return;
