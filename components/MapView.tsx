@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Country } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -13,127 +12,148 @@ const MapView: React.FC<MapViewProps> = ({ countries, selectedCountryCode, onSel
   const { t } = useLanguage();
   const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
 
-  // Coordenadas calibradas (Región Centro, Caribe y Norte de Suramérica)
+  // Coordenadas calibradas para una visualización óptima de Centroamérica, Caribe y Colombia
   const markerPositions: Record<string, { x: number, y: number }> = {
-    'gt': { x: 120, y: 220 },
-    'sv': { x: 145, y: 255 },
-    'hn': { x: 195, y: 225 },
-    'ni': { x: 230, y: 275 },
-    'cr': { x: 270, y: 325 },
-    'pa': { x: 340, y: 335 },
-    'co': { x: 440, y: 440 },
-    'jm': { x: 280, y: 150 },
-    'do': { x: 430, y: 145 },
-    'aw': { x: 410, y: 280 },
-    'vi': { x: 520, y: 135 },
-    'bb': { x: 640, y: 240 },
-    'tt': { x: 600, y: 295 },
-    'dhl': { x: 50, y: 50 } // Icono especial arriba
+    'gt': { x: 130, y: 220 },
+    'sv': { x: 155, y: 250 },
+    'hn': { x: 205, y: 220 },
+    'ni': { x: 240, y: 270 },
+    'cr': { x: 280, y: 315 },
+    'pa': { x: 350, y: 330 },
+    'co': { x: 450, y: 430 },
+    'jm': { x: 290, y: 140 },
+    'do': { x: 440, y: 135 },
+    'aw': { x: 420, y: 270 },
+    'vi': { x: 530, y: 125 },
+    'bb': { x: 650, y: 230 },
+    'tt': { x: 610, y: 285 },
+    'dhl': { x: 720, y: 60 } // Icono especial de Global/Nube
   };
 
+  // Rutas SVG simplificadas que representan las masas de tierra
   const countryPaths: Record<string, string> = {
-    'gt': "M100,200 L140,200 L140,240 L110,250 L95,230 Z",
-    'sv': "M135,250 L160,250 L160,265 L135,265 Z",
-    'hn': "M155,200 L215,205 L230,245 L165,255 Z",
-    'ni': "M220,245 L260,245 L270,300 L210,290 Z",
-    'cr': "M265,300 L300,305 L310,340 L260,340 Z",
-    'pa': "M315,325 L375,330 L390,360 L320,360 Z",
-    'co': "M400,370 L480,370 L540,500 L410,500 L380,430 Z",
-    'jm': "M260,145 L310,145 L310,165 L260,165 Z",
-    'do': "M410,140 L490,140 L490,170 L410,170 Z",
-    'aw': "M400,275 L430,275 L430,295 L400,295 Z",
-    'tt': "M580,285 L625,285 L625,315 L580,315 Z",
-    'bb': "M630,230 L660,230 L660,260 L630,260 Z",
-    'vi': "M510,125 L550,125 L550,145 L510,145 Z"
+    'gt': "M110,200 L150,200 L150,240 L120,250 L105,230 Z",
+    'sv': "M145,245 L170,245 L170,260 L145,260 Z",
+    'hn': "M165,190 L225,195 L240,235 L175,245 Z",
+    'ni': "M230,235 L270,235 L280,290 L220,280 Z",
+    'cr': "M275,290 L310,295 L320,330 L270,330 Z",
+    'pa': "M325,315 L385,320 L400,350 L330,350 Z",
+    'co': "M410,360 L490,360 L550,490 L420,490 L390,420 Z",
+    'jm': "M270,135 L320,135 L320,155 L270,155 Z",
+    'do': "M420,130 L500,130 L500,160 L420,160 Z",
+    'aw': "M410,265 L440,265 L440,285 L410,285 Z",
+    'tt': "M590,275 L635,275 L635,305 L590,305 Z",
+    'bb': "M640,220 L670,220 L670,250 L640,250 Z",
+    'vi': "M520,115 L560,115 L560,135 L520,135 Z"
   };
 
   return (
-    <div className="relative w-full aspect-[2/1] bg-[#0d1a2e] rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl select-none group">
-      <div className="absolute top-10 left-10 z-20 pointer-events-none">
-        <div className="bg-white/5 backdrop-blur-2xl p-8 rounded-[2rem] border border-white/10 shadow-2xl">
-            <div className="flex items-center gap-4 mb-2">
-                <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse shadow-[0_0_20px_rgba(59,130,246,1)]"></div>
-                <h3 className="text-white font-black text-3xl tracking-tighter uppercase italic leading-none">Global Infrastructure</h3>
+    <div className="relative w-full aspect-[16/9] bg-[#0b1626] rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl select-none group">
+      {/* HUD de Información Superior */}
+      <div className="absolute top-8 left-8 z-20 pointer-events-none">
+        <div className="bg-white/5 backdrop-blur-xl p-6 rounded-2xl border border-white/10 shadow-2xl">
+            <div className="flex items-center gap-3 mb-1">
+                <div className="w-2.5 h-2.5 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_15px_#22d3ee]"></div>
+                <h3 className="text-white font-black text-2xl tracking-tighter uppercase italic leading-none">Global Network Map</h3>
             </div>
-            <p className="text-blue-400/50 text-[11px] font-black uppercase tracking-[0.4em]">Saltex Real-time Monitoring</p>
+            <p className="text-cyan-400/40 text-[9px] font-black uppercase tracking-[0.4em]">Infrastructure Monitoring System v2.5</p>
         </div>
       </div>
 
-      <svg viewBox="0 0 800 500" className="w-full h-full object-cover">
+      <svg viewBox="0 0 800 500" className="w-full h-full">
         <defs>
-          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5" strokeOpacity="0.05" />
+          <pattern id="mapGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5" strokeOpacity="0.03" />
           </pattern>
+          <radialGradient id="oceanGradient" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#0f172a" />
+            <stop offset="100%" stopColor="#0b1626" />
+          </radialGradient>
         </defs>
-        <rect width="800" height="500" fill="#0d1a2e" />
-        <rect width="800" height="500" fill="url(#grid)" />
 
-        {countries.map(country => {
-          const path = countryPaths[country.code];
-          if (!path) return null;
-          const isSelected = selectedCountryCode === country.code;
-          const isHovered = hoveredCountry === country.code;
+        <rect width="800" height="500" fill="url(#oceanGradient)" />
+        <rect width="800" height="500" fill="url(#mapGrid)" />
+
+        {/* Dibujar Tierras */}
+        {Object.keys(countryPaths).map(code => {
+          const path = countryPaths[code];
+          const isSelected = selectedCountryCode === code;
+          const isHovered = hoveredCountry === code;
 
           return (
             <path
-              key={`path-${country.code}`}
+              key={`land-${code}`}
               d={path}
               className="transition-all duration-500 cursor-pointer"
               style={{
-                fill: isSelected ? 'rgba(37, 99, 235, 0.5)' : isHovered ? 'rgba(59, 130, 246, 0.3)' : 'rgba(255, 255, 255, 0.03)',
-                stroke: isSelected ? '#3b82f6' : isHovered ? '#60a5fa' : 'rgba(255,255,255,0.08)',
-                strokeWidth: isSelected || isHovered ? 2.5 : 1
+                fill: isSelected ? 'rgba(34, 211, 238, 0.2)' : isHovered ? 'rgba(34, 211, 238, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                stroke: isSelected ? '#22d3ee' : isHovered ? '#67e8f9' : 'rgba(255,255,255,0.1)',
+                strokeWidth: isSelected || isHovered ? 2 : 1
               }}
-              onMouseEnter={() => setHoveredCountry(country.code)}
+              onMouseEnter={() => setHoveredCountry(code)}
               onMouseLeave={() => setHoveredCountry(null)}
-              onClick={() => onSelectCountry(country)}
+              onClick={() => {
+                const country = countries.find(c => c.code === code);
+                if (country) onSelectCountry(country);
+              }}
             />
           );
         })}
 
-        {countries.map(country => {
-          const pos = markerPositions[country.code];
-          if (!pos) return null;
-          const isHovered = hoveredCountry === country.code;
-          const isSelected = selectedCountryCode === country.code;
+        {/* Marcadores de Ubicación */}
+        {Object.keys(markerPositions).map(code => {
+          const pos = markerPositions[code];
+          const isHovered = hoveredCountry === code;
+          const isSelected = selectedCountryCode === code;
+          const countryData = countries.find(c => c.code === code) || (code === 'dhl' ? { name: 'DHL GLOBAL', code: 'dhl' } : null);
+
+          if (!countryData) return null;
 
           return (
-            <g key={`marker-${country.code}`} className="cursor-pointer" onClick={() => onSelectCountry(country)}>
-                {(isHovered || isSelected) && (
-                    <circle cx={pos.x} cy={pos.y} r="35" fill="#3b82f6" className="animate-ping opacity-10" />
-                )}
+            <g key={`marker-${code}`} 
+               className="cursor-pointer group/marker" 
+               onClick={() => onSelectCountry(countryData as Country)}
+               onMouseEnter={() => setHoveredCountry(code)}
+               onMouseLeave={() => setHoveredCountry(null)}
+            >
+                {/* Aura de pulso */}
+                <circle cx={pos.x} cy={pos.y} r="25" fill={code === 'dhl' ? '#ef4444' : '#22d3ee'} className={`transition-opacity duration-500 ${isHovered || isSelected ? 'opacity-20 animate-ping' : 'opacity-0'}`} />
+                
+                {/* Punto central */}
                 <circle
                     cx={pos.x}
                     cy={pos.y}
-                    r={isSelected ? 11 : isHovered ? 9 : 6}
+                    r={isSelected ? 8 : 5}
                     className="transition-all duration-300"
-                    fill={isSelected ? '#3b82f6' : isHovered ? '#60a5fa' : 'rgba(255,255,255,0.4)'}
-                    stroke="#0d1a2e"
-                    strokeWidth="3"
-                    onMouseEnter={() => setHoveredCountry(country.code)}
-                    onMouseLeave={() => setHoveredCountry(null)}
+                    fill={isSelected ? '#22d3ee' : isHovered ? '#67e8f9' : code === 'dhl' ? '#ef4444' : '#ffffff'}
+                    fillOpacity={isHovered || isSelected ? 1 : 0.4}
+                    stroke="#0b1626"
+                    strokeWidth="2"
                 />
             </g>
           );
         })}
       </svg>
 
-      <div className="absolute bottom-10 right-10 flex flex-col items-end gap-3">
+      {/* Panel de detalles inferior */}
+      <div className="absolute bottom-8 right-8 flex flex-col items-end gap-4">
          {hoveredCountry && (
-             <div className="bg-white p-5 rounded-[2rem] shadow-2xl flex items-center gap-5 animate-in slide-in-from-right-8 duration-500">
-                 <img src={`https://flagcdn.com/w40/${hoveredCountry}.png`} className="w-10 rounded-sm shadow-md" alt="Flag" />
+             <div className="bg-[#1e293b]/90 backdrop-blur-2xl px-6 py-4 rounded-2xl border border-white/10 shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                 <div className="w-10 h-7 overflow-hidden rounded shadow-lg shrink-0">
+                    <img src={`https://flagcdn.com/w80/${hoveredCountry === 'dhl' ? 'un' : hoveredCountry}.png`} className="w-full h-full object-cover" alt="" />
+                 </div>
                  <div>
-                     <p className="text-slate-900 font-black uppercase text-sm tracking-widest leading-none mb-1">
-                        {countries.find(c => c.code === hoveredCountry)?.name}
+                     <p className="text-white font-black uppercase text-xs tracking-widest leading-none mb-1">
+                        {hoveredCountry === 'dhl' ? 'DHL GLOBAL' : countries.find(c => c.code === hoveredCountry)?.name}
                      </p>
-                     <p className="text-blue-600 font-bold text-[11px] uppercase tracking-wider">
-                        {countries.find(c => c.code === hoveredCountry)?.count} {t('allCountriesTitle')}
+                     <p className="text-cyan-400 font-bold text-[10px] uppercase tracking-wider">
+                        {hoveredCountry === 'dhl' ? 'Red de Carga' : `${countries.find(c => c.code === hoveredCountry)?.count || 0} Sedes Activas`}
                      </p>
                  </div>
              </div>
          )}
-         <div className="bg-white/5 backdrop-blur-md px-8 py-3 rounded-2xl border border-white/10 text-[10px] font-black text-white/30 uppercase tracking-[0.4em]">
-             Satellite Uplink Active
+         <div className="bg-white/5 backdrop-blur-md px-6 py-2 rounded-xl border border-white/10 text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">
+             Satellite Telemetry Link : Stable
          </div>
       </div>
     </div>

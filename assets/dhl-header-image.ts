@@ -1,2 +1,2 @@
 
-export const DHL_HEADER_IMAGE = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/DHL_Express_B757_PCF_and_Mercedes_Sprinters_at_Bristol_Airport.jpg/800px-DHL_Express_B757_PCF_and_Mercedes_Sprinters_at_Bristol_Airport.jpg';
+export const DHL_HEADER_IMAGE = 'https://www.freightwaves.com/wp-content/uploads/2025/08/05/DHL-Post-EVs_1.jpg';
