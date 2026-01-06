@@ -91,20 +91,30 @@ app.post('/api/check-status', async (req, res) => {
     const { servers } = req.body;
     if (!servers || !Array.isArray(servers)) return res.status(400).json({ error: "Invalid data" });
 
-    // Procesamos en bloques para evitar saturar la VPN
-    const results = await Promise.all(servers.map(async (server) => {
-        const ip = server.ip?.trim();
-        if (!ip || ip === 'N/A' || ip.includes('X') || ip === '0.0.0.0') {
-            return { id: server.id, status: 'offline', ip };
-        }
-        try {
-            // Tiempo de espera reducido a 1s para no colgar la cola de 10s
-            const resPing = await ping.promise.probe(ip, { timeout: 1 });
-            return { id: server.id, status: resPing.alive ? 'online' : 'offline', ip };
-        } catch (e) {
-            return { id: server.id, status: 'offline', ip };
-        }
-    }));
+    // Límite de concurrencia para evitar saturar el stack de red o la VPN
+    const concurrencyLimit = 25;
+    const results = [];
+    
+    for (let i = 0; i < servers.length; i += concurrencyLimit) {
+        const batch = servers.slice(i, i + concurrencyLimit);
+        const batchResults = await Promise.all(batch.map(async (server) => {
+            const ip = server.ip?.trim();
+            if (!ip || ip === 'N/A' || ip.includes('X') || ip === '0.0.0.0') {
+                return { id: server.id, status: 'offline', ip };
+            }
+            try {
+                // Timeout de 2s para mayor veracidad en conexiones VPN latentes
+                const resPing = await ping.promise.probe(ip, { 
+                    timeout: 2,
+                    extra: ['-n', '1'] 
+                });
+                return { id: server.id, status: resPing.alive ? 'online' : 'offline', ip };
+            } catch (e) {
+                return { id: server.id, status: 'offline', ip };
+            }
+        }));
+        results.push(...batchResults);
+    }
     res.json({ results });
 });
 

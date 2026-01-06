@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Country, User, ServerDetails } from './types';
 import { COUNTRIES, DHL_DATA, USER_STORAGE_KEY } from './constants';
@@ -13,7 +12,7 @@ import CodeBackground from './components/CodeBackground';
 import BrandCard from './components/BrandCard';
 import ServerStatusSummary from './components/ServerStatusSummary';
 import MapView from './components/MapView';
-import { UserIcon, GlobeIcon } from './assets/icons';
+import { UserIcon, GlobeIcon, ActivityIcon } from './assets/icons';
 
 interface FlatServer extends ServerDetails {
     club: string;
@@ -33,6 +32,10 @@ const App: React.FC = () => {
 
   const [offlineServers, setOfflineServers] = useState<FlatServer[]>([]);
   const [isCheckingGlobal, setIsCheckingGlobal] = useState(false);
+
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
+  const [selectedClub, setSelectedClub] = useState<string | null>(null);
 
   const [users, setUsers] = useState<User[]>(() => {
     const requiredUsers: User[] = [
@@ -84,8 +87,9 @@ const App: React.FC = () => {
     }
   }, [currentUser]);
 
-  const checkGlobalStatus = useCallback(async () => {
-    if (isCheckingGlobal) return;
+  const checkGlobalStatus = useCallback(async (isManual = false) => {
+    if (isCheckingGlobal || (selectedClub && !isManual)) return;
+    
     setIsCheckingGlobal(true);
     const backendUrl = localStorage.getItem('saltex_backend_url') || window.location.origin;
     
@@ -132,7 +136,7 @@ const App: React.FC = () => {
     } finally {
         setIsCheckingGlobal(false);
     }
-  }, [isCheckingGlobal]);
+  }, [isCheckingGlobal, selectedClub]);
 
   useEffect(() => {
     syncUsersFromCloud();
@@ -141,8 +145,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated) {
         checkGlobalStatus();
-        // INTERVALO DE 10 SEGUNDOS SOLICITADO
-        const interval = setInterval(checkGlobalStatus, 10000);
+        const interval = setInterval(() => checkGlobalStatus(), 10000);
         return () => clearInterval(interval);
     }
   }, [isAuthenticated, checkGlobalStatus]);
@@ -150,10 +153,6 @@ const App: React.FC = () => {
   useEffect(() => { 
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users)); 
   }, [users]);
-
-  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
-  const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
-  const [selectedClub, setSelectedClub] = useState<string | null>(null);
 
   const handleLoginSuccess = (user: User, isSuperAdmin: boolean) => {
     setIsAuthenticated(true); 

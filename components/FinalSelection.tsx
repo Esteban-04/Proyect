@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Country, ServerDetails } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { XIcon, SearchIcon, EyeIcon, EyeOffIcon, SaveIcon, PlusIcon, TrashIcon, ActivityIcon, CopyIcon } from '../assets/icons';
@@ -44,6 +44,15 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const [servers, setServers] = useState<ServerDetails[]>([]);
   const [cameras, setCameras] = useState<CameraData[]>([]);
 
+  // Referencias para evitar bucles de efectos
+  const isVerifyingRef = useRef(false);
+  const serversRef = useRef<ServerDetails[]>([]);
+  
+  // Sincronizar la referencia con el estado de servidores
+  useEffect(() => {
+    serversRef.current = servers;
+  }, [servers]);
+
   const configKey = `config_${country.code}_${clubName.replace(/[^a-zA-Z0-9]/g, '_')}`;
   const isDhl = country.code === 'dhl';
   
@@ -53,10 +62,15 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   };
 
   const checkServerStatus = useCallback(async (isManual = false, serverListOverride?: ServerDetails[]) => {
-    const listToProcess = serverListOverride || servers;
-    if (isVerifying || listToProcess.length === 0) return;
+    // Usar la lista proporcionada o la actual de la referencia
+    const listToProcess = serverListOverride || serversRef.current;
     
+    // Evitar concurrencia
+    if (isVerifyingRef.current || listToProcess.length === 0) return;
+    
+    isVerifyingRef.current = true;
     setIsVerifying(true);
+    
     const backendUrl = getBackendUrl();
 
     try {
@@ -68,19 +82,21 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         
         if (cloudRes.ok) {
             const cloudData = await cloudRes.json();
-            const updated = listToProcess.map(s => {
-                const res = cloudData.results.find((r: any) => r.ip === s.ip);
-                return { ...s, status: res ? (res.status as ServerDetails['status']) : 'offline' };
+            setServers(currentServers => {
+                return currentServers.map(s => {
+                    const res = cloudData.results.find((r: any) => r.ip === s.ip);
+                    return { ...s, status: res ? (res.status as ServerDetails['status']) : 'offline' };
+                });
             });
-            setServers(updated);
             if (isManual) showSuccess(t('saveSuccess'));
         }
     } catch (error) {
         console.error("Cloud check error:", error);
     } finally {
+        isVerifyingRef.current = false;
         setIsVerifying(false);
     }
-  }, [isVerifying, servers, t]);
+  }, [t]);
 
   const loadCloudData = useCallback(async () => {
     const backendUrl = getBackendUrl();
@@ -99,6 +115,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
             setCameras([]);
         }
         setServers(loadedServers);
+        // Disparar chequeo inicial
         checkServerStatus(false, loadedServers);
     } catch (e) {
         const defaultServers = (CLUB_SPECIFIC_DEFAULTS[clubName] || []).map(s => ({ ...s, status: 'checking' as const }));
@@ -109,8 +126,13 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
   useEffect(() => { loadCloudData(); }, [loadCloudData]);
 
+  // Temporizador estable de 10 segundos
   useEffect(() => {
-    const timer = setInterval(() => { checkServerStatus(false); }, 10000);
+    const timer = setInterval(() => {
+      // Solo verificamos si no estamos ya en proceso (isVerifyingRef lo maneja internamente)
+      checkServerStatus(false);
+    }, 10000);
+    
     return () => clearInterval(timer);
   }, [checkServerStatus]);
 
@@ -172,27 +194,38 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
     <div className="w-full flex flex-col items-center relative px-2 py-2 bg-transparent">
       {successMessage && <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] bg-green-500 text-white px-8 py-4 rounded-2xl shadow-2xl font-black animate-bounce text-sm uppercase">{successMessage}</div>}
       
-      <div className="flex flex-col items-center justify-center mb-8 text-center">
-        {isDhl ? (
-          <div className="flex items-center gap-5 py-4">
-             <span className="text-[#D40511] text-3xl sm:text-5xl font-black italic tracking-tighter">DHL GLOBAL</span>
-             <h2 className="text-3xl sm:text-5xl font-black text-[#00172f] tracking-tighter leading-none">{clubName.toUpperCase()}</h2>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3 mb-1">
-              <img src={`https://flagcdn.com/w80/${country.code}.png`} className="h-6 rounded-sm" alt="Flag" />
-              <h2 className="text-3xl font-black text-[#0d1a2e] tracking-tight uppercase italic">{clubName}</h2>
-          </div>
-        )}
+      {/* Header with Title and Verify Button aligned as in the screenshot */}
+      <div className="w-full max-w-6xl flex justify-between items-center mb-8 px-4">
+        <div className="flex-1"></div> {/* Spacer for symmetry if needed, but flex-row justifies between */}
+        
+        <div className="flex flex-col items-center justify-center text-center">
+          {isDhl ? (
+            <div className="flex items-center gap-5">
+               <span className="text-[#D40511] text-3xl sm:text-5xl font-black italic tracking-tighter">DHL GLOBAL</span>
+               <h2 className="text-3xl sm:text-5xl font-black text-[#00172f] tracking-tighter leading-none">{clubName.toUpperCase()}</h2>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+                <img src={`https://flagcdn.com/w80/${country.code}.png`} className="h-6 sm:h-8 rounded-sm" alt="Flag" />
+                <h2 className="text-3xl sm:text-4xl font-black text-[#0d1a2e] tracking-tight uppercase italic">{clubName}</h2>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 flex justify-end">
+          <button 
+            onClick={() => checkServerStatus(true)} 
+            disabled={isVerifying} 
+            className={`flex items-center gap-2 bg-white border border-slate-200 px-5 py-2.5 rounded-xl shadow-sm transition-all group ${isVerifying ? 'opacity-70 cursor-wait' : 'hover:bg-slate-50'}`}
+          >
+            <ActivityIcon className={`w-4 h-4 text-slate-400 group-hover:text-blue-500 ${isVerifying ? 'animate-spin text-blue-500' : ''}`} />
+            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest whitespace-nowrap">
+                {isVerifying ? t('statusChecking') : t('checkStatusButton')}
+            </span>
+          </button>
+        </div>
       </div>
       
-      <div className="mb-6 w-full flex justify-end max-w-6xl items-center gap-4">
-          <button onClick={() => checkServerStatus(true)} disabled={isVerifying} className="flex items-center gap-2 bg-white border border-slate-200 px-5 py-2 rounded-xl shadow-sm hover:bg-slate-50 transition-all group">
-            <ActivityIcon className={`w-4 h-4 text-slate-400 group-hover:text-blue-500 ${isVerifying ? 'animate-spin' : ''}`} />
-            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{isVerifying ? t('statusChecking') : 'CHECK STATUS (10s)'}</span>
-          </button>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-6xl px-4">
         {servers.map((server, index) => {
             const isOddTotal = servers.length % 2 !== 0;
@@ -272,8 +305,9 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         })}
       </div>
 
-      <div className="mt-12 mb-8 w-full max-w-4xl flex flex-col sm:flex-row gap-4 justify-center px-4">
+      <div className="mt-12 mb-8 w-full max-w-4xl flex flex-wrap gap-4 justify-center px-4">
         <button onClick={onBack} className="w-full sm:w-48 bg-white text-[#0d1a2e] border-2 border-slate-200 font-black py-3 rounded-xl shadow-lg hover:bg-slate-50 transition-all uppercase tracking-widest text-[10px]">{t('backButton')}</button>
+        
         {canEdit && (
             <>
                 <button onClick={handleAddServer} className="w-full sm:w-56 bg-blue-600 text-white font-black py-3 rounded-xl shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center text-[10px] uppercase tracking-widest gap-2"><PlusIcon className="w-4 h-4" />{t('addServerButton')}</button>
