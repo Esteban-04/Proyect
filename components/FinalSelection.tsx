@@ -348,12 +348,34 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       </div>
 
       {serverToDelete !== null && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl">
-              <div className="bg-white p-10 rounded-[2rem] shadow-2xl max-sm w-full text-center border border-slate-100">
-                  <h3 className="text-2xl font-black text-[#0d1a2e] mb-6 uppercase italic tracking-tighter">{t('deleteServerConfirm')}</h3>
-                  <div className="flex gap-4 mt-8">
-                      <button onClick={() => setServerToDelete(null)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest">{t('noButton')}</button>
-                      <button onClick={confirmDeleteServer} className="flex-1 py-4 bg-red-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-2xl tracking-widest">{t('yesButton')}</button>
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-[320px] overflow-hidden text-center relative border border-slate-100 flex flex-col">
+                  {/* Red top line */}
+                  <div className="h-1 bg-red-600 w-full absolute top-0 left-0"></div>
+                  
+                  <div className="p-8 flex flex-col items-center">
+                    {/* Trash icon in circle */}
+                    <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
+                        <TrashIcon className="w-8 h-8 text-red-500" />
+                    </div>
+
+                    <h3 className="text-xl font-bold text-slate-800 mb-2">Eliminar</h3>
+                    <p className="text-slate-500 text-sm leading-relaxed px-2">¿Está seguro de que desea eliminar este servidor?</p>
+                  </div>
+
+                  <div className="flex border-t border-slate-50">
+                      <button 
+                        onClick={() => setServerToDelete(null)} 
+                        className="flex-1 py-4 bg-slate-50 text-slate-600 font-bold text-sm hover:bg-slate-100 transition-all border-r border-slate-100"
+                      >
+                        No
+                      </button>
+                      <button 
+                        onClick={confirmDeleteServer} 
+                        className="flex-1 py-4 bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-all"
+                      >
+                        Sí
+                      </button>
                   </div>
               </div>
           </div>
