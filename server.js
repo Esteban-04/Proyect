@@ -77,7 +77,7 @@ app.get('/api/get-all-configs', (req, res) => {
     res.json(db.configs || {});
 });
 
-// Endpoints para Usuarios (Nube)
+// Endpoints para Usuarios
 app.get('/api/get-users', (req, res) => {
     const db = readDb();
     res.json({ users: db.users });
@@ -95,7 +95,7 @@ app.post('/api/save-users', (req, res) => {
     }
 });
 
-// Endpoint para Alertas (Nube)
+// Endpoints para Alertas
 app.get('/api/get-alert-config', (req, res) => {
     const db = readDb();
     res.json({ config: db.alertConfig });
@@ -114,7 +114,7 @@ app.post('/api/config-alerts', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', time: new Date().toISOString(), memory: process.memoryUsage() });
+    res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
 app.post('/api/check-status', async (req, res) => {
@@ -122,19 +122,21 @@ app.post('/api/check-status', async (req, res) => {
     if (!servers || !Array.isArray(servers)) return res.status(400).json({ error: "Invalid data" });
 
     const results = await Promise.all(servers.map(async (server) => {
+        // Ignorar IPs privadas en el ping desde la nube si no hay VPN
         if (!server.ip || server.ip.startsWith('192.168') || server.ip.startsWith('10.') || server.ip === 'N/A') {
-            return { id: server.id, status: 'offline' };
+            return { id: server.id, status: 'offline', ip: server.ip };
         }
         try {
             const resPing = await ping.promise.probe(server.ip, { timeout: 1 });
-            return { id: server.id, status: resPing.alive ? 'online' : 'offline' };
+            return { id: server.id, status: resPing.alive ? 'online' : 'offline', ip: server.ip };
         } catch (e) {
-            return { id: server.id, status: 'offline' };
+            return { id: server.id, status: 'offline', ip: server.ip };
         }
     }));
     res.json({ results });
 });
 
+// Servir frontend si existe
 const distPath = path.join(__dirname, 'dist');
 if (fs.existsSync(distPath)) {
     app.use(express.static(distPath));
@@ -142,11 +144,6 @@ if (fs.existsSync(distPath)) {
         res.sendFile(path.join(distPath, 'index.html'));
     });
 }
-
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send('Critical Server Error');
-});
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 SALTEX Monitor Backend stable on port ${PORT}`);

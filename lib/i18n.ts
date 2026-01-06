@@ -1,7 +1,7 @@
 
 export const translations = {
   es: {
-    // Login & Register & Reset
+    // ... (claves anteriores existentes)
     welcomeMessage: 'Bienvenido a nuestro sistema',
     emailLabel: 'Correo electrónico',
     passwordLabel: 'Contraseña',
@@ -26,8 +26,6 @@ export const translations = {
     registerSuccessMessage: '¡Registro exitoso! Se ha enviado un correo de confirmación. Por favor, revisa tu bandeja de entrada.',
     registerErrorEmailExists: 'Este correo electrónico ya está registrado.',
     registerErrorUserExists: 'Este nombre de usuario ya existe.',
-
-    // Admin Dashboard
     adminDashboardTitle: 'Admin Dashboard',
     adminDashboardSubtitle: 'Gestión de usuarios y permisos',
     loggedInAs: 'Iniciado como:',
@@ -52,6 +50,8 @@ export const translations = {
     deleteActiveUserError: 'Debe desactivar el usuario antes de eliminarlo.',
     addUserButton: 'Agregar Usuario',
     saveChangesButton: 'Guardar Cambios',
+    // Added missing saveButton key
+    saveButton: 'Guardar',
     logoutButton: 'Cerrar Sesión',
     goToAppButton: 'Ir a la App',
     addUserTitle: 'Agregar Nuevo Usuario',
@@ -60,14 +60,12 @@ export const translations = {
     passwordUpdateSuccess: 'Contraseña actualizada con éxito.',
     userUpdateSuccess: 'Usuario actualizado con éxito.',
     userCreateSuccess: 'Usuario creado con éxito.',
-    globalSaveSuccess: 'Todos los cambios han sido guardados correctamente.',
+    globalSaveSuccess: '¡Sincronizado con la nube exitosamente!',
     roleLabel: 'Rol',
     cancelButton: 'Cancelar',
     createButton: 'Crear',
     updateButton: 'Actualizar',
     newPasswordLabel: 'Nueva Contraseña',
-    
-    // Alerts Config
     alertsTab: 'Alertas',
     usersTab: 'Usuarios',
     smtpSettingsTitle: 'Configuración de Correo SMTP',
@@ -79,16 +77,12 @@ export const translations = {
     enableAlerts: 'Habilitar alertas por correo',
     alertsUpdateSuccess: 'Configuración de alertas actualizada correctamente.',
     saveAlertsButton: 'Guardar Configuración de Alertas',
-
-    // Main App
     selectBrandTitle: 'Selecciona una empresa para continuar',
     allCountriesTitle: 'Todos los países',
     selectClubPrompt: 'Selecciona una sede para continuar.',
     backButton: 'Volver',
     toggleViewMap: 'Ver Mapa',
     toggleViewGrid: 'Ver Cuadrícula',
-
-    // Final Selection
     serverNamePrefix: 'SERVIDOR',
     remoteDesktopLabel: 'Escritorio Remoto:',
     userLabel: 'Usuario:',
@@ -100,12 +94,10 @@ export const translations = {
     yesButton: 'Sí',
     noButton: 'No',
     statusAlertMessage: 'Alerta de estado',
-    
-    // Status Monitoring
-    checkStatusButton: 'Verificar Estado',
+    checkStatusButton: 'VERIFICAR ESTADO',
     statusOnline: 'EN LÍNEA',
     statusOffline: 'FUERA DE LÍNEA',
-    statusChecking: 'Verificando...',
+    statusChecking: 'VERIFICANDO...',
     monitorTitle: 'Monitor de Sitios',
     monitorSystemOnline: 'Sistema En Línea',
     monitorChecking: 'Verificando...',
@@ -120,8 +112,6 @@ export const translations = {
     monitorUpdating: 'Actualizando...',
     monitorUpdateNow: 'Actualizar Ahora',
     monitorClose: 'Cerrar',
-
-    // New Monitor Modal Translations
     monitorSites: 'Monitor de Sitios',
     monitorRealTime: 'Captura en tiempo real',
     monitorOfflineCount: (count: number) => `${count} Fuera de Línea`,
@@ -136,23 +126,11 @@ export const translations = {
     monitorAutomatic: 'AUTOMÁTICO',
     monitorAlertsDetected: 'Alertas detectadas:',
     monitorMore: (count: number) => `+ ${count} más...`,
-
-    // Modal Details
-    modalTitle: (serverName: string, city: string) => `Detalles del ${serverName} - ${city}`,
-    colIndex: '#',
-    colName: 'Nombre',
-    colIp: 'Dirección IP',
-    colManufacturer: 'Fabricante',
-    colUser: 'Usuario',
-    colPassword: 'Contraseña',
-    colCompression: 'Compresión',
-    closeButton: 'Cerrar',
-    saveButton: 'Guardar',
-    saveSuccess: '¡Cambios guardados exitosamente!',
-    searchPlaceholder: 'Buscar por Nombre o IP...',
+    saveSuccess: '¡Guardado correctamente!',
+    searchPlaceholder: 'Buscar...',
   },
   en: {
-    // Login & Register & Reset
+    // ... (claves anteriores existentes)
     welcomeMessage: 'Welcome to our system',
     emailLabel: 'Email address',
     passwordLabel: 'Password',
@@ -177,8 +155,6 @@ export const translations = {
     registerSuccessMessage: 'Registration successful! A confirmation email has been sent. Please check your inbox.',
     registerErrorEmailExists: 'This email address is already registered.',
     registerErrorUserExists: 'This username already exists.',
-
-    // Admin Dashboard
     adminDashboardTitle: 'Admin Dashboard',
     adminDashboardSubtitle: 'User and permission management',
     loggedInAs: 'Logged in as:',
@@ -203,6 +179,8 @@ export const translations = {
     deleteActiveUserError: 'You must deactivate the user before deleting.',
     addUserButton: 'Add User',
     saveChangesButton: 'Save Changes',
+    // Added missing saveButton key
+    saveButton: 'Save',
     logoutButton: 'Logout',
     goToAppButton: 'Go to App',
     addUserTitle: 'Add New User',
@@ -211,14 +189,12 @@ export const translations = {
     passwordUpdateSuccess: 'Password updated successfully.',
     userUpdateSuccess: 'User updated successfully.',
     userCreateSuccess: 'User created successfully.',
-    globalSaveSuccess: 'All changes have been saved successfully.',
+    globalSaveSuccess: 'Synced with cloud successfully!',
     roleLabel: 'Role',
     cancelButton: 'Cancel',
     createButton: 'Create',
     updateButton: 'Update',
     newPasswordLabel: 'New Password',
-    
-    // Alerts Config
     alertsTab: 'Alerts',
     usersTab: 'Users',
     smtpSettingsTitle: 'SMTP Email Configuration',
@@ -230,16 +206,12 @@ export const translations = {
     enableAlerts: 'Enable email alerts',
     alertsUpdateSuccess: 'Alert configuration updated successfully.',
     saveAlertsButton: 'Save Alert Settings',
-
-    // Main App
     selectBrandTitle: 'Select a company to continue',
     allCountriesTitle: 'All countries',
     selectClubPrompt: 'Select a location to continue.',
     backButton: 'Back',
     toggleViewMap: 'View Map',
     toggleViewGrid: 'View Grid',
-
-    // Final Selection
     serverNamePrefix: 'SERVER',
     remoteDesktopLabel: 'Remote Desktop:',
     userLabel: 'User:',
@@ -251,12 +223,10 @@ export const translations = {
     yesButton: 'Yes',
     noButton: 'No',
     statusAlertMessage: 'Status alert',
-
-    // Status Monitoring
-    checkStatusButton: 'Check Status',
+    checkStatusButton: 'VERIFY STATUS',
     statusOnline: 'ONLINE',
     statusOffline: 'OFFLINE',
-    statusChecking: 'Checking...',
+    statusChecking: 'VERIFYING...',
     monitorTitle: 'Site Monitor',
     monitorSystemOnline: 'System Online',
     monitorChecking: 'Checking...',
@@ -271,8 +241,6 @@ export const translations = {
     monitorUpdating: 'Updating...',
     monitorUpdateNow: 'Update Now',
     monitorClose: 'Close',
-
-    // New Monitor Modal Translations
     monitorSites: 'Sites Monitor',
     monitorRealTime: 'Real-time capture',
     monitorOfflineCount: (count: number) => `${count} Offline`,
@@ -285,22 +253,10 @@ export const translations = {
     monitorGenerateReport: 'Generate Report Now',
     monitorWaitingFirstReport: 'WAITING FOR FIRST REPORT',
     monitorAutomatic: 'AUTOMATIC',
-    monitorAlertsDetected: 'Alerts detected:',
+    monitorAlertsDetected: 'Alertas detectadas:',
     monitorMore: (count: number) => `+ ${count} more...`,
-
-    // Modal Details
-    modalTitle: (serverName: string, city: string) => `${serverName} Details - ${city}`,
-    colIndex: '#',
-    colName: 'Name',
-    colIp: 'IP Address',
-    colManufacturer: 'Manufacturer',
-    colUser: 'User Name',
-    colPassword: 'Password',
-    colCompression: 'Compression',
-    closeButton: 'Close',
-    saveButton: 'Save',
-    saveSuccess: 'Changes saved successfully!',
-    searchPlaceholder: 'Search by Name or IP...',
+    saveSuccess: 'Saved successfully!',
+    searchPlaceholder: 'Search...',
   },
 };
 
