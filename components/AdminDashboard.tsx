@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { EyeIcon, EyeOffIcon, PlusIcon, GlobeIcon, UserIcon, KeyIcon, PencilIcon, SaveIcon, TrashIcon, CameraIcon, XIcon, ActivityIcon } from '../assets/icons';
+import { EyeIcon, EyeOffIcon, PlusIcon, GlobeIcon, UserIcon, KeyIcon, PencilIcon, SaveIcon, TrashIcon, CameraIcon, XIcon, ActivityIcon, LockClosedIcon } from '../assets/icons';
 import { COUNTRIES, DHL_DATA, USER_STORAGE_KEY } from '../constants';
 
 interface AdminDashboardProps {
@@ -72,23 +72,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
     return () => clearInterval(interval);
   }, [backendUrl]);
 
-  // Cargar configuración de alertas desde la nube al entrar
-  useEffect(() => {
-      const loadAlerts = async () => {
-          try {
-              const base = backendUrl || window.location.origin;
-              const res = await fetch(`${base}/api/get-alert-config`);
-              if (res.ok) {
-                  const data = await res.json();
-                  if (data.config && Object.keys(data.config).length > 0) {
-                      setAlertConfig(data.config);
-                  }
-              }
-          } catch (e) {}
-      };
-      loadAlerts();
-  }, [backendUrl]);
-
   const SUPER_ADMIN_USERNAME = 'admin';
   const displayUsers = [...users].sort((a, _b) => a.username === SUPER_ADMIN_USERNAME ? -1 : 1);
 
@@ -114,32 +97,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
   };
 
   const handleSaveAll = async () => {
-      // 1. Guardar localmente
       localStorage.setItem('saltex_backend_url', backendUrl);
       localStorage.setItem('saltex_alert_config', JSON.stringify(alertConfig));
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users));
       
-      // 2. Sincronizar con la Nube
       try {
           const base = backendUrl || window.location.origin;
-          
-          // Guardar Alertas
-          await fetch(`${base}/api/config-alerts`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ config: alertConfig })
-          });
-
-          // Guardar Usuarios
           await fetch(`${base}/api/save-users`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ users: users })
           });
-
           showSuccess(t('globalSaveSuccess'));
       } catch (err) {
-          console.error("Cloud sync error:", err);
           showSuccess("Error sincronizando con la nube");
       }
   };
@@ -220,96 +190,101 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
 
   return (
     <div className="w-full max-w-7xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col h-[95vh] sm:h-[90vh] relative font-sans">
-      {successMessage && <div className="absolute top-20 sm:top-24 left-1/2 transform -translate-x-1/2 z-[100] bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg font-bold animate-bounce text-sm">{successMessage}</div>}
+      {successMessage && <div className="absolute top-24 left-1/2 transform -translate-x-1/2 z-[100] bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg font-bold animate-bounce text-sm">{successMessage}</div>}
 
-      <div className="bg-[#0b1626] px-4 sm:px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-4">
+      {/* HEADER */}
+      <div className="bg-[#0b1626] px-6 sm:px-10 py-8 flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex flex-col text-center md:text-left">
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Admin Dashboard</h2>
-          <div className="flex items-center justify-center md:justify-start gap-2 mt-1">
-             <p className="text-cyan-400 text-xs sm:text-sm font-medium">Cloud Persistence Active</p>
-             <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${backendStatus === 'online' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${backendStatus === 'online' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                {backendStatus}
-             </div>
+          <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-none mb-2">Admin Dashboard</h2>
+          <p className="text-[#22d3ee] text-sm sm:text-base font-semibold mb-3">Gestión de usuarios y permisos</p>
+          <div className="flex items-center justify-center md:justify-start gap-2">
+             <UserIcon className="w-4 h-4 text-white/70" />
+             <p className="text-white text-sm">
+               Iniciado como: <span className="font-bold">{currentUser?.name || 'Super Admin'}</span>
+             </p>
           </div>
         </div>
         
-        <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-3">
-            <div className="flex items-center bg-white/10 rounded-lg p-1">
-                <button onClick={() => setLanguage('es')} className={`px-2 py-1 text-[10px] font-bold rounded ${language === 'es' ? 'bg-white text-[#0b1626]' : 'text-white hover:bg-white/5'}`}>ES</button>
-                <button onClick={() => setLanguage('en')} className={`px-2 py-1 text-[10px] font-bold rounded ${language === 'en' ? 'bg-white text-[#0b1626]' : 'text-white hover:bg-white/5'}`}>EN</button>
+        <div className="flex flex-wrap justify-center items-center gap-4">
+            <div className="flex items-center text-white/70 text-sm font-bold bg-white/5 px-4 py-2 rounded-lg border border-white/10 mr-2">
+                <button onClick={() => setLanguage('es')} className={`transition-colors ${language === 'es' ? 'text-white bg-white/20 px-2 py-0.5 rounded' : 'hover:text-white'}`}>ES</button>
+                <span className="mx-2 text-white/20">|</span>
+                <button onClick={() => setLanguage('en')} className={`transition-colors ${language === 'en' ? 'text-white bg-white/20 px-2 py-0.5 rounded' : 'hover:text-white'}`}>EN</button>
             </div>
-            <button onClick={handleSaveAll} className="bg-[#2ecc71] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#27ae60] shadow-md transition-all flex items-center gap-2"><SaveIcon className="w-4 h-4" /> <span className="hidden sm:inline">Guardar en la Nube</span></button>
-            <button onClick={() => setShowAddUserModal(true)} className="bg-[#3498db] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#2980b9] shadow-md transition-all flex items-center gap-2"><PlusIcon className="w-4 h-4" /> <span className="hidden sm:inline">{t('addUserButton')}</span></button>
-            <button onClick={onLogout} className="bg-[#e74c3c] text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-[#c0392b] shadow-md transition-all">{t('logoutButton')}</button>
-            <button onClick={onContinue} className="bg-white text-[#0b1626] px-4 py-2 rounded-lg text-xs font-bold hover:bg-gray-100 shadow-md transition-all border border-gray-200">{t('goToAppButton')}</button>
+
+            <button onClick={handleSaveAll} className="bg-[#22c55e] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#16a34a] shadow-lg transition-all flex items-center gap-2 group">
+              <SaveIcon className="w-5 h-5 group-hover:scale-110 transition-transform" /> 
+              <span>Guardar Cambios</span>
+            </button>
+
+            <button onClick={() => setShowAddUserModal(true)} className="bg-[#2563eb] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#1d4ed8] shadow-lg transition-all flex items-center gap-2">
+              <PlusIcon className="w-5 h-5" /> 
+              <span>{t('addUserButton')}</span>
+            </button>
+
+            <button onClick={onLogout} className="bg-[#dc2626] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#b91c1c] shadow-lg transition-all">
+              {t('logoutButton')}
+            </button>
+
+            <button onClick={onContinue} className="bg-white text-[#0b1626] px-6 py-2.5 rounded-xl text-sm font-black hover:bg-gray-100 shadow-xl transition-all border border-gray-100">
+              {t('goToAppButton')}
+            </button>
         </div>
       </div>
 
+      {/* TABS */}
       <div className="bg-white px-4 sm:px-8 flex border-b shrink-0">
           <button onClick={() => setActiveTab('users')} className={`px-4 sm:px-8 py-4 text-xs sm:text-sm font-bold transition-all border-b-4 ${activeTab === 'users' ? 'border-[#0b1626] text-[#0b1626]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{t('usersTab')}</button>
           <button onClick={() => setActiveTab('alerts')} className={`px-4 sm:px-8 py-4 text-xs sm:text-sm font-bold transition-all border-b-4 ${activeTab === 'alerts' ? 'border-[#0b1626] text-[#0b1626]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{t('alertsTab')}</button>
       </div>
 
-      <div className="flex-grow overflow-y-auto bg-[#fdfdfd] p-4 sm:p-8">
+      <div className="flex-grow overflow-y-auto bg-[#fbfcfd] p-4 sm:p-8">
           {activeTab === 'users' ? (
-              <div className="bg-white border border-gray-100 rounded-xl overflow-x-auto shadow-sm">
-                 <div className="min-w-[800px]">
+              <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto shadow-sm">
+                 <div className="min-w-[900px]">
                     <table className="min-w-full divide-y divide-gray-100">
-                        <thead className="bg-[#fcfcfc]">
-                            <tr>
-                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">STATUS</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">NAME</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">USERNAME</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">PASSWORD</th>
-                                <th className="px-6 py-5 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">ROLE / PERMISSIONS</th>
+                        <thead>
+                            <tr className="bg-white">
+                                <th className="px-6 py-5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('userTableStatus')}</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('userTableName')}</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('userTableEmail')}</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('userTablePassword')}</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('userTableRole')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 bg-white">
                             {displayUsers.map(user => {
                                 const isSuper = user.username === SUPER_ADMIN_USERNAME;
                                 return (
-                                    <tr key={user.username} className="hover:bg-gray-50/50 transition-colors group">
-                                        <td className="px-6 py-4">
+                                    <tr key={user.username} className="hover:bg-gray-50/40 transition-colors group">
+                                        <td className="px-6 py-6">
                                             <div className="flex items-center gap-3">
-                                                <button onClick={() => toggleUserStatus(user.username)} disabled={isSuper} className={`relative h-6 w-11 rounded-full transition-colors ${!user.isDisabled ? 'bg-[#2ecc71]' : 'bg-gray-300'} disabled:opacity-40 cursor-pointer`}>
-                                                    <span className={`absolute left-1 top-1 inline-block h-4 w-4 transform bg-white rounded-full transition-transform ${!user.isDisabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                                                </button>
-                                                <span className={`text-[11px] font-bold uppercase tracking-wider ${!user.isDisabled ? 'text-green-500' : 'text-gray-400'}`}>{!user.isDisabled ? 'Active' : 'Disabled'}</span>
+                                                <button onClick={() => toggleUserStatus(user.username)} disabled={isSuper} className={`relative h-6 w-11 rounded-full transition-colors ${!user.isDisabled ? 'bg-[#2ecc71]' : 'bg-gray-200'} disabled:opacity-30 cursor-pointer`}><span className={`absolute left-1 top-1 inline-block h-4 w-4 transform bg-white rounded-full transition-transform ${!user.isDisabled ? 'translate-x-5' : 'translate-x-0'}`} /></button>
+                                                <span className={`text-[13px] font-medium ${!user.isDisabled ? 'text-slate-400' : 'text-slate-300'}`}>{!user.isDisabled ? t('statusActive') : t('statusDisabled')}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="px-6 py-6 whitespace-nowrap">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
-                                                    {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover rounded-full" alt="" /> : <UserIcon className="w-6 h-6" />}
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-black text-slate-700">{user.name}</span>
-                                                    {isSuper && <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">SYSTEM ACCOUNT</span>}
-                                                </div>
+                                                <div className="w-10 h-10 rounded-full bg-[#f1f5f9] border border-gray-200 flex items-center justify-center text-slate-400 shrink-0">{user.avatar ? <img src={user.avatar} className="w-full h-full object-cover rounded-full" alt="" /> : <UserIcon className="w-6 h-6" />}</div>
+                                                <div className="flex flex-col justify-center"><span className="text-[15px] font-bold text-[#0d1a2e] leading-tight">{user.name}</span>{isSuper && <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-0.5">{t('systemAccount')}</span>}</div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap"><span className="text-sm font-medium text-slate-400">{user.username}</span></td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-medium text-slate-400 tracking-widest">{visiblePasswords[user.username] ? user.password : '••••••'}</span>
-                                                <button onClick={() => togglePasswordVisibility(user.username)} className="text-slate-300 hover:text-slate-500 transition-colors">{visiblePasswords[user.username] ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}</button>
-                                            </div>
+                                        <td className="px-6 py-6 whitespace-nowrap"><span className="text-[14px] font-medium text-slate-400">{user.username}</span></td>
+                                        <td className="px-6 py-6 whitespace-nowrap">
+                                            <div className="flex items-center gap-3"><span className="text-[14px] font-medium text-slate-400 tracking-tight">{visiblePasswords[user.username] ? user.password : '••••••'}</span><button onClick={() => togglePasswordVisibility(user.username)} className="text-slate-300 hover:text-slate-500 transition-colors">{visiblePasswords[user.username] ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}</button></div>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <select value={user.role} onChange={e => changeUserRole(user.username, e.target.value as any)} disabled={isSuper} className="text-[12px] font-bold text-slate-600 border border-slate-200 rounded-lg bg-white p-1.5 focus:ring-2 focus:ring-blue-500 outline-none w-28 disabled:bg-slate-50">
-                                                    <option value="admin">ADMIN</option>
-                                                    <option value="user">USER</option>
-                                                </select>
-                                                {!isSuper && user.role === 'user' && (
-                                                    <button onClick={() => openPermissionsModal(user.username)} className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"><GlobeIcon className="w-5 h-5" /></button>
-                                                )}
+                                        <td className="px-6 py-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="relative">
+                                                  <select value={user.role} onChange={e => changeUserRole(user.username, e.target.value as any)} disabled={isSuper} className="appearance-none text-[13px] font-medium text-slate-600 border border-gray-200 rounded-lg bg-white px-4 py-2 pr-10 focus:ring-1 focus:ring-blue-100 outline-none w-36 disabled:bg-slate-50 transition-all cursor-pointer"><option value="admin">{t('roleAdmin')}</option><option value="user">{t('roleUser')}</option></select>
+                                                  <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-300"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
+                                                </div>
                                                 {!isSuper && (
-                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-4">
-                                                        <button onClick={() => openEditUserModal(user.username)} className="p-2 text-blue-400 hover:bg-blue-50 rounded-lg"><PencilIcon className="w-5 h-5" /></button>
-                                                        <button onClick={() => { setPasswordEditingUser(user.username); setShowPasswordModal(true); }} className="p-2 text-amber-400 hover:bg-amber-50 rounded-lg"><KeyIcon className="w-5 h-5" /></button>
-                                                        <button onClick={() => deleteUser(user.username)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg"><TrashIcon className="w-5 h-5" /></button>
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                                                        {user.role === 'user' && <button onClick={() => openPermissionsModal(user.username)} className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all" title="Países"><GlobeIcon className="w-5 h-5" /></button>}
+                                                        <button onClick={() => openEditUserModal(user.username)} className="p-2 text-slate-300 hover:text-blue-400 hover:bg-blue-50 rounded-lg" title="Editar"><PencilIcon className="w-5 h-5" /></button>
+                                                        <button onClick={() => { setPasswordEditingUser(user.username); setShowPasswordModal(true); }} className="p-2 text-slate-300 hover:text-amber-400 hover:bg-amber-50 rounded-lg" title="Contraseña"><KeyIcon className="w-5 h-5" /></button>
+                                                        <button onClick={() => deleteUser(user.username)} className="p-2 text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-lg" title="Eliminar"><TrashIcon className="w-5 h-5" /></button>
                                                     </div>
                                                 )}
                                             </div>
@@ -323,49 +298,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
               </div>
           ) : (
               <div className="max-w-2xl mx-auto space-y-6">
-                  <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl flex items-start gap-4">
-                      <ActivityIcon className="w-6 h-6 text-amber-600 shrink-0 mt-1" />
-                      <div>
-                          <p className="text-amber-800 font-bold text-sm">⚠️ Nota Técnica Importante</p>
-                          <p className="text-amber-700 text-xs mt-1">Los servidores en la nube (como Railway) no pueden alcanzar IPs privadas (192.168.x.x) de tu red local. Si todos los servidores aparecen "Fuera de línea", es probable que el backend necesite un túnel VPN o ser ejecutado localmente.</p>
-                      </div>
-                  </div>
-
-                  <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-sm border border-gray-100">
-                      <div className="flex items-center space-x-4 mb-8">
-                          <div className="bg-blue-50 p-4 rounded-xl text-blue-600 shrink-0"><GlobeIcon className="w-8 h-8" /></div>
-                          <div>
-                              <h3 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Servidor Backend</h3>
-                              <p className="text-slate-400 text-xs sm:text-sm font-medium">Configura la URL de monitoreo.</p>
-                          </div>
-                      </div>
-                      <div className="space-y-4">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">URL API BACKEND</label>
-                          <input type="text" value={backendUrl} onChange={e => setBackendUrl(e.target.value)} className="w-full bg-slate-50 border border-slate-100 p-4 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm" placeholder="Dejar vacío para usar ruta relativa" />
-                          <p className="text-[10px] text-slate-300 font-bold tracking-tight uppercase">Vacío = Autodetectar URL actual (Recomendado en Railway)</p>
-                      </div>
-                  </div>
-
-                  <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-sm border border-gray-100">
-                      <div className="flex items-center space-x-4 mb-8">
-                          <div className="bg-red-50 p-4 rounded-xl text-red-600 shrink-0"><ActivityIcon className="w-8 h-8" /></div>
-                          <div>
-                              <h3 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">{t('smtpSettingsTitle')}</h3>
-                              <p className="text-slate-400 text-xs sm:text-sm font-medium">Alertas automáticas.</p>
-                          </div>
-                      </div>
-                      <div className="space-y-6">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div><label className="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-widest">Host SMTP</label><input type="text" value={alertConfig.host} onChange={e => setAlertConfig({...alertConfig, host: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm" /></div>
-                              <div><label className="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-widest">Puerto</label><input type="number" value={alertConfig.port} onChange={e => setAlertConfig({...alertConfig, port: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm" /></div>
-                          </div>
-                          <div><label className="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-widest">Usuario SMTP</label><input type="email" value={alertConfig.user} onChange={e => setAlertConfig({...alertConfig, user: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm" /></div>
-                          <div><label className="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-widest">Contraseña</label><input type="password" value={alertConfig.pass} onChange={e => setAlertConfig({...alertConfig, pass: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm" /></div>
-                          <div><label className="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-widest">Destinatario</label><input type="email" value={alertConfig.recipient} onChange={e => setAlertConfig({...alertConfig, recipient: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm border-red-100" /></div>
-                          
-                          <button onClick={handleSaveAll} className="w-full bg-[#0b1626] text-white py-4 rounded-xl font-black text-sm shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"><SaveIcon className="w-5 h-5" />{t('saveChangesButton')}</button>
-                      </div>
-                  </div>
+                  <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl flex items-start gap-4"><ActivityIcon className="w-6 h-6 text-amber-600 shrink-0 mt-1" /><div><p className="text-amber-800 font-bold text-sm">⚠️ Nota Técnica</p><p className="text-amber-700 text-xs mt-1">Si todos los servidores aparecen "Fuera de línea", es probable que el backend necesite acceso a tu red local (VPN/Túnel).</p></div></div>
+                  <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-sm border border-gray-100"><div className="flex items-center space-x-4 mb-8"><div className="bg-blue-50 p-4 rounded-xl text-blue-600 shrink-0"><GlobeIcon className="w-8 h-8" /></div><div><h3 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Backend URL</h3><p className="text-slate-400 text-xs sm:text-sm font-medium">URL de la API de monitoreo.</p></div></div><div className="space-y-4"><input type="text" value={backendUrl} onChange={e => setBackendUrl(e.target.value)} className="w-full bg-slate-50 border border-slate-100 p-4 rounded-xl focus:ring-1 focus:ring-blue-500 outline-none font-mono text-sm" placeholder="Autodetectar URL actual" /></div></div>
+                  <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-sm border border-gray-100"><div className="flex items-center space-x-4 mb-8"><div className="bg-red-50 p-4 rounded-xl text-red-600 shrink-0"><ActivityIcon className="w-8 h-8" /></div><div><h3 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">{t('smtpSettingsTitle')}</h3><p className="text-slate-400 text-xs sm:text-sm font-medium">Alertas por email.</p></div></div><div className="space-y-6"><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-widest">Host SMTP</label><input type="text" value={alertConfig.host} onChange={e => setAlertConfig({...alertConfig, host: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm" /></div><div><label className="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-widest">Puerto</label><input type="number" value={alertConfig.port} onChange={e => setAlertConfig({...alertConfig, port: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm" /></div></div><div><label className="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-widest">Email Destinatario</label><input type="email" value={alertConfig.recipient} onChange={e => setAlertConfig({...alertConfig, recipient: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm" /></div><button onClick={handleSaveAll} className="w-full bg-[#0b1626] text-white py-4 rounded-xl font-black text-sm shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"><SaveIcon className="w-5 h-5" />{t('saveChangesButton')}</button></div></div>
               </div>
           )}
       </div>
@@ -373,110 +308,105 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
       {/* MODALES */}
       {(showAddUserModal || showEditUserModal || showPasswordModal || showPermissionsModal) && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-md">
-              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[95vh] animate-in zoom-in duration-200">
+              <div className={`bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in duration-200 ${showPasswordModal ? 'border-t-8 border-[#2563eb]' : ''}`}>
                   {showAddUserModal && (
                       <form onSubmit={handleAddUser} className="flex flex-col h-full overflow-hidden">
-                          <div className="bg-[#0b1626] p-6 flex justify-between items-center shrink-0">
-                              <h4 className="text-xl font-bold text-white">{t('addUserTitle')}</h4>
-                              <button type="button" onClick={() => setShowAddUserModal(false)} className="text-white/60 hover:text-white shrink-0"><XIcon className="w-6 h-6"/></button>
+                          <div className="bg-[#0b1626] p-6 flex justify-between items-center shrink-0"><h4 className="text-xl font-bold text-white">{t('addUserTitle')}</h4><button type="button" onClick={() => setShowAddUserModal(false)} className="text-white/60 hover:text-white shrink-0"><XIcon className="w-6 h-6"/></button></div>
+                          <div className="p-10 space-y-4 overflow-y-auto grow">
+                              <div className="flex justify-center mb-8"><div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}><div className="h-24 w-24 rounded-full border-4 border-slate-100 overflow-hidden bg-slate-50 flex items-center justify-center group-hover:border-blue-400 transition-colors shadow-inner">{newUser.avatar ? <img src={newUser.avatar} className="h-full w-full object-cover" alt="" /> : <UserIcon className="h-10 w-10 text-slate-300" />}</div><div className="absolute bottom-1 right-1 bg-blue-600 p-2 rounded-full text-white shadow-lg border-2 border-white"><CameraIcon className="w-4 h-4" /></div><input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageChange(e, 'add')} /></div></div>
+                              <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Nombre</label><input required value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="w-full border p-4 rounded-xl bg-slate-50 text-sm" /></div>
+                              <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Usuario / Email</label><input required value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} className="w-full border p-4 rounded-xl bg-slate-50 text-sm" /></div>
+                              <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Contraseña</label><input required type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="w-full border p-4 rounded-xl bg-slate-50 text-sm" /></div>
+                              <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Rol</label><select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as any})} className="w-full border p-4 rounded-xl bg-slate-50 text-sm font-bold"><option value="user">USER</option><option value="admin">ADMIN</option></select></div>
                           </div>
-                          <div className="p-6 sm:p-8 space-y-4 overflow-y-auto grow">
-                              <div className="flex justify-center mb-4">
-                                  <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                                      <div className="h-20 w-20 rounded-full border-4 border-slate-100 overflow-hidden bg-slate-50 flex items-center justify-center group-hover:border-blue-400 transition-colors shadow-inner">
-                                          {newUser.avatar ? <img src={newUser.avatar} className="h-full w-full object-cover" alt="" /> : <UserIcon className="h-8 w-8 text-slate-300" />}
-                                      </div>
-                                      <div className="absolute bottom-0 right-0 bg-blue-600 p-1.5 rounded-full text-white shadow-lg"><CameraIcon className="w-3 h-3" /></div>
-                                      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageChange(e, 'add')} />
-                                  </div>
-                              </div>
-                              <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Nombre</label><input required value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50 text-sm" /></div>
-                              <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Usuario / Email</label><input required value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50 text-sm" /></div>
-                              <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Contraseña</label><input required type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50 text-sm" /></div>
-                              <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Rol</label>
-                                <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as any})} className="w-full border p-3 rounded-xl bg-slate-50 text-sm font-bold">
-                                    <option value="user">USER</option>
-                                    <option value="admin">ADMIN</option>
-                                </select>
-                              </div>
-                          </div>
-                          <div className="p-6 bg-slate-50 border-t flex gap-3 shrink-0">
-                              <button type="button" onClick={() => setShowAddUserModal(false)} className="flex-1 py-3 font-bold text-slate-400 hover:text-slate-600">Cancelar</button>
-                              <button type="submit" className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700">Crear</button>
-                          </div>
+                          <div className="p-8 bg-slate-50 border-t flex gap-3 shrink-0"><button type="button" onClick={() => setShowAddUserModal(false)} className="flex-1 py-4 font-bold text-slate-400 hover:text-slate-600">Cancelar</button><button type="submit" className="flex-1 py-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700">Crear</button></div>
                       </form>
                   )}
 
                   {showPermissionsModal && (
                       <div className="flex flex-col h-full overflow-hidden">
-                          <div className="p-6 border-b flex justify-between items-center bg-slate-50 shrink-0">
-                              <h4 className="text-xl font-black text-slate-800">{t('modalPermissionsTitle')}</h4>
-                              <button onClick={toggleSelectAll} className="text-xs font-black text-blue-600 uppercase tracking-widest">Select All</button>
+                          <div className="p-8 border-b flex justify-between items-center bg-slate-50 shrink-0"><h4 className="text-xl font-black text-slate-800">{t('modalPermissionsTitle')}</h4><button onClick={toggleSelectAll} className="text-xs font-black text-blue-600 uppercase tracking-widest">Select All</button></div>
+                          <div className="p-8 overflow-y-auto grow grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {COUNTRIES.map(c => (<label key={c.code} className={`flex items-center gap-3 p-4 border-2 rounded-xl transition-all cursor-pointer ${tempAllowedCountries.includes(c.code) ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100'}`}><input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked={tempAllowedCountries.includes(c.code)} onChange={() => setTempAllowedCountries(prev => prev.includes(c.code) ? prev.filter(x => x !== c.code) : [...prev, c.code])} /><span className="text-sm font-bold truncate">{c.name}</span></label>))}
+                              <label className={`flex items-center gap-3 p-4 border-2 rounded-xl sm:col-span-2 transition-all cursor-pointer ${tempAllowedCountries.includes(DHL_DATA.code) ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100'}`}><input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500" checked={tempAllowedCountries.includes(DHL_DATA.code)} onChange={() => setTempAllowedCountries(prev => prev.includes(DHL_DATA.code) ? prev.filter(x => x !== DHL_DATA.code) : [...prev, DHL_DATA.code])} /><span className="text-sm font-black uppercase tracking-tighter italic">DHL GLOBAL MONITOR</span></label>
                           </div>
-                          <div className="p-6 sm:p-8 overflow-y-auto grow grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              {COUNTRIES.map(c => (
-                                  <label key={c.code} className={`flex items-center gap-3 p-3 border-2 rounded-xl transition-all cursor-pointer ${tempAllowedCountries.includes(c.code) ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100'}`}>
-                                      <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked={tempAllowedCountries.includes(c.code)} onChange={() => setTempAllowedCountries(prev => prev.includes(c.code) ? prev.filter(x => x !== c.code) : [...prev, c.code])} />
-                                      <span className="text-sm font-bold truncate">{c.name}</span>
-                                  </label>
-                              ))}
-                              <label className={`flex items-center gap-3 p-3 border-2 rounded-xl sm:col-span-2 transition-all cursor-pointer ${tempAllowedCountries.includes(DHL_DATA.code) ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100'}`}>
-                                  <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500" checked={tempAllowedCountries.includes(DHL_DATA.code)} onChange={() => setTempAllowedCountries(prev => prev.includes(DHL_DATA.code) ? prev.filter(x => x !== DHL_DATA.code) : [...prev, DHL_DATA.code])} />
-                                  <span className="text-sm font-black uppercase tracking-tighter italic">DHL GLOBAL MONITOR</span>
-                              </label>
-                          </div>
-                          <div className="p-6 border-t flex gap-3 bg-slate-50 shrink-0">
-                              <button onClick={() => setShowPermissionsModal(false)} className="flex-1 py-3 text-slate-400 font-bold hover:text-slate-600">Cancelar</button>
-                              <button onClick={savePermissions} className="flex-1 py-3 bg-[#0b1626] text-white rounded-xl font-bold shadow-lg">Guardar</button>
-                          </div>
+                          <div className="p-8 border-t flex gap-3 bg-slate-50 shrink-0"><button onClick={() => setShowPermissionsModal(false)} className="flex-1 py-4 text-slate-400 font-bold hover:text-slate-600">Cancelar</button><button onClick={savePermissions} className="flex-1 py-4 bg-[#0b1626] text-white rounded-xl font-bold shadow-lg">Guardar</button></div>
                       </div>
                   )}
                   
                   {showPasswordModal && (
-                      <form onSubmit={handleSavePassword} className="p-6 sm:p-8 space-y-6">
-                           <div className="flex justify-between items-center mb-2">
-                               <h4 className="text-xl font-black text-slate-800 tracking-tight">{t('changePasswordTitle')}</h4>
-                               <button type="button" onClick={() => setShowPasswordModal(false)} className="text-slate-400 hover:text-slate-600"><XIcon className="w-6 h-6"/></button>
+                      <form onSubmit={handleSavePassword} className="p-10 space-y-4">
+                           <h4 className="text-2xl font-black text-[#0d1a2e] mb-8">Cambiar Contraseña: {passwordEditingUser}</h4>
+                           <div className="relative">
+                               <input 
+                                 required 
+                                 type="text" 
+                                 placeholder="Nueva Contraseña"
+                                 value={newPasswordValue} 
+                                 onChange={e => setNewPasswordValue(e.target.value)} 
+                                 className="w-full border-2 border-[#3b82f6]/30 p-4 rounded-xl bg-white text-slate-800 text-lg focus:border-[#3b82f6] outline-none transition-all"
+                               />
                            </div>
-                           <div className="space-y-4">
-                               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Nueva clave para: <span className="text-slate-700">{passwordEditingUser}</span></p>
-                               <input required type="password" value={newPasswordValue} onChange={e => setNewPasswordValue(e.target.value)} className="w-full border-2 p-4 rounded-xl bg-slate-50 font-mono text-center text-xl focus:border-amber-500 outline-none" placeholder="••••••••" />
-                           </div>
-                           <div className="flex gap-3">
-                               <button type="button" onClick={() => setShowPasswordModal(false)} className="flex-1 py-3 font-bold text-slate-400">Cancelar</button>
-                               <button type="submit" className="flex-1 py-3 bg-amber-500 text-white rounded-xl font-bold shadow-lg">Actualizar</button>
+                           <div className="flex justify-end items-center gap-8 mt-10">
+                               <button 
+                                 type="button" 
+                                 onClick={() => setShowPasswordModal(false)} 
+                                 className="text-slate-500 font-bold hover:text-slate-700 transition-colors text-lg"
+                               >
+                                 Cancelar
+                               </button>
+                               <button 
+                                 type="submit" 
+                                 className="bg-[#2563eb] text-white px-10 py-3 rounded-xl font-bold text-lg shadow-xl shadow-blue-500/20 hover:bg-blue-700 transition-all active:scale-95"
+                               >
+                                 Actualizar
+                               </button>
                            </div>
                       </form>
                   )}
                   
                   {showEditUserModal && editUserData && (
-                      <form onSubmit={handleUpdateUser} className="flex flex-col h-full overflow-hidden">
-                          <div className="bg-[#0b1626] p-6 flex justify-between items-center shrink-0">
-                              <h4 className="text-xl font-bold text-white">{t('editUserTitle')}</h4>
-                              <button type="button" onClick={() => setShowEditUserModal(false)} className="text-white/60 hover:text-white shrink-0"><XIcon className="w-6 h-6"/></button>
+                      <form onSubmit={handleUpdateUser} className="p-10 space-y-6">
+                          <h4 className="text-3xl font-black text-[#1e293b] tracking-tight mb-2">Editar Usuario</h4>
+                          
+                          <div className="flex justify-center my-10">
+                              <div className="relative cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                                  <div className="h-32 w-32 rounded-full border-4 border-white overflow-hidden bg-slate-50 flex items-center justify-center shadow-xl ring-1 ring-slate-100">
+                                      {editUserData.avatar ? <img src={editUserData.avatar} className="h-full w-full object-cover" alt="" /> : <UserIcon className="h-12 w-12 text-slate-300" />}
+                                  </div>
+                                  <div className="absolute bottom-2 right-2 bg-[#2563eb] p-2.5 rounded-full text-white shadow-lg border-4 border-white">
+                                      <CameraIcon className="w-4 h-4" />
+                                  </div>
+                                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageChange(e, 'edit')} />
+                              </div>
                           </div>
-                          <div className="p-6 sm:p-8 space-y-4 overflow-y-auto grow">
-                               <div className="flex justify-center mb-4">
-                                  <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                                      <div className="h-20 w-20 rounded-full border-4 border-slate-100 overflow-hidden bg-slate-50 flex items-center justify-center group-hover:border-blue-400 transition-colors shadow-inner">
-                                          {editUserData.avatar ? <img src={editUserData.avatar} className="h-full w-full object-cover" alt="" /> : <UserIcon className="h-8 w-8 text-slate-300" />}
+
+                          <div className="space-y-6">
+                              <div className="space-y-2">
+                                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">NOMBRE</label>
+                                  <input required value={editUserData.name} onChange={e => setEditUserData({...editUserData, name: e.target.value})} className="w-full border border-slate-200 p-4 rounded-xl bg-white text-slate-800 text-[16px] font-medium outline-none focus:ring-1 focus:ring-blue-500" />
+                              </div>
+                              <div className="space-y-2">
+                                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">USUARIO</label>
+                                  <input disabled value={editUserData.username} className="w-full border border-slate-200 p-4 rounded-xl bg-white text-slate-800 text-[16px] font-medium outline-none" />
+                              </div>
+                              <div className="space-y-2">
+                                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ROL</label>
+                                  <div className="relative">
+                                      <select value={editUserData.role} onChange={e => setEditUserData({...editUserData, role: e.target.value as any})} className="w-full border border-slate-200 p-4 rounded-xl bg-white text-slate-800 text-[16px] font-medium outline-none appearance-none">
+                                          <option value="user">User</option>
+                                          <option value="admin">Admin</option>
+                                      </select>
+                                      <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+                                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                       </div>
-                                      <div className="absolute bottom-0 right-0 bg-blue-600 p-1.5 rounded-full text-white shadow-lg"><CameraIcon className="w-3 h-3" /></div>
-                                      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageChange(e, 'edit')} />
                                   </div>
                               </div>
-                              <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Nombre</label><input required value={editUserData.name} onChange={e => setEditUserData({...editUserData, name: e.target.value})} className="w-full border p-3 rounded-xl bg-slate-50 text-sm" /></div>
-                              <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Usuario</label><input disabled value={editUserData.username} className="w-full border p-3 rounded-xl bg-slate-100 text-slate-400 text-sm" /></div>
-                              <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Rol</label>
-                                <select value={editUserData.role} onChange={e => setEditUserData({...editUserData, role: e.target.value as any})} className="w-full border p-3 rounded-xl bg-slate-50 text-sm font-bold">
-                                    <option value="user">USER</option>
-                                    <option value="admin">ADMIN</option>
-                                </select>
-                              </div>
                           </div>
-                          <div className="p-6 bg-slate-50 border-t flex gap-3 shrink-0">
-                              <button type="button" onClick={() => setShowEditUserModal(false)} className="flex-1 py-3 font-bold text-slate-400">Cancelar</button>
-                              <button type="submit" className="flex-1 py-3 bg-[#0b1626] text-white rounded-xl font-bold shadow-lg">Actualizar</button>
+
+                          <div className="flex justify-end items-center gap-8 mt-12">
+                              <button type="button" onClick={() => setShowEditUserModal(false)} className="text-slate-500 font-bold hover:text-slate-700 transition-colors text-lg">Cancelar</button>
+                              <button type="submit" className="bg-[#2563eb] text-white px-12 py-4 rounded-xl font-bold text-lg shadow-xl shadow-blue-500/20 hover:bg-blue-700 transition-all active:scale-95">Actualizar</button>
                           </div>
                       </form>
                   )}
