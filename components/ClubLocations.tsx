@@ -20,51 +20,31 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
   const { t } = useLanguage();
   const isDhl = country.code === 'dhl';
 
-  // Use full bleed layout ONLY for DHL
-  const containerClass = isDhl ? 'rounded-xl overflow-hidden' : '';
-  // Responsive padding: smaller on mobile
-  const paddingClass = isDhl ? 'p-4 sm:p-8 md:p-12' : '';
-
   return (
-    <div className={`relative w-full ${containerClass}`}>
-      {/* Background Image for DHL */}
-      {isDhl && (
-        <>
-           <div 
-             className="absolute inset-0 z-0"
-             style={{
-               backgroundImage: `url('https://www.freightwaves.com/wp-content/uploads/2025/08/05/DHL-Post-EVs_1.jpg')`,
-               backgroundSize: 'cover',
-               backgroundPosition: 'center',
-               backgroundRepeat: 'no-repeat',
-             }}
-           />
-           {/* Overlay with very low opacity (20%) to keep the image sharp and clear */}
-           <div className="absolute inset-0 z-0 bg-white/20" />
-        </>
-      )}
-
-      {/* Content */}
-      <div className={`relative z-10 ${paddingClass}`}>
-        <div className="flex justify-center items-center mb-8">
+    <div className="relative w-full">
+      <div className="relative z-10">
+        <div className="flex justify-center items-center mb-10">
           {isDhl ? (
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-black italic text-[#D40511] tracking-tighter drop-shadow-md text-center">
-              {country.name}
-            </h2>
+            <div className="flex items-center gap-4 py-4">
+              <span className="text-[#D40511] text-3xl sm:text-5xl font-black italic tracking-tighter">
+                DHL GLOBAL
+              </span>
+            </div>
           ) : (
-            <>
+            <div className="flex items-center gap-4">
               <img
                 src={`https://flagcdn.com/w40/${country.code}.png`}
                 alt={`${country.name} flag`}
-                className="w-8 h-auto md:w-10 mr-3 md:mr-4 rounded-sm shadow-md"
+                className="w-8 h-auto md:w-10 rounded-sm shadow-md"
               />
-              <h2 className="text-xl sm:text-2xl md:text-2xl font-bold text-[#0d1a2e] drop-shadow-sm">
+              <h2 className="text-xl sm:text-2xl md:text-2xl font-bold text-[#0d1a2e]">
                 {country.name}
               </h2>
-            </>
+            </div>
           )}
         </div>
-        <p className={`mb-6 text-center font-bold ${isDhl ? 'text-[#D40511] drop-shadow-sm' : 'text-[#0d1a2e]'}`}>
+
+        <p className={`mb-8 text-center font-bold text-lg ${isDhl ? 'text-[#00172f]' : 'text-[#0d1a2e]'}`}>
           {t('selectClubPrompt')}
         </p>
 
@@ -80,10 +60,10 @@ const ClubLocations: React.FC<ClubLocationsProps> = ({
           ))}
         </div>
         
-        <div className="mt-8 text-center">
+        <div className="mt-12 text-center">
           <button
             onClick={onBack}
-            className={`${isDhl ? 'bg-[#D40511] hover:bg-[#b0040e] focus:ring-[#D40511]' : 'bg-[#0d1a2e] hover:bg-[#1a2b4e] focus:ring-[#0d1a2e]'} text-white font-semibold py-2 px-6 rounded-lg shadow-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+            className={`${isDhl ? 'bg-[#D40511] hover:bg-[#b0040e]' : 'bg-[#0d1a2e] hover:bg-[#1a2b4e]'} text-white font-black py-3 px-10 rounded-xl shadow-lg transition-all active:scale-95 uppercase tracking-widest text-xs`}
           >
             {t('backButton')}
           </button>

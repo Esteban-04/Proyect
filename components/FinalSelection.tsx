@@ -44,6 +44,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const [cameras, setCameras] = useState<CameraData[]>([]);
 
   const configKey = `config_${country.code}_${clubName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  const isDhl = country.code === 'dhl';
   
   const getBackendUrl = () => {
     const saved = localStorage.getItem('saltex_backend_url');
@@ -125,7 +126,6 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         }
         
         setServers(loadedServers);
-        // Se ELIMINA la verificación inmediata aquí para cumplir con la solicitud
     } catch (e) {
         const defaultServers = (CLUB_SPECIFIC_DEFAULTS[clubName] || []).map(s => ({ ...s, status: 'checking' as const }));
         setServers(defaultServers);
@@ -134,7 +134,6 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
 
   useEffect(() => { loadCloudData(); }, [loadCloudData]);
 
-  // Se mantiene el intervalo de 10 segundos tal como se solicitó
   useEffect(() => {
     const timer = setInterval(() => {
         checkServerStatus(false);
@@ -183,11 +182,22 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
     <div className="w-full flex flex-col items-center relative px-2 py-2 bg-transparent">
       {successMessage && <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] bg-green-500 text-white px-8 py-4 rounded-2xl shadow-2xl font-black animate-bounce text-sm uppercase">{successMessage}</div>}
       
-      <div className="flex flex-col items-center justify-center mb-6 text-center">
-        <div className="flex items-center gap-3 mb-1">
-            <img src={`https://flagcdn.com/w80/${country.code}.png`} className="h-6 rounded-sm" alt="Flag" />
-            <h2 className="text-3xl font-black text-[#0d1a2e] tracking-tight uppercase italic">{clubName}</h2>
-        </div>
+      <div className="flex flex-col items-center justify-center mb-8 text-center">
+        {isDhl ? (
+          <div className="flex items-center gap-5 py-4">
+             <span className="text-[#D40511] text-3xl sm:text-5xl font-black italic tracking-tighter">
+                DHL GLOBAL
+             </span>
+             <h2 className="text-3xl sm:text-5xl font-black text-[#00172f] tracking-tighter leading-none">
+                {clubName.toUpperCase()}
+             </h2>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 mb-1">
+              <img src={`https://flagcdn.com/w80/${country.code}.png`} className="h-6 rounded-sm" alt="Flag" />
+              <h2 className="text-3xl font-black text-[#0d1a2e] tracking-tight uppercase italic">{clubName}</h2>
+          </div>
+        )}
       </div>
       
       <div className="mb-6 w-full flex justify-end max-w-6xl items-center gap-4">
