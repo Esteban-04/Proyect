@@ -31,7 +31,6 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
   const [cloudStatus, setCloudStatus] = useState<'online' | 'offline' | 'checking'>('checking');
 
-  // Estado para el monitoreo global (Mapa)
   const [offlineServers, setOfflineServers] = useState<FlatServer[]>([]);
   const [isCheckingGlobal, setIsCheckingGlobal] = useState(false);
 
@@ -85,7 +84,6 @@ const App: React.FC = () => {
     }
   }, [currentUser]);
 
-  // Lógica para verificar el estado global (Indispensable para el mapa interactivo)
   const checkGlobalStatus = useCallback(async () => {
     if (isCheckingGlobal) return;
     setIsCheckingGlobal(true);
@@ -140,11 +138,11 @@ const App: React.FC = () => {
     syncUsersFromCloud();
   }, []);
 
-  // Activar monitoreo automático cada vez que se entra a PriceSmart o DHL
   useEffect(() => {
     if (isAuthenticated) {
         checkGlobalStatus();
-        const interval = setInterval(checkGlobalStatus, 20000);
+        // INTERVALO DE 10 SEGUNDOS SOLICITADO
+        const interval = setInterval(checkGlobalStatus, 10000);
         return () => clearInterval(interval);
     }
   }, [isAuthenticated, checkGlobalStatus]);

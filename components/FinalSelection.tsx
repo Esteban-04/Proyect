@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Country, ServerDetails } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { XIcon, SearchIcon, EyeIcon, EyeOffIcon, SaveIcon, PlusIcon, TrashIcon, ActivityIcon } from '../assets/icons';
+import { XIcon, SearchIcon, EyeIcon, EyeOffIcon, SaveIcon, PlusIcon, TrashIcon, ActivityIcon, CopyIcon } from '../assets/icons';
 import { CLUB_SPECIFIC_DEFAULTS } from '../config/serverDefaults';
 
 interface CameraData {
@@ -40,6 +40,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const [serverToDelete, setServerToDelete] = useState<number | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+  const [copiedId, setCopiedId] = useState<number | null>(null);
   const [servers, setServers] = useState<ServerDetails[]>([]);
   const [cameras, setCameras] = useState<CameraData[]>([]);
 
@@ -68,7 +69,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         if (cloudRes.ok) {
             const cloudData = await cloudRes.json();
             const updated = listToProcess.map(s => {
-                const res = cloudData.results.find((r: any) => r.id === s.id);
+                const res = cloudData.results.find((r: any) => r.ip === s.ip);
                 return { ...s, status: res ? (res.status as ServerDetails['status']) : 'offline' };
             });
             setServers(updated);
@@ -98,7 +99,6 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
             setCameras([]);
         }
         setServers(loadedServers);
-        // Verificar estado inmediatamente tras cargar
         checkServerStatus(false, loadedServers);
     } catch (e) {
         const defaultServers = (CLUB_SPECIFIC_DEFAULTS[clubName] || []).map(s => ({ ...s, status: 'checking' as const }));
@@ -110,25 +110,33 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   useEffect(() => { loadCloudData(); }, [loadCloudData]);
 
   useEffect(() => {
-    const timer = setInterval(() => { checkServerStatus(false); }, 15000);
+    const timer = setInterval(() => { checkServerStatus(false); }, 10000);
     return () => clearInterval(timer);
   }, [checkServerStatus]);
 
-  const handleSave = async () => {
+  const handleSave = async (updatedServers?: ServerDetails[]) => {
     if (!canEdit) return;
     const backendUrl = getBackendUrl();
     try {
-        const res = await fetch(`${backendUrl}/api/save-config`, {
+        await fetch(`${backendUrl}/api/save-config`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: configKey, servers, cameras })
+            body: JSON.stringify({ key: configKey, servers: updatedServers || servers, cameras })
         });
-        if (res.ok) showSuccess(t('saveSuccess'));
+        showSuccess(t('saveSuccess'));
     } catch (e) { showSuccess("Error"); }
   };
 
   const handleServerFieldChange = (serverId: number, field: keyof ServerDetails, value: string) => {
     setServers(prev => prev.map(s => s.id === serverId ? { ...s, [field]: value } : s));
+  };
+
+  const handleCopyId = (serverId: number, idText: string) => {
+    if (!idText || idText === 'N/A') return;
+    navigator.clipboard.writeText(idText).then(() => {
+        setCopiedId(serverId);
+        setTimeout(() => setCopiedId(null), 2000);
+    });
   };
 
   const showSuccess = (message: string) => {
@@ -144,10 +152,19 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
   const handleAddServer = () => {
       const newId = servers.length > 0 ? Math.max(...servers.map(s => s.id)) + 1 : 1;
       const newName = `${t('serverNamePrefix')} ${String(newId).padStart(2, '0')}`;
-      setServers([...servers, { id: newId, name: newName, ip: '', user: 'administrator', password: 'Completeview!', teamviewerId: '', teamviewerPassword: '', status: 'checking' }]);
+      const updated: ServerDetails[] = [...servers, { id: newId, name: newName, ip: '', user: 'administrator', password: 'Completeview!', teamviewerId: '', teamviewerPassword: '', status: 'checking' }];
+      setServers(updated);
+      handleSave(updated);
   };
 
-  const confirmDeleteServer = () => { if (serverToDelete !== null) { setServers(prev => prev.filter(s => s.id !== serverToDelete)); setServerToDelete(null); } };
+  const confirmDeleteServer = () => { 
+      if (serverToDelete !== null) { 
+          const updated = servers.filter(s => s.id !== serverToDelete);
+          setServers(updated); 
+          setServerToDelete(null); 
+          handleSave(updated);
+      } 
+  };
 
   const inputStyle = "bg-transparent border-none text-white focus:ring-1 focus:ring-blue-500/30 rounded px-1 transition-all outline-none w-full placeholder-white/10";
 
@@ -172,7 +189,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
       <div className="mb-6 w-full flex justify-end max-w-6xl items-center gap-4">
           <button onClick={() => checkServerStatus(true)} disabled={isVerifying} className="flex items-center gap-2 bg-white border border-slate-200 px-5 py-2 rounded-xl shadow-sm hover:bg-slate-50 transition-all group">
             <ActivityIcon className={`w-4 h-4 text-slate-400 group-hover:text-blue-500 ${isVerifying ? 'animate-spin' : ''}`} />
-            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{isVerifying ? t('statusChecking') : t('checkStatusButton')}</span>
+            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{isVerifying ? t('statusChecking') : 'CHECK STATUS (10s)'}</span>
           </button>
       </div>
 
@@ -218,7 +235,30 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                             <div className={`space-y-4 pt-6 border-t border-white/5 ${isFirstAndOdd ? 'md:pt-0 md:border-t-0 md:border-l md:pl-10' : ''}`}>
                                 <div className="flex items-center gap-2 text-slate-500"><TVIcon className="w-4 h-4" /><span className="text-[10px] font-black uppercase tracking-widest leading-none">TeamViewer:</span></div>
                                 <div className="pl-6 space-y-2">
-                                    <div className="flex items-center gap-2"><span className="text-[10px] text-slate-500 font-bold uppercase shrink-0">{t('idLabel')}</span><input value={server.teamviewerId || ''} onChange={(e) => handleServerFieldChange(server.id, 'teamviewerId', e.target.value)} readOnly={!canEdit} placeholder="000 000 000" className={`${inputStyle} text-xl font-black tracking-tight`} /></div>
+                                    <div className="flex items-center justify-between gap-2 group/copy">
+                                        <div className="flex items-center gap-2 w-full">
+                                          <span className="text-[10px] text-slate-500 font-bold uppercase shrink-0">{t('idLabel')}</span>
+                                          <input 
+                                            value={server.teamviewerId || ''} 
+                                            onChange={(e) => handleServerFieldChange(server.id, 'teamviewerId', e.target.value)} 
+                                            readOnly={!canEdit} 
+                                            placeholder="000 000 000" 
+                                            className={`${inputStyle} text-xl font-black tracking-tight`} 
+                                          />
+                                        </div>
+                                        <div className="flex items-center gap-2 relative">
+                                          {copiedId === server.id && (
+                                            <span className="absolute -top-8 right-0 bg-blue-500 text-white text-[9px] font-black px-2 py-1 rounded-md shadow-xl animate-bounce uppercase">Copied</span>
+                                          )}
+                                          <button 
+                                            onClick={() => handleCopyId(server.id, server.teamviewerId)} 
+                                            className={`p-1.5 rounded-lg transition-all ${copiedId === server.id ? 'bg-blue-500/20 text-blue-400' : 'text-slate-600 hover:text-blue-400 hover:bg-white/5'}`}
+                                            title="Copy TeamViewer ID"
+                                          >
+                                            <CopyIcon className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                    </div>
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-2 w-full"><span className="text-[10px] text-slate-500 font-bold uppercase shrink-0">{t('finalPasswordLabel')}</span><input type={visiblePasswords[`srv_${server.id}_tv`] ? 'text' : 'password'} value={server.teamviewerPassword || ''} onChange={(e) => handleServerFieldChange(server.id, 'teamviewerPassword', e.target.value)} readOnly={!canEdit} className={`${inputStyle} text-sm font-bold tracking-widest`} /></div>
                                         <button onClick={(e) => toggleVisibility(e, `srv_${server.id}_tv`)} className="text-slate-600 hover:text-white transition-colors">{visiblePasswords[`srv_${server.id}_tv`] ? <EyeOffIcon className="h-4 h-4" /> : <EyeIcon className="h-4 h-4" />}</button>
@@ -237,7 +277,7 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
         {canEdit && (
             <>
                 <button onClick={handleAddServer} className="w-full sm:w-56 bg-blue-600 text-white font-black py-3 rounded-xl shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center text-[10px] uppercase tracking-widest gap-2"><PlusIcon className="w-4 h-4" />{t('addServerButton')}</button>
-                <button onClick={handleSave} className="w-full sm:w-48 bg-[#0d1a2e] text-white font-black py-3 rounded-xl shadow-xl hover:bg-slate-800 transition-all flex items-center justify-center text-[10px] uppercase tracking-widest gap-2"><SaveIcon className="w-4 h-4" />{t('saveButton')}</button>
+                <button onClick={() => handleSave()} className="w-full sm:w-48 bg-[#0d1a2e] text-white font-black py-3 rounded-xl shadow-xl hover:bg-slate-800 transition-all flex items-center justify-center text-[10px] uppercase tracking-widest gap-2"><SaveIcon className="w-4 h-4" />{t('saveButton')}</button>
             </>
         )}
       </div>
@@ -249,9 +289,9 @@ const FinalSelection: React.FC<FinalSelectionProps> = ({ country, clubName, onBa
                   <div className="p-8 flex flex-col items-center">
                     <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4"><TrashIcon className="w-8 h-8 text-red-500" /></div>
                     <h3 className="text-xl font-bold text-slate-800 mb-2">Eliminar</h3>
-                    <p className="text-slate-500 text-sm leading-relaxed px-2">¿Está seguro de que desea eliminar este servidor?</p>
+                    <p className="text-slate-500 text-sm leading-relaxed px-6">¿Está seguro de que desea eliminar este servidor?</p>
                   </div>
-                  <div className="flex border-t border-slate-50">
+                  <div className="flex border-t border-slate-50 mt-4">
                       <button onClick={() => setServerToDelete(null)} className="flex-1 py-4 bg-slate-50 text-slate-600 font-bold text-sm hover:bg-slate-100 transition-all border-r border-slate-100">No</button>
                       <button onClick={confirmDeleteServer} className="flex-1 py-4 bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-all">Sí</button>
                   </div>

@@ -13,7 +13,6 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 const DATA_FILE = path.join(__dirname, 'data.json');
 
-// Inicializar base de datos JSON de forma segura
 const initDb = () => {
     try {
         if (!fs.existsSync(DATA_FILE)) {
@@ -52,7 +51,6 @@ const writeDb = (data) => {
     }
 };
 
-// Endpoints para configuraciones
 app.post('/api/save-config', (req, res) => {
     try {
         const { key, servers, cameras } = req.body;
@@ -89,23 +87,18 @@ app.post('/api/save-users', (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', time: new Date().toISOString() });
-});
-
-// MOTOR DE VERIFICACIÓN EN TIEMPO REAL (NUBE)
 app.post('/api/check-status', async (req, res) => {
     const { servers } = req.body;
     if (!servers || !Array.isArray(servers)) return res.status(400).json({ error: "Invalid data" });
 
-    // Ejecución paralela de pings para máxima velocidad
+    // Procesamos en bloques para evitar saturar la VPN
     const results = await Promise.all(servers.map(async (server) => {
         const ip = server.ip?.trim();
         if (!ip || ip === 'N/A' || ip.includes('X') || ip === '0.0.0.0') {
             return { id: server.id, status: 'offline', ip };
         }
         try {
-            // Se usa un timeout agresivo de 1 segundo para reflejar estado real instantáneo
+            // Tiempo de espera reducido a 1s para no colgar la cola de 10s
             const resPing = await ping.promise.probe(ip, { timeout: 1 });
             return { id: server.id, status: resPing.alive ? 'online' : 'offline', ip };
         } catch (e) {
@@ -115,7 +108,6 @@ app.post('/api/check-status', async (req, res) => {
     res.json({ results });
 });
 
-// Servir frontend
 const distPath = path.join(__dirname, 'dist');
 if (fs.existsSync(distPath)) {
     app.use(express.static(distPath));
@@ -125,5 +117,5 @@ if (fs.existsSync(distPath)) {
 }
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 SALTEX Global Cloud Monitor Live on port ${PORT}`);
+    console.log(`🚀 SALTEX Cloud Engine running on port ${PORT}`);
 });
