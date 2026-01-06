@@ -55,20 +55,6 @@ const ServerStatusSummary: React.FC = () => {
         return (saved && saved.trim() !== '') ? saved : window.location.origin;
     };
 
-    const probeLocalVPN = async (ip: string): Promise<'online' | 'offline'> => {
-        if (!ip || ip.includes('X') || ip === 'N/A' || ip === '0.0.0.0') return 'offline';
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
-        try {
-            await fetch(`http://${ip}/favicon.ico?t=${Date.now()}`, { mode: 'no-cors', signal: controller.signal });
-            clearTimeout(timeoutId);
-            return 'online';
-        } catch (e) {
-            clearTimeout(timeoutId);
-            return (e instanceof TypeError) ? 'offline' : 'online';
-        }
-    };
-
     const checkGlobalStatus = useCallback(async (isManual = false) => {
         if (checkingRef.current && !isManual) return;
         checkingRef.current = true;
@@ -76,6 +62,7 @@ const ServerStatusSummary: React.FC = () => {
         const backendUrl = getBackendUrl();
         
         try {
+            // Obtener todas las configuraciones guardadas de la nube
             const cloudRes = await fetch(`${backendUrl}/api/get-all-configs`);
             const allConfigs = cloudRes.ok ? await cloudRes.json() : {};
             let gatheredServers: FlatServer[] = [];
@@ -93,7 +80,9 @@ const ServerStatusSummary: React.FC = () => {
 
             setAllServers(gatheredServers);
 
-            const serversToPing = gatheredServers.filter(s => s.ip && !s.ip.includes('X'));
+            // Filtrar solo los que tienen IP para el ping masivo
+            const serversToPing = gatheredServers.filter(s => s.ip && !s.ip.includes('X') && s.ip !== 'N/A');
+            
             const cloudCheckRes = await fetch(`${backendUrl}/api/check-status`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -104,23 +93,19 @@ const ServerStatusSummary: React.FC = () => {
             const finalOffline: FlatServer[] = [];
             
             for (const s of gatheredServers) {
-                if (!s.ip || s.ip.includes('X')) {
+                if (!s.ip || s.ip.includes('X') || s.ip === 'N/A') {
                     finalOffline.push(s);
                     continue;
                 }
+                // Buscar resultado en lo que devolvió el backend
                 const res = cloudResults.results?.find((r: any) => r.ip === s.ip);
-                let status: ServerDetails['status'] = res ? (res.status as ServerDetails['status']) : 'offline';
-                if (status === 'offline') status = await probeLocalVPN(s.ip);
-                if (status === 'offline') finalOffline.push(s);
+                if (!res || res.status === 'offline') {
+                    finalOffline.push(s);
+                }
             }
 
             setOfflineServers(finalOffline);
             setLastUpdated(new Date().toLocaleTimeString());
-
-            // Auto-report if there are changes and offline servers
-            if (finalOffline.length > 0 && !isManual) {
-                // Logic to avoid spamming reports
-            }
 
             return { total: gatheredServers.length, offline: finalOffline };
         } catch (error) {
@@ -215,7 +200,6 @@ const ServerStatusSummary: React.FC = () => {
                         </div>
 
                         <div className="flex-grow overflow-y-auto p-8 bg-white grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            {/* COLUMNA IZQUIERDA: DESGLOSE POR PAÍS */}
                             <div className="lg:col-span-2 space-y-6">
                                 <h4 className="text-slate-400 font-black text-xs uppercase tracking-[0.2em] flex items-center gap-2 mb-4">
                                     <GlobeIcon className="w-4 h-4" /> Geographical Breakdown
@@ -247,7 +231,6 @@ const ServerStatusSummary: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* COLUMNA DERECHA: REPORTE DE ERRORES E HISTORIAL */}
                             <div className="space-y-6 lg:border-l lg:pl-8">
                                 <div className="flex justify-between items-center mb-4">
                                     <h4 className="text-slate-400 font-black text-xs uppercase tracking-[0.2em] flex items-center gap-2">

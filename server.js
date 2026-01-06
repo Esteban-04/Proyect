@@ -122,12 +122,14 @@ app.post('/api/check-status', async (req, res) => {
     if (!servers || !Array.isArray(servers)) return res.status(400).json({ error: "Invalid data" });
 
     const results = await Promise.all(servers.map(async (server) => {
-        // Ignorar IPs privadas en el ping desde la nube si no hay VPN
-        if (!server.ip || server.ip.startsWith('192.168') || server.ip.startsWith('10.') || server.ip === 'N/A') {
+        // CORRECCIÓN PARA VPN: Ya no ignoramos IPs privadas. 
+        // Si el servidor donde corre este backend tiene acceso a la VPN, el ping funcionará.
+        if (!server.ip || server.ip === 'N/A' || server.ip.includes('X')) {
             return { id: server.id, status: 'offline', ip: server.ip };
         }
         try {
-            const resPing = await ping.promise.probe(server.ip, { timeout: 1 });
+            // Se aumentó el timeout a 2 segundos para dar margen a conexiones VPN lentas
+            const resPing = await ping.promise.probe(server.ip, { timeout: 2 });
             return { id: server.id, status: resPing.alive ? 'online' : 'offline', ip: server.ip };
         } catch (e) {
             return { id: server.id, status: 'offline', ip: server.ip };
