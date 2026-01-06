@@ -62,7 +62,6 @@ const ServerStatusSummary: React.FC = () => {
         const backendUrl = getBackendUrl();
         
         try {
-            // Obtener todas las configuraciones guardadas de la nube
             const cloudRes = await fetch(`${backendUrl}/api/get-all-configs`);
             const allConfigs = cloudRes.ok ? await cloudRes.json() : {};
             let gatheredServers: FlatServer[] = [];
@@ -80,9 +79,7 @@ const ServerStatusSummary: React.FC = () => {
 
             setAllServers(gatheredServers);
 
-            // Filtrar solo los que tienen IP para el ping masivo
             const serversToPing = gatheredServers.filter(s => s.ip && !s.ip.includes('X') && s.ip !== 'N/A');
-            
             const cloudCheckRes = await fetch(`${backendUrl}/api/check-status`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -97,7 +94,6 @@ const ServerStatusSummary: React.FC = () => {
                     finalOffline.push(s);
                     continue;
                 }
-                // Buscar resultado en lo que devolvió el backend
                 const res = cloudResults.results?.find((r: any) => r.ip === s.ip);
                 if (!res || res.status === 'offline') {
                     finalOffline.push(s);
@@ -106,7 +102,6 @@ const ServerStatusSummary: React.FC = () => {
 
             setOfflineServers(finalOffline);
             setLastUpdated(new Date().toLocaleTimeString());
-
             return { total: gatheredServers.length, offline: finalOffline };
         } catch (error) {
             console.error("Global monitor error:", error);
@@ -238,7 +233,6 @@ const ServerStatusSummary: React.FC = () => {
                                     </h4>
                                     <button onClick={() => setReports([])} className="text-slate-300 hover:text-red-500 transition-colors"><TrashIcon className="w-4 h-4"/></button>
                                 </div>
-                                
                                 <div className="space-y-4">
                                     {reports.length === 0 ? (
                                         <div className="bg-slate-50 rounded-2xl p-10 text-center border-2 border-dashed border-slate-100">
@@ -275,7 +269,7 @@ const ServerStatusSummary: React.FC = () => {
                         </div>
 
                         <div className="p-8 border-t bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
-                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest italic">Saltex Security Global Infrastructure Monitor &copy; 2024</p>
+                            <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest italic">SALTEX SECURITY GLOBAL INFRASTRUCTURE MONITOR © 2026</p>
                             <div className="flex gap-4">
                                 <button onClick={() => checkGlobalStatus(true)} disabled={checking} className="bg-white border-2 border-slate-200 text-slate-700 px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2">
                                     <ActivityIcon className={`w-4 h-4 ${checking ? 'animate-spin' : ''}`} /> Scan Now

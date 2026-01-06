@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { User } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { EyeIcon, EyeOffIcon, PlusIcon, GlobeIcon, UserIcon, KeyIcon, PencilIcon, SaveIcon, TrashIcon, CameraIcon, XIcon, ActivityIcon, LockClosedIcon } from '../assets/icons';
-import { COUNTRIES, DHL_DATA, USER_STORAGE_KEY } from '../constants';
+import { EyeIcon, PlusIcon, GlobeIcon, UserIcon, KeyIcon, PencilIcon, TrashIcon, CameraIcon, XIcon } from '../assets/icons';
+import { COUNTRIES, USER_STORAGE_KEY } from '../constants';
 
 interface AdminDashboardProps {
   users: User[];
@@ -13,12 +13,17 @@ interface AdminDashboardProps {
   currentUser: User | null;
 }
 
+const FolderIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-19.5 0A2.25 2.25 0 0 0 2.25 15v4.5a2.25 2.25 0 0 0 2.25 2.25h15a2.25 2.25 0 0 0 2.25-2.25V15a2.25 2.25 0 0 0-2.25-2.25m-19.5 0h19.5" />
+  </svg>
+);
+
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onContinue, onLogout, currentUser }) => {
   const { language, setLanguage, t } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [activeTab, setActiveTab] = useState<'users' | 'alerts'>('users');
-  const [backendStatus, setBackendStatus] = useState<'online' | 'offline'>('offline');
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
@@ -29,120 +34,77 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [newUser, setNewUser] = useState<User>({ name: '', username: '', password: '', role: 'user', avatar: '', isDisabled: false, allowedCountries: [] });
   
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordEditingUser, setPasswordEditingUser] = useState<string | null>(null);
-  const [newPasswordValue, setNewPasswordValue] = useState('');
-  
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [editUserData, setEditUserData] = useState<User | null>(null);
   const [originalUsername, setOriginalUsername] = useState<string>('');
 
-  // Backend config
   const [backendUrl, setBackendUrl] = useState(() => {
       const saved = localStorage.getItem('saltex_backend_url');
       return saved || '';
   });
-
-  const [alertConfig, setAlertConfig] = useState(() => {
-    const saved = localStorage.getItem('saltex_alert_config');
-    return saved ? JSON.parse(saved) : {
-      enabled: false,
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
-      user: '',
-      pass: '',
-      recipient: 'esteban@saltexgroup.com'
-    };
-  });
-
-  useEffect(() => {
-    const checkBackend = async () => {
-        try {
-            const base = backendUrl || window.location.origin;
-            const res = await fetch(`${base}/api/health`);
-            if (res.ok) setBackendStatus('online');
-            else setBackendStatus('offline');
-        } catch (e) { 
-            setBackendStatus('offline'); 
-        }
-    };
-    checkBackend();
-    const interval = setInterval(checkBackend, 30000);
-    return () => clearInterval(interval);
-  }, [backendUrl]);
-
-  const SUPER_ADMIN_USERNAME = 'admin';
-  const displayUsers = [...users].sort((a, _b) => a.username === SUPER_ADMIN_USERNAME ? -1 : 1);
 
   const showSuccess = (message: string) => {
       setSuccessMessage(message);
       setTimeout(() => setSuccessMessage(null), 3000);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, mode: 'add' | 'edit') => {
-      const file = e.target.files?.[0];
-      if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-              const base64String = reader.result as string;
-              if (mode === 'add') {
-                  setNewUser(prev => ({ ...prev, avatar: base64String }));
-              } else if (editUserData) {
-                  setEditUserData(prev => prev ? ({ ...prev, avatar: base64String }) : null);
-              }
-          };
-          reader.readAsDataURL(file);
-      }
-  };
-
-  const handleSaveAll = async () => {
+  const syncToCloud = useCallback(async (currentUsersList: User[]) => {
       localStorage.setItem('saltex_backend_url', backendUrl);
-      localStorage.setItem('saltex_alert_config', JSON.stringify(alertConfig));
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users));
-      
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(currentUsersList));
       try {
           const base = backendUrl || window.location.origin;
           await fetch(`${base}/api/save-users`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ users: users })
+              body: JSON.stringify({ users: currentUsersList })
           });
-          showSuccess(t('globalSaveSuccess'));
       } catch (err) {
-          showSuccess("Error sincronizando con la nube");
+          console.error("Cloud sync failed", err);
       }
+  }, [backendUrl]);
+
+  const handleSaveAll = async () => {
+      await syncToCloud(users);
+      showSuccess(t('globalSaveSuccess'));
   };
 
-  const toggleUserStatus = (username: string) => {
+  const toggleUserStatus = async (username: string) => {
     if (username === SUPER_ADMIN_USERNAME) return;
-    setUsers(prev => prev.map(u => u.username === username ? { ...u, isDisabled: !u.isDisabled } : u));
+    const updated = users.map(u => u.username === username ? { ...u, isDisabled: !u.isDisabled } : u);
+    setUsers(updated);
+    await syncToCloud(updated);
   };
 
   const togglePasswordVisibility = (username: string) => setVisiblePasswords(prev => ({ ...prev, [username]: !prev[username] }));
   
-  const changeUserRole = (username: string, newRole: 'admin' | 'user') => {
+  const changeUserRole = async (username: string, newRole: 'admin' | 'user') => {
       if (username === SUPER_ADMIN_USERNAME) return;
-      setUsers(prev => prev.map(u => u.username === username ? { ...u, role: newRole } : u));
+      const updated = users.map(u => u.username === username ? { ...u, role: newRole } : u);
+      setUsers(updated);
+      await syncToCloud(updated);
   };
 
-  const deleteUser = (username: string) => {
+  const deleteUser = async (username: string) => {
       if (username === SUPER_ADMIN_USERNAME) return;
       if (window.confirm(t('confirmDeleteUser'))) {
-          setUsers(prev => prev.filter(u => u.username !== username));
+          const updated = users.filter(u => u.username !== username);
+          setUsers(updated);
+          await syncToCloud(updated);
           showSuccess(t('userDeleteSuccess'));
       }
   };
 
   const openPermissionsModal = (username: string) => {
-      const user = displayUsers.find(u => u.username === username);
+      const user = users.find(u => u.username === username);
       if (user) { setEditingUser(username); setTempAllowedCountries(user.allowedCountries || []); setShowPermissionsModal(true); }
   };
 
-  const savePermissions = () => {
+  const savePermissions = async () => {
       if (editingUser) {
-          setUsers(prev => prev.map(u => u.username === editingUser ? { ...u, allowedCountries: tempAllowedCountries } : u));
+          const updated = users.map(u => u.username === editingUser ? { ...u, allowedCountries: tempAllowedCountries } : u);
+          setUsers(updated);
           setShowPermissionsModal(false);
+          await syncToCloud(updated);
           showSuccess(t('globalSaveSuccess'));
       }
   };
@@ -156,135 +118,170 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
       }
   };
 
-  const handleUpdateUser = (e: React.FormEvent) => {
+  const handleUpdateUser = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!editUserData) return;
-      setUsers(prev => prev.map(user => user.username === originalUsername ? { ...editUserData } : user));
+      const updated = users.map(user => user.username === originalUsername ? { ...editUserData } : user);
+      setUsers(updated);
       setShowEditUserModal(false);
+      await syncToCloud(updated);
       showSuccess(t('userUpdateSuccess'));
   };
 
-  const handleAddUser = (e: React.FormEvent) => {
+  const handleAddUser = async (e: React.FormEvent) => {
       e.preventDefault();
       if (users.some(u => u.username === newUser.username)) return;
-      setUsers(prev => [...prev, { ...newUser }]);
+      const updated = [...users, { ...newUser }];
+      setUsers(updated);
       setShowAddUserModal(false);
       setNewUser({ name: '', username: '', password: '', role: 'user', avatar: '', isDisabled: false, allowedCountries: [] });
+      await syncToCloud(updated);
       showSuccess(t('userCreateSuccess'));
   };
 
-  const handleSavePassword = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (passwordEditingUser && newPasswordValue) {
-          setUsers(prev => prev.map(user => user.username === passwordEditingUser ? { ...user, password: newPasswordValue } : user));
-          setShowPasswordModal(false);
-          setNewPasswordValue('');
-          showSuccess(t('passwordUpdateSuccess'));
-      }
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'add' | 'edit') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        if (type === 'add') {
+          setNewUser(prev => ({ ...prev, avatar: base64String }));
+        } else if (type === 'edit') {
+          setEditUserData(prev => prev ? { ...prev, avatar: base64String } : null);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  const toggleSelectAll = () => {
-      const allCodes = [...COUNTRIES.map(c => c.code), DHL_DATA.code];
-      setTempAllowedCountries(tempAllowedCountries.length === allCodes.length ? [] : allCodes);
-  };
+  const SUPER_ADMIN_USERNAME = 'admin';
+  const displayUsers = [...users].sort((a, _b) => a.username === SUPER_ADMIN_USERNAME ? -1 : 1);
 
   return (
     <div className="w-full max-w-7xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col h-[95vh] sm:h-[90vh] relative font-sans">
-      {successMessage && <div className="absolute top-24 left-1/2 transform -translate-x-1/2 z-[100] bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg font-bold animate-bounce text-sm">{successMessage}</div>}
+      {successMessage && <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-[100] bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg font-bold animate-bounce text-sm uppercase">{successMessage}</div>}
 
-      {/* HEADER */}
-      <div className="bg-[#0b1626] px-6 sm:px-10 py-8 flex flex-col md:flex-row justify-between items-center gap-6">
-        <div className="flex flex-col text-center md:text-left">
-          <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-none mb-2">Admin Dashboard</h2>
-          <p className="text-[#22d3ee] text-sm sm:text-base font-semibold mb-3">Gestión de usuarios y permisos</p>
-          <div className="flex items-center justify-center md:justify-start gap-2">
-             <UserIcon className="w-4 h-4 text-white/70" />
-             <p className="text-white text-sm">
-               Iniciado como: <span className="font-bold">{currentUser?.name || 'Super Admin'}</span>
+      {/* HEADER EXACTO SEGÚN IMAGEN */}
+      <div className="bg-[#0b1626] px-6 sm:px-10 py-10 flex flex-col md:flex-row justify-between items-center gap-6 shrink-0">
+        <div className="flex flex-col w-full md:w-auto">
+          <h2 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-none mb-1">{t('adminDashboardTitle')}</h2>
+          <p className="text-[#22d3ee] text-base font-medium mb-3">{t('adminDashboardSubtitle')}</p>
+          <div className="flex items-center gap-2">
+             <UserIcon className="w-4 h-4 text-white/50" />
+             <p className="text-white text-xs">
+               {t('loggedInAs')} <span className="font-bold">Super Admin</span>
              </p>
           </div>
         </div>
         
-        <div className="flex flex-wrap justify-center items-center gap-4">
-            <div className="flex items-center text-white/70 text-sm font-bold bg-white/5 px-4 py-2 rounded-lg border border-white/10 mr-2">
-                <button onClick={() => setLanguage('es')} className={`transition-colors ${language === 'es' ? 'text-white bg-white/20 px-2 py-0.5 rounded' : 'hover:text-white'}`}>ES</button>
-                <span className="mx-2 text-white/20">|</span>
-                <button onClick={() => setLanguage('en')} className={`transition-colors ${language === 'en' ? 'text-white bg-white/20 px-2 py-0.5 rounded' : 'hover:text-white'}`}>EN</button>
+        <div className="flex flex-wrap items-center justify-end gap-3 w-full md:w-auto">
+            {/* Cápsula de idioma oscura más pequeña - AJUSTE PARA EVITAR DESPLAZAMIENTO */}
+            <div className="bg-[#1a2b4e] border border-white/10 rounded-lg p-1 flex items-center shrink-0">
+                <button 
+                  onClick={() => setLanguage('es')} 
+                  className={`w-10 py-1.5 text-[10px] font-black rounded-md transition-all ${language === 'es' ? 'bg-[#334155] text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                >
+                  ES
+                </button>
+                <div className="w-px h-3 bg-white/10 mx-1"></div>
+                <button 
+                  onClick={() => setLanguage('en')} 
+                  className={`w-10 py-1.5 text-[10px] font-black rounded-md transition-all ${language === 'en' ? 'bg-[#334155] text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                >
+                  EN
+                </button>
             </div>
 
-            <button onClick={handleSaveAll} className="bg-[#22c55e] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#16a34a] shadow-lg transition-all flex items-center gap-2 group">
-              <SaveIcon className="w-5 h-5 group-hover:scale-110 transition-transform" /> 
-              <span>Guardar Cambios</span>
+            {/* Botón Guardar - VERDE */}
+            <button onClick={handleSaveAll} className="bg-[#2ecc71] text-white px-6 py-3.5 rounded-xl text-sm font-black hover:bg-[#27ae60] transition-all flex items-center gap-2 shadow-lg active:scale-95 whitespace-nowrap">
+              <FolderIcon className="w-5 h-5" /> 
+              <span>{t('saveChangesButton')}</span>
             </button>
 
-            <button onClick={() => setShowAddUserModal(true)} className="bg-[#2563eb] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#1d4ed8] shadow-lg transition-all flex items-center gap-2">
+            {/* Botón Agregar - AZUL */}
+            <button onClick={() => setShowAddUserModal(true)} className="bg-[#2563eb] text-white px-6 py-3.5 rounded-xl text-sm font-black hover:bg-[#1d4ed8] transition-all flex items-center gap-2 shadow-lg active:scale-95 whitespace-nowrap">
               <PlusIcon className="w-5 h-5" /> 
               <span>{t('addUserButton')}</span>
             </button>
 
-            <button onClick={onLogout} className="bg-[#dc2626] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#b91c1c] shadow-lg transition-all">
+            {/* Botón Cerrar Sesión - ROJO INTENSO */}
+            <button onClick={onLogout} className="bg-[#ff0000] text-white px-6 py-3.5 rounded-xl text-sm font-black hover:bg-[#cc0000] transition-all shadow-lg active:scale-95 whitespace-nowrap">
               {t('logoutButton')}
             </button>
 
-            <button onClick={onContinue} className="bg-white text-[#0b1626] px-6 py-2.5 rounded-xl text-sm font-black hover:bg-gray-100 shadow-xl transition-all border border-gray-100">
-              {t('goToAppButton')}
+            {/* Botón Ir a la App - BLANCO */}
+            <button onClick={onContinue} className="bg-white text-[#0b1626] px-8 py-3.5 rounded-xl text-sm font-black hover:bg-slate-100 transition-all shadow-xl active:scale-95 whitespace-nowrap border-none">
+              {t('continueToApp')}
             </button>
         </div>
       </div>
 
-      {/* TABS */}
-      <div className="bg-white px-4 sm:px-8 flex border-b shrink-0">
-          <button onClick={() => setActiveTab('users')} className={`px-4 sm:px-8 py-4 text-xs sm:text-sm font-bold transition-all border-b-4 ${activeTab === 'users' ? 'border-[#0b1626] text-[#0b1626]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{t('usersTab')}</button>
-          <button onClick={() => setActiveTab('alerts')} className={`px-4 sm:px-8 py-4 text-xs sm:text-sm font-bold transition-all border-b-4 ${activeTab === 'alerts' ? 'border-[#0b1626] text-[#0b1626]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{t('alertsTab')}</button>
+      {/* TABS CON TRADUCCIÓN */}
+      <div className="bg-white px-4 sm:px-10 flex border-b shrink-0">
+          <button onClick={() => setActiveTab('users')} className={`px-8 py-5 text-sm font-black transition-all border-b-4 uppercase tracking-widest ${activeTab === 'users' ? 'border-[#0b1626] text-[#0b1626]' : 'border-transparent text-gray-300 hover:text-gray-500'}`}>{t('usersTab')}</button>
+          <button onClick={() => setActiveTab('alerts')} className={`px-8 py-5 text-sm font-black transition-all border-b-4 uppercase tracking-widest ${activeTab === 'alerts' ? 'border-[#0b1626] text-[#0b1626]' : 'border-transparent text-gray-300 hover:text-gray-500'}`}>{t('alertsTab')}</button>
       </div>
 
-      <div className="flex-grow overflow-y-auto bg-[#fbfcfd] p-4 sm:p-8">
+      {/* CONTENIDO PRINCIPAL */}
+      <div className="flex-grow overflow-y-auto bg-[#f8fafc] p-6 sm:p-10">
           {activeTab === 'users' ? (
-              <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto shadow-sm">
+              <div className="bg-white border border-slate-200 rounded-[2rem] overflow-x-auto shadow-sm p-4">
                  <div className="min-w-[900px]">
-                    <table className="min-w-full divide-y divide-gray-100">
+                    <table className="min-w-full divide-y divide-slate-50">
                         <thead>
                             <tr className="bg-white">
-                                <th className="px-6 py-5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('userTableStatus')}</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('userTableName')}</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('userTableEmail')}</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('userTablePassword')}</th>
-                                <th className="px-6 py-5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('userTableRole')}</th>
+                                <th className="px-8 py-6 text-left text-[11px] font-black text-slate-300 uppercase tracking-widest">{t('userTableStatus')}</th>
+                                <th className="px-8 py-6 text-left text-[11px] font-black text-slate-300 uppercase tracking-widest">{t('userTableName')}</th>
+                                <th className="px-8 py-6 text-left text-[11px] font-black text-slate-300 uppercase tracking-widest">{t('userTableEmail')}</th>
+                                <th className="px-8 py-6 text-left text-[11px] font-black text-slate-300 uppercase tracking-widest">{t('userTablePassword')}</th>
+                                <th className="px-8 py-6 text-left text-[11px] font-black text-slate-300 uppercase tracking-widest">{t('userTableRole')}</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50 bg-white">
+                        <tbody className="divide-y divide-slate-50 bg-white">
                             {displayUsers.map(user => {
                                 const isSuper = user.username === SUPER_ADMIN_USERNAME;
                                 return (
-                                    <tr key={user.username} className="hover:bg-gray-50/40 transition-colors group">
-                                        <td className="px-6 py-6">
-                                            <div className="flex items-center gap-3">
-                                                <button onClick={() => toggleUserStatus(user.username)} disabled={isSuper} className={`relative h-6 w-11 rounded-full transition-colors ${!user.isDisabled ? 'bg-[#2ecc71]' : 'bg-gray-200'} disabled:opacity-30 cursor-pointer`}><span className={`absolute left-1 top-1 inline-block h-4 w-4 transform bg-white rounded-full transition-transform ${!user.isDisabled ? 'translate-x-5' : 'translate-x-0'}`} /></button>
-                                                <span className={`text-[13px] font-medium ${!user.isDisabled ? 'text-slate-400' : 'text-slate-300'}`}>{!user.isDisabled ? t('statusActive') : t('statusDisabled')}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-6 whitespace-nowrap">
+                                    <tr key={user.username} className="hover:bg-slate-50/40 transition-colors group">
+                                        <td className="px-8 py-8">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-full bg-[#f1f5f9] border border-gray-200 flex items-center justify-center text-slate-400 shrink-0">{user.avatar ? <img src={user.avatar} className="w-full h-full object-cover rounded-full" alt="" /> : <UserIcon className="w-6 h-6" />}</div>
-                                                <div className="flex flex-col justify-center"><span className="text-[15px] font-bold text-[#0d1a2e] leading-tight">{user.name}</span>{isSuper && <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-0.5">{t('systemAccount')}</span>}</div>
+                                                <button onClick={() => toggleUserStatus(user.username)} disabled={isSuper} className={`relative h-6 w-11 rounded-full transition-colors ${!user.isDisabled ? 'bg-[#2ecc71]' : 'bg-slate-200'} disabled:opacity-30 cursor-pointer`}><span className={`absolute left-1 top-1 inline-block h-4 w-4 transform bg-white rounded-full transition-transform ${!user.isDisabled ? 'translate-x-5' : 'translate-x-0'}`} /></button>
+                                                <span className={`text-[13px] font-medium ${!user.isDisabled ? 'text-slate-400' : 'text-slate-200'}`}>{!user.isDisabled ? t('statusActive') : t('statusDisabled')}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-6 whitespace-nowrap"><span className="text-[14px] font-medium text-slate-400">{user.username}</span></td>
-                                        <td className="px-6 py-6 whitespace-nowrap">
-                                            <div className="flex items-center gap-3"><span className="text-[14px] font-medium text-slate-400 tracking-tight">{visiblePasswords[user.username] ? user.password : '••••••'}</span><button onClick={() => togglePasswordVisibility(user.username)} className="text-slate-300 hover:text-slate-500 transition-colors">{visiblePasswords[user.username] ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}</button></div>
+                                        <td className="px-8 py-8 whitespace-nowrap">
+                                            <div className="flex items-center gap-5">
+                                                <div className="w-11 h-11 rounded-full bg-slate-100 border-2 border-slate-50 flex items-center justify-center text-slate-300 shrink-0 shadow-inner overflow-hidden">{user.avatar ? <img src={user.avatar} className="w-full h-full object-cover" alt="" /> : <UserIcon className="w-6 h-6" />}</div>
+                                                <span className="text-[15px] font-medium text-slate-800 leading-tight">{user.name}</span>
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-6">
+                                        <td className="px-8 py-8 whitespace-nowrap"><span className="text-[14px] font-medium text-slate-400">{user.username}</span></td>
+                                        <td className="px-8 py-8 whitespace-nowrap">
+                                            <div className="flex items-center gap-3">
+                                              <span className="text-[14px] font-medium text-slate-400 tracking-tighter">••••••</span>
+                                              <button onClick={() => togglePasswordVisibility(user.username)} className="text-slate-200 hover:text-slate-400 transition-colors">
+                                                <EyeIcon className="h-4 w-4" />
+                                              </button>
+                                              {!isSuper && (
+                                                <button onClick={() => openEditUserModal(user.username)} className="text-slate-200 hover:text-blue-400 transition-colors ml-2 opacity-0 group-hover:opacity-100">
+                                                  <PencilIcon className="h-4 w-4" />
+                                                </button>
+                                              )}
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-8">
                                             <div className="flex items-center gap-4">
                                                 <div className="relative">
-                                                  <select value={user.role} onChange={e => changeUserRole(user.username, e.target.value as any)} disabled={isSuper} className="appearance-none text-[13px] font-medium text-slate-600 border border-gray-200 rounded-lg bg-white px-4 py-2 pr-10 focus:ring-1 focus:ring-blue-100 outline-none w-36 disabled:bg-slate-50 transition-all cursor-pointer"><option value="admin">{t('roleAdmin')}</option><option value="user">{t('roleUser')}</option></select>
-                                                  <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-300"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
+                                                  <select value={user.role} onChange={e => changeUserRole(user.username, e.target.value as any)} disabled={isSuper} className="appearance-none text-[13px] font-medium text-slate-600 border border-slate-200 rounded-xl bg-white px-5 py-2.5 pr-12 focus:border-blue-500 outline-none w-44 disabled:bg-slate-50 transition-all cursor-pointer">
+                                                      <option value="admin">{t('roleAdmin')}</option>
+                                                      <option value="user">{t('roleUser')}</option>
+                                                  </select>
+                                                  <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-300"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
                                                 </div>
                                                 {!isSuper && (
                                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                                                        {user.role === 'user' && <button onClick={() => openPermissionsModal(user.username)} className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all" title="Países"><GlobeIcon className="w-5 h-5" /></button>}
-                                                        <button onClick={() => openEditUserModal(user.username)} className="p-2 text-slate-300 hover:text-blue-400 hover:bg-blue-50 rounded-lg" title="Editar"><PencilIcon className="w-5 h-5" /></button>
-                                                        <button onClick={() => { setPasswordEditingUser(user.username); setShowPasswordModal(true); }} className="p-2 text-slate-300 hover:text-amber-400 hover:bg-amber-50 rounded-lg" title="Contraseña"><KeyIcon className="w-5 h-5" /></button>
-                                                        <button onClick={() => deleteUser(user.username)} className="p-2 text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-lg" title="Eliminar"><TrashIcon className="w-5 h-5" /></button>
+                                                        {user.role === 'user' && <button onClick={() => openPermissionsModal(user.username)} className="p-3 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all" title={t('btnManageCountries')}><GlobeIcon className="w-5 h-5" /></button>}
+                                                        <button onClick={() => deleteUser(user.username)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title={t('actionDelete')}><TrashIcon className="w-5 h-5" /></button>
                                                     </div>
                                                 )}
                                             </div>
@@ -297,117 +294,54 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, setUsers, onCont
                  </div>
               </div>
           ) : (
-              <div className="max-w-2xl mx-auto space-y-6">
-                  <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl flex items-start gap-4"><ActivityIcon className="w-6 h-6 text-amber-600 shrink-0 mt-1" /><div><p className="text-amber-800 font-bold text-sm">⚠️ Nota Técnica</p><p className="text-amber-700 text-xs mt-1">Si todos los servidores aparecen "Fuera de línea", es probable que el backend necesite acceso a tu red local (VPN/Túnel).</p></div></div>
-                  <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-sm border border-gray-100"><div className="flex items-center space-x-4 mb-8"><div className="bg-blue-50 p-4 rounded-xl text-blue-600 shrink-0"><GlobeIcon className="w-8 h-8" /></div><div><h3 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Backend URL</h3><p className="text-slate-400 text-xs sm:text-sm font-medium">URL de la API de monitoreo.</p></div></div><div className="space-y-4"><input type="text" value={backendUrl} onChange={e => setBackendUrl(e.target.value)} className="w-full bg-slate-50 border border-slate-100 p-4 rounded-xl focus:ring-1 focus:ring-blue-500 outline-none font-mono text-sm" placeholder="Autodetectar URL actual" /></div></div>
-                  <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-sm border border-gray-100"><div className="flex items-center space-x-4 mb-8"><div className="bg-red-50 p-4 rounded-xl text-red-600 shrink-0"><ActivityIcon className="w-8 h-8" /></div><div><h3 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">{t('smtpSettingsTitle')}</h3><p className="text-slate-400 text-xs sm:text-sm font-medium">Alertas por email.</p></div></div><div className="space-y-6"><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-widest">Host SMTP</label><input type="text" value={alertConfig.host} onChange={e => setAlertConfig({...alertConfig, host: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm" /></div><div><label className="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-widest">Puerto</label><input type="number" value={alertConfig.port} onChange={e => setAlertConfig({...alertConfig, port: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm" /></div></div><div><label className="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-widest">Email Destinatario</label><input type="email" value={alertConfig.recipient} onChange={e => setAlertConfig({...alertConfig, recipient: e.target.value})} className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm" /></div><button onClick={handleSaveAll} className="w-full bg-[#0b1626] text-white py-4 rounded-xl font-black text-sm shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"><SaveIcon className="w-5 h-5" />{t('saveChangesButton')}</button></div></div>
+              <div className="max-w-3xl mx-auto space-y-8">
+                  <div className="bg-white p-12 rounded-[2.5rem] shadow-sm border border-slate-100">
+                    <div className="flex items-center space-x-6 mb-10">
+                        <div className="bg-blue-50 p-6 rounded-2xl text-blue-600 shrink-0 shadow-inner"><GlobeIcon className="w-12 h-12" /></div>
+                        <div><h3 className="text-3xl font-black text-slate-800 tracking-tight uppercase italic">Backend URL</h3><p className="text-slate-400 text-sm font-bold">API Global Synchronization.</p></div>
+                    </div>
+                    <div className="space-y-4">
+                        <input type="text" value={backendUrl} onChange={e => setBackendUrl(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 p-6 rounded-2xl focus:border-blue-500 outline-none font-mono text-base shadow-inner transition-all" placeholder="Enter server URL..." />
+                    </div>
+                  </div>
               </div>
           )}
       </div>
 
       {/* MODALES */}
-      {(showAddUserModal || showEditUserModal || showPasswordModal || showPermissionsModal) && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-md">
-              <div className={`bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in duration-200 ${showPasswordModal ? 'border-t-8 border-[#2563eb]' : ''}`}>
+      {(showAddUserModal || showEditUserModal || showPermissionsModal) && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-2 sm:p-4 bg-slate-900/80 backdrop-blur-md">
+              <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in duration-300">
                   {showAddUserModal && (
-                      <form onSubmit={handleAddUser} className="flex flex-col h-full overflow-hidden">
-                          <div className="bg-[#0b1626] p-6 flex justify-between items-center shrink-0"><h4 className="text-xl font-bold text-white">{t('addUserTitle')}</h4><button type="button" onClick={() => setShowAddUserModal(false)} className="text-white/60 hover:text-white shrink-0"><XIcon className="w-6 h-6"/></button></div>
-                          <div className="p-10 space-y-4 overflow-y-auto grow">
-                              <div className="flex justify-center mb-8"><div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}><div className="h-24 w-24 rounded-full border-4 border-slate-100 overflow-hidden bg-slate-50 flex items-center justify-center group-hover:border-blue-400 transition-colors shadow-inner">{newUser.avatar ? <img src={newUser.avatar} className="h-full w-full object-cover" alt="" /> : <UserIcon className="h-10 w-10 text-slate-300" />}</div><div className="absolute bottom-1 right-1 bg-blue-600 p-2 rounded-full text-white shadow-lg border-2 border-white"><CameraIcon className="w-4 h-4" /></div><input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageChange(e, 'add')} /></div></div>
-                              <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Nombre</label><input required value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="w-full border p-4 rounded-xl bg-slate-50 text-sm" /></div>
-                              <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Usuario / Email</label><input required value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} className="w-full border p-4 rounded-xl bg-slate-50 text-sm" /></div>
-                              <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Contraseña</label><input required type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="w-full border p-4 rounded-xl bg-slate-50 text-sm" /></div>
-                              <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Rol</label><select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as any})} className="w-full border p-4 rounded-xl bg-slate-50 text-sm font-bold"><option value="user">USER</option><option value="admin">ADMIN</option></select></div>
+                      <form onSubmit={handleAddUser} className="flex flex-col h-full">
+                          <div className="bg-[#0b1626] p-8 flex justify-between items-center"><h4 className="text-2xl font-black text-white uppercase italic tracking-tighter">{t('addUserTitle')}</h4><button type="button" onClick={() => setShowAddUserModal(false)} className="text-white/40 hover:text-white transition-colors"><XIcon className="w-8 h-8"/></button></div>
+                          <div className="p-10 space-y-6 overflow-y-auto grow">
+                              <div className="flex justify-center mb-10"><div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}><div className="h-32 w-32 rounded-full border-4 border-slate-50 overflow-hidden bg-slate-50 flex items-center justify-center group-hover:border-blue-400 transition-all shadow-xl">{newUser.avatar ? <img src={newUser.avatar} className="h-full w-full object-cover" alt="" /> : <UserIcon className="h-12 w-12 text-slate-200" />}</div><div className="absolute bottom-2 right-2 bg-blue-600 p-3 rounded-full text-white shadow-xl border-4 border-white"><CameraIcon className="w-5 h-5" /></div><input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageChange(e, 'add')} /></div></div>
+                              <div className="space-y-2"><label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('fullNamePlaceholder')}</label><input required value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="w-full border-2 border-slate-100 p-5 rounded-2xl bg-slate-50 text-base font-bold outline-none focus:border-blue-500 transition-all" /></div>
+                              <div className="space-y-2"><label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('usernamePlaceholder')}</label><input required value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} className="w-full border-2 border-slate-100 p-5 rounded-2xl bg-slate-50 text-base font-bold outline-none focus:border-blue-500 transition-all" /></div>
+                              <div className="space-y-2"><label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('passwordPlaceholder')}</label><input required type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="w-full border-2 border-slate-100 p-5 rounded-2xl bg-slate-50 text-base font-bold outline-none focus:border-blue-500 transition-all" /></div>
                           </div>
-                          <div className="p-8 bg-slate-50 border-t flex gap-3 shrink-0"><button type="button" onClick={() => setShowAddUserModal(false)} className="flex-1 py-4 font-bold text-slate-400 hover:text-slate-600">Cancelar</button><button type="submit" className="flex-1 py-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700">Crear</button></div>
+                          <div className="p-10 bg-slate-50 border-t flex gap-4"><button type="button" onClick={() => setShowAddUserModal(false)} className="flex-1 py-5 font-black text-slate-400 uppercase tracking-widest hover:text-slate-600">{t('cancelButton')}</button><button type="submit" className="flex-1 py-5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-700 transition-all">{t('createButton')}</button></div>
                       </form>
                   )}
-
                   {showPermissionsModal && (
-                      <div className="flex flex-col h-full overflow-hidden">
-                          <div className="p-8 border-b flex justify-between items-center bg-slate-50 shrink-0"><h4 className="text-xl font-black text-slate-800">{t('modalPermissionsTitle')}</h4><button onClick={toggleSelectAll} className="text-xs font-black text-blue-600 uppercase tracking-widest">Select All</button></div>
-                          <div className="p-8 overflow-y-auto grow grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              {COUNTRIES.map(c => (<label key={c.code} className={`flex items-center gap-3 p-4 border-2 rounded-xl transition-all cursor-pointer ${tempAllowedCountries.includes(c.code) ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100'}`}><input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked={tempAllowedCountries.includes(c.code)} onChange={() => setTempAllowedCountries(prev => prev.includes(c.code) ? prev.filter(x => x !== c.code) : [...prev, c.code])} /><span className="text-sm font-bold truncate">{c.name}</span></label>))}
-                              <label className={`flex items-center gap-3 p-4 border-2 rounded-xl sm:col-span-2 transition-all cursor-pointer ${tempAllowedCountries.includes(DHL_DATA.code) ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100'}`}><input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500" checked={tempAllowedCountries.includes(DHL_DATA.code)} onChange={() => setTempAllowedCountries(prev => prev.includes(DHL_DATA.code) ? prev.filter(x => x !== DHL_DATA.code) : [...prev, DHL_DATA.code])} /><span className="text-sm font-black uppercase tracking-tighter italic">DHL GLOBAL MONITOR</span></label>
+                      <div className="flex flex-col h-full">
+                          <div className="p-10 border-b flex justify-between items-center bg-slate-50"><h4 className="text-2xl font-black text-slate-800 uppercase italic tracking-tighter">{t('modalPermissionsTitle')}</h4><button onClick={() => setTempAllowedCountries(tempAllowedCountries.length === COUNTRIES.length ? [] : COUNTRIES.map(c => c.code))} className="text-xs font-black text-blue-600 uppercase tracking-widest hover:underline transition-all">{t('selectAll')}</button></div>
+                          <div className="p-10 overflow-y-auto grow grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              {COUNTRIES.map(c => (<label key={c.code} className={`flex items-center gap-4 p-5 border-2 rounded-2xl transition-all cursor-pointer ${tempAllowedCountries.includes(c.code) ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm' : 'bg-white border-slate-50 text-slate-400 hover:border-slate-100'}`}><input type="checkbox" className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500" checked={tempAllowedCountries.includes(c.code)} onChange={() => setTempAllowedCountries(prev => prev.includes(c.code) ? prev.filter(x => x !== c.code) : [...prev, c.code])} /><span className="text-sm font-black uppercase tracking-tight">{c.name}</span></label>))}
                           </div>
-                          <div className="p-8 border-t flex gap-3 bg-slate-50 shrink-0"><button onClick={() => setShowPermissionsModal(false)} className="flex-1 py-4 text-slate-400 font-bold hover:text-slate-600">Cancelar</button><button onClick={savePermissions} className="flex-1 py-4 bg-[#0b1626] text-white rounded-xl font-bold shadow-lg">Guardar</button></div>
+                          <div className="p-10 border-t flex gap-4 bg-slate-50"><button onClick={() => setShowPermissionsModal(false)} className="flex-1 py-5 text-slate-400 font-black uppercase tracking-widest hover:text-slate-600">{t('cancelButton')}</button><button onClick={savePermissions} className="flex-1 py-5 bg-[#0b1626] text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-2xl hover:bg-slate-800 active:scale-95 transition-all">{t('savePermissions')}</button></div>
                       </div>
                   )}
-                  
-                  {showPasswordModal && (
-                      <form onSubmit={handleSavePassword} className="p-10 space-y-4">
-                           <h4 className="text-2xl font-black text-[#0d1a2e] mb-8">Cambiar Contraseña: {passwordEditingUser}</h4>
-                           <div className="relative">
-                               <input 
-                                 required 
-                                 type="text" 
-                                 placeholder="Nueva Contraseña"
-                                 value={newPasswordValue} 
-                                 onChange={e => setNewPasswordValue(e.target.value)} 
-                                 className="w-full border-2 border-[#3b82f6]/30 p-4 rounded-xl bg-white text-slate-800 text-lg focus:border-[#3b82f6] outline-none transition-all"
-                               />
-                           </div>
-                           <div className="flex justify-end items-center gap-8 mt-10">
-                               <button 
-                                 type="button" 
-                                 onClick={() => setShowPasswordModal(false)} 
-                                 className="text-slate-500 font-bold hover:text-slate-700 transition-colors text-lg"
-                               >
-                                 Cancelar
-                               </button>
-                               <button 
-                                 type="submit" 
-                                 className="bg-[#2563eb] text-white px-10 py-3 rounded-xl font-bold text-lg shadow-xl shadow-blue-500/20 hover:bg-blue-700 transition-all active:scale-95"
-                               >
-                                 Actualizar
-                               </button>
-                           </div>
-                      </form>
-                  )}
-                  
                   {showEditUserModal && editUserData && (
-                      <form onSubmit={handleUpdateUser} className="p-10 space-y-6">
-                          <h4 className="text-3xl font-black text-[#1e293b] tracking-tight mb-2">Editar Usuario</h4>
-                          
-                          <div className="flex justify-center my-10">
-                              <div className="relative cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                                  <div className="h-32 w-32 rounded-full border-4 border-white overflow-hidden bg-slate-50 flex items-center justify-center shadow-xl ring-1 ring-slate-100">
-                                      {editUserData.avatar ? <img src={editUserData.avatar} className="h-full w-full object-cover" alt="" /> : <UserIcon className="h-12 w-12 text-slate-300" />}
-                                  </div>
-                                  <div className="absolute bottom-2 right-2 bg-[#2563eb] p-2.5 rounded-full text-white shadow-lg border-4 border-white">
-                                      <CameraIcon className="w-4 h-4" />
-                                  </div>
-                                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageChange(e, 'edit')} />
-                              </div>
-                          </div>
-
+                      <form onSubmit={handleUpdateUser} className="p-12 space-y-8">
+                          <h4 className="text-3xl font-black text-slate-800 uppercase italic tracking-tighter">{t('editUserTitle')}</h4>
+                          <div className="flex justify-center my-10"><div className="relative cursor-pointer" onClick={() => fileInputRef.current?.click()}><div className="h-36 w-36 rounded-full border-4 border-slate-50 overflow-hidden bg-slate-50 flex items-center justify-center shadow-2xl">{editUserData.avatar ? <img src={editUserData.avatar} className="h-full w-full object-cover" alt="" /> : <UserIcon className="h-14 w-14 text-slate-200" />}</div><div className="absolute bottom-2 right-2 bg-blue-600 p-3.5 rounded-full text-white shadow-xl border-4 border-white"><CameraIcon className="w-5 h-5" /></div><input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => handleImageChange(e, 'edit')} /></div></div>
                           <div className="space-y-6">
-                              <div className="space-y-2">
-                                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">NOMBRE</label>
-                                  <input required value={editUserData.name} onChange={e => setEditUserData({...editUserData, name: e.target.value})} className="w-full border border-slate-200 p-4 rounded-xl bg-white text-slate-800 text-[16px] font-medium outline-none focus:ring-1 focus:ring-blue-500" />
-                              </div>
-                              <div className="space-y-2">
-                                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">USUARIO</label>
-                                  <input disabled value={editUserData.username} className="w-full border border-slate-200 p-4 rounded-xl bg-white text-slate-800 text-[16px] font-medium outline-none" />
-                              </div>
-                              <div className="space-y-2">
-                                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ROL</label>
-                                  <div className="relative">
-                                      <select value={editUserData.role} onChange={e => setEditUserData({...editUserData, role: e.target.value as any})} className="w-full border border-slate-200 p-4 rounded-xl bg-white text-slate-800 text-[16px] font-medium outline-none appearance-none">
-                                          <option value="user">User</option>
-                                          <option value="admin">Admin</option>
-                                      </select>
-                                      <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
-                                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-                                      </div>
-                                  </div>
-                              </div>
+                              <div className="space-y-2"><label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('fullNamePlaceholder')}</label><input required value={editUserData.name} onChange={e => setEditUserData({...editUserData, name: e.target.value})} className="w-full border-2 border-slate-100 p-5 rounded-2xl bg-slate-50 text-slate-800 text-base font-bold outline-none focus:border-blue-500" /></div>
+                              <div className="space-y-2"><label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('roleLabel')}</label><select value={editUserData.role} onChange={e => setEditUserData({...editUserData, role: e.target.value as any})} className="w-full border-2 border-slate-100 p-5 rounded-2xl bg-slate-50 text-slate-800 text-base font-black uppercase tracking-widest outline-none appearance-none"><option value="user">{t('roleUser')}</option><option value="admin">{t('roleAdmin')}</option></select></div>
                           </div>
-
-                          <div className="flex justify-end items-center gap-8 mt-12">
-                              <button type="button" onClick={() => setShowEditUserModal(false)} className="text-slate-500 font-bold hover:text-slate-700 transition-colors text-lg">Cancelar</button>
-                              <button type="submit" className="bg-[#2563eb] text-white px-12 py-4 rounded-xl font-bold text-lg shadow-xl shadow-blue-500/20 hover:bg-blue-700 transition-all active:scale-95">Actualizar</button>
-                          </div>
+                          <div className="flex justify-end items-center gap-8 mt-12"><button type="button" onClick={() => setShowEditUserModal(false)} className="text-slate-400 font-black uppercase tracking-widest hover:text-slate-600">{t('cancelButton')}</button><button type="submit" className="bg-blue-600 text-white px-12 py-5 rounded-[1.8rem] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-700 active:scale-95 transition-all">{t('updateButton')}</button></div>
                       </form>
                   )}
               </div>

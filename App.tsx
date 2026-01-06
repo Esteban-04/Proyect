@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Country, User } from './types';
 import { COUNTRIES, DHL_DATA, USER_STORAGE_KEY } from './constants';
 import CountryCard from './components/CountryCard';
@@ -12,6 +12,7 @@ import CodeBackground from './components/CodeBackground';
 import BrandCard from './components/BrandCard';
 import ServerStatusSummary from './components/ServerStatusSummary';
 import MapView from './components/MapView';
+import { UserIcon, GlobeIcon } from './assets/icons';
 
 const App: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
@@ -21,6 +22,7 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
+  const [cloudStatus, setCloudStatus] = useState<'online' | 'offline' | 'checking'>('checking');
 
   const [users, setUsers] = useState<User[]>(() => {
     const requiredUsers: User[] = [
@@ -37,48 +39,68 @@ const App: React.FC = () => {
       let initialUsers: User[] = savedUsers ? JSON.parse(savedUsers) : [];
       requiredUsers.forEach(reqUser => {
           const index = initialUsers.findIndex(u => u.username === reqUser.username);
-          if (index !== -1) initialUsers[index] = { ...initialUsers[index], name: reqUser.name, password: reqUser.password, role: reqUser.role };
-          else initialUsers.push(reqUser);
+          if (index !== -1) {
+              initialUsers[index] = { ...initialUsers[index], name: reqUser.name, password: reqUser.password, role: reqUser.role };
+          } else {
+              initialUsers.push(reqUser);
+          }
       });
       return initialUsers;
     } catch (error) { return requiredUsers; }
   });
 
-  // Efecto para sincronizar usuarios desde la Nube al inicio
-  useEffect(() => {
-    const syncUsersFromCloud = async () => {
-        try {
-            const savedUrl = localStorage.getItem('saltex_backend_url');
-            const base = savedUrl || window.location.origin;
-            const res = await fetch(`${base}/api/get-users`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data.users && data.users.length > 0) {
-                    setUsers(data.users);
-                    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.users));
+  const syncUsersFromCloud = useCallback(async () => {
+    try {
+        setCloudStatus('checking');
+        const savedUrl = localStorage.getItem('saltex_backend_url');
+        const base = savedUrl || window.location.origin;
+        const res = await fetch(`${base}/api/get-users`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.users && data.users.length > 0) {
+                setUsers(data.users);
+                localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.users));
+                setCloudStatus('online');
+                if (currentUser) {
+                    const updatedMe = data.users.find((u: User) => u.username === currentUser.username);
+                    if (updatedMe) setCurrentUser(updatedMe);
                 }
             }
-        } catch (e) {
-            console.warn("Could not sync users from cloud on startup. Using local data.");
+        } else {
+            setCloudStatus('offline');
         }
-    };
+    } catch (e) {
+        setCloudStatus('offline');
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
     syncUsersFromCloud();
   }, []);
 
-  useEffect(() => { localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users)); }, [users]);
+  useEffect(() => { 
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users)); 
+  }, [users]);
 
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [selectedClub, setSelectedClub] = useState<string | null>(null);
 
   const handleLoginSuccess = (user: User, isSuperAdmin: boolean) => {
-    setIsAuthenticated(true); setIsAdmin(isSuperAdmin); setCurrentUser(user);
+    setIsAuthenticated(true); 
+    setIsAdmin(isSuperAdmin); 
+    setCurrentUser(user);
     if (isSuperAdmin) setShowAdminDashboard(true);
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false); setIsAdmin(false); setCurrentUser(null);
-    setShowAdminDashboard(false); setSelectedBrand(null); setSelectedCountry(null); setSelectedClub(null);
+    setIsAuthenticated(false); 
+    setIsAdmin(false); 
+    setCurrentUser(null);
+    setShowAdminDashboard(false); 
+    setSelectedBrand(null); 
+    setSelectedCountry(null); 
+    setSelectedClub(null);
   };
 
   const getFilteredCountries = () => {
@@ -107,7 +129,7 @@ const App: React.FC = () => {
 
   if (showAdminDashboard) return (
         <div className="min-h-screen font-sans flex items-center justify-center p-2 sm:p-4 bg-gray-100">
-             <AdminDashboard users={users} setUsers={setUsers} onContinue={() => setShowAdminDashboard(false)} onLogout={handleLogout} currentUser={currentUser} />
+             <AdminDashboard users={users} setUsers={setUsers} onContinue={() => { setShowAdminDashboard(false); syncUsersFromCloud(); }} onLogout={handleLogout} currentUser={currentUser} />
         </div>
   );
 
@@ -166,15 +188,37 @@ const App: React.FC = () => {
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-4">
                  <h1 className="text-xl md:text-2xl font-black text-white italic tracking-tighter">SALTEX GROUP</h1>
-                 {(isAdmin || (currentUser?.role === 'admin')) && <button onClick={() => setShowAdminDashboard(true)} className="text-[10px] bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full border border-blue-500/30 font-black uppercase tracking-widest">Admin</button>}
+                 {(isAdmin || (currentUser?.role === 'admin')) && (
+                   <div className="flex items-center gap-2">
+                     <button onClick={() => setShowAdminDashboard(true)} className="text-[10px] bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full border border-blue-500/30 font-black uppercase tracking-widest">Admin</button>
+                     <div className={`w-2 h-2 rounded-full ${cloudStatus === 'online' ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : cloudStatus === 'checking' ? 'bg-amber-500 animate-pulse' : 'bg-red-500'}`} title={cloudStatus === 'online' ? 'Cloud Connected' : 'Cloud Offline'}></div>
+                   </div>
+                 )}
             </div>
-            <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
+            
+            <div className="flex items-center gap-2 sm:gap-6 w-full sm:w-auto justify-between sm:justify-end">
                 <ServerStatusSummary />
-                <div className="flex items-center gap-2">
-                    <div className="flex items-center text-white text-[10px] font-black border-l border-white/10 pl-3">
+                
+                <div className="flex items-center gap-4 border-l border-white/10 pl-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full border-2 border-white/20 overflow-hidden bg-slate-800 shadow-inner shrink-0">
+                            {currentUser?.avatar ? (
+                                <img src={currentUser.avatar} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                                <UserIcon className="w-full h-full p-2 text-white/40" />
+                            )}
+                        </div>
+                        <div className="hidden lg:flex flex-col">
+                            <span className="text-white text-[11px] font-black uppercase leading-none tracking-tight">{currentUser?.name?.split(' ')[0]}</span>
+                            <span className="text-blue-400 text-[9px] font-bold uppercase tracking-widest mt-0.5">{currentUser?.role}</span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center text-white text-[10px] font-black bg-white/5 rounded-xl p-1">
                         <button onClick={() => setLanguage('es')} className={`px-2 py-1.5 rounded-lg transition-all ${language === 'es' ? 'bg-white text-[#0d1a2e]' : 'hover:bg-white/10'}`}>ES</button>
                         <button onClick={() => setLanguage('en')} className={`px-2 py-1.5 rounded-lg transition-all ${language === 'en' ? 'bg-white text-[#0d1a2e]' : 'hover:bg-white/10'}`}>EN</button>
                     </div>
+                    
                     <button onClick={handleLogout} className="bg-white text-[#0d1a2e] font-black py-2 px-4 rounded-xl shadow-lg hover:bg-gray-100 text-xs uppercase tracking-tighter active:scale-95 transition-all">{t('logoutButton')}</button>
                 </div>
             </div>
@@ -186,7 +230,7 @@ const App: React.FC = () => {
         </div>
       </main>
       <footer className="py-6 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] bg-white border-t border-gray-100">
-          Saltex Group Monitor &copy; {new Date().getFullYear()}
+          SALTEX SECURITY GLOBAL INFRASTRUCTURE MONITOR © 2026
       </footer>
     </div>
   );
