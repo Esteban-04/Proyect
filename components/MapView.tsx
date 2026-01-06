@@ -1,18 +1,21 @@
-import React, { useState } from 'react';
-import { Country } from '../types';
+
+import React, { useState, useEffect } from 'react';
+import { Country, ServerDetails } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 
 interface MapViewProps {
   countries: Country[];
   selectedCountryCode: string | null;
   onSelectCountry: (country: Country) => void;
+  offlineServers: any[]; // Lista de servidores caídos para calcular estado por país
+  isChecking: boolean;
 }
 
-const MapView: React.FC<MapViewProps> = ({ countries, selectedCountryCode, onSelectCountry }) => {
+const MapView: React.FC<MapViewProps> = ({ countries, selectedCountryCode, onSelectCountry, offlineServers, isChecking }) => {
   const { t } = useLanguage();
   const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
 
-  // Coordenadas calibradas para una visualización óptima de Centroamérica, Caribe y Colombia
+  // Coordenadas calibradas para una visualización óptima
   const markerPositions: Record<string, { x: number, y: number }> = {
     'gt': { x: 130, y: 220 },
     'sv': { x: 155, y: 250 },
@@ -27,10 +30,9 @@ const MapView: React.FC<MapViewProps> = ({ countries, selectedCountryCode, onSel
     'vi': { x: 530, y: 125 },
     'bb': { x: 650, y: 230 },
     'tt': { x: 610, y: 285 },
-    'dhl': { x: 720, y: 60 } // Icono especial de Global/Nube
+    'dhl': { x: 720, y: 60 }
   };
 
-  // Rutas SVG simplificadas que representan las masas de tierra
   const countryPaths: Record<string, string> = {
     'gt': "M110,200 L150,200 L150,240 L120,250 L105,230 Z",
     'sv': "M145,245 L170,245 L170,260 L145,260 Z",
@@ -47,16 +49,28 @@ const MapView: React.FC<MapViewProps> = ({ countries, selectedCountryCode, onSel
     'vi': "M520,115 L560,115 L560,135 L520,135 Z"
   };
 
+  const getCountryStatus = (code: string) => {
+    if (isChecking) return 'checking';
+    const isOffline = offlineServers.some(s => s.countryCode === code || (code === 'dhl' && s.country === 'DHL GLOBAL'));
+    return isOffline ? 'offline' : 'online';
+  };
+
+  const getOfflineCount = (code: string) => {
+    return offlineServers.filter(s => s.countryCode === code || (code === 'dhl' && s.country === 'DHL GLOBAL')).length;
+  };
+
   return (
     <div className="relative w-full aspect-[16/9] bg-[#0b1626] rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl select-none group">
-      {/* HUD de Información Superior */}
+      {/* HUD Superior */}
       <div className="absolute top-8 left-8 z-20 pointer-events-none">
         <div className="bg-white/5 backdrop-blur-xl p-6 rounded-2xl border border-white/10 shadow-2xl">
             <div className="flex items-center gap-3 mb-1">
-                <div className="w-2.5 h-2.5 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_15px_#22d3ee]"></div>
-                <h3 className="text-white font-black text-2xl tracking-tighter uppercase italic leading-none">Global Network Map</h3>
+                <div className={`w-2.5 h-2.5 rounded-full shadow-[0_0_15px] ${isChecking ? 'bg-amber-400 animate-pulse shadow-amber-400' : 'bg-cyan-400 shadow-cyan-400'}`}></div>
+                <h3 className="text-white font-black text-2xl tracking-tighter uppercase italic leading-none">
+                  {isChecking ? 'Verificando VPN...' : 'Estado de Red en Vivo'}
+                </h3>
             </div>
-            <p className="text-cyan-400/40 text-[9px] font-black uppercase tracking-[0.4em]">Infrastructure Monitoring System v2.5</p>
+            <p className="text-cyan-400/40 text-[9px] font-black uppercase tracking-[0.4em]">Sincronización de Infraestructura Global</p>
         </div>
       </div>
 
@@ -74,11 +88,12 @@ const MapView: React.FC<MapViewProps> = ({ countries, selectedCountryCode, onSel
         <rect width="800" height="500" fill="url(#oceanGradient)" />
         <rect width="800" height="500" fill="url(#mapGrid)" />
 
-        {/* Dibujar Tierras */}
+        {/* Capa de Tierras */}
         {Object.keys(countryPaths).map(code => {
           const path = countryPaths[code];
           const isSelected = selectedCountryCode === code;
           const isHovered = hoveredCountry === code;
+          const status = getCountryStatus(code);
 
           return (
             <path
@@ -86,74 +101,90 @@ const MapView: React.FC<MapViewProps> = ({ countries, selectedCountryCode, onSel
               d={path}
               className="transition-all duration-500 cursor-pointer"
               style={{
-                fill: isSelected ? 'rgba(34, 211, 238, 0.2)' : isHovered ? 'rgba(34, 211, 238, 0.1)' : 'rgba(255, 255, 255, 0.03)',
-                stroke: isSelected ? '#22d3ee' : isHovered ? '#67e8f9' : 'rgba(255,255,255,0.1)',
-                strokeWidth: isSelected || isHovered ? 2 : 1
+                fill: status === 'offline' ? 'rgba(239, 68, 68, 0.1)' : isSelected ? 'rgba(34, 211, 238, 0.2)' : isHovered ? 'rgba(34, 211, 238, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                stroke: status === 'offline' ? '#ef4444' : isSelected ? '#22d3ee' : isHovered ? '#67e8f9' : 'rgba(255,255,255,0.1)',
+                strokeWidth: isSelected || isHovered || status === 'offline' ? 2 : 1
               }}
               onMouseEnter={() => setHoveredCountry(code)}
               onMouseLeave={() => setHoveredCountry(null)}
               onClick={() => {
-                const country = countries.find(c => c.code === code);
-                if (country) onSelectCountry(country);
+                const country = countries.find(c => c.code === code) || (code === 'dhl' ? { name: 'DHL GLOBAL', code: 'dhl', count: 5 } : null);
+                if (country) onSelectCountry(country as Country);
               }}
             />
           );
         })}
 
-        {/* Marcadores de Ubicación */}
+        {/* Marcadores Dinámicos */}
         {Object.keys(markerPositions).map(code => {
           const pos = markerPositions[code];
           const isHovered = hoveredCountry === code;
           const isSelected = selectedCountryCode === code;
-          const countryData = countries.find(c => c.code === code) || (code === 'dhl' ? { name: 'DHL GLOBAL', code: 'dhl' } : null);
-
-          if (!countryData) return null;
+          const status = getCountryStatus(code);
+          const offlineCount = getOfflineCount(code);
 
           return (
             <g key={`marker-${code}`} 
-               className="cursor-pointer group/marker" 
-               onClick={() => onSelectCountry(countryData as Country)}
+               className="cursor-pointer" 
+               onClick={() => {
+                 const country = countries.find(c => c.code === code) || (code === 'dhl' ? { name: 'DHL GLOBAL', code: 'dhl', count: 5 } : null);
+                 if (country) onSelectCountry(country as Country);
+               }}
                onMouseEnter={() => setHoveredCountry(code)}
                onMouseLeave={() => setHoveredCountry(null)}
             >
-                {/* Aura de pulso */}
-                <circle cx={pos.x} cy={pos.y} r="25" fill={code === 'dhl' ? '#ef4444' : '#22d3ee'} className={`transition-opacity duration-500 ${isHovered || isSelected ? 'opacity-20 animate-ping' : 'opacity-0'}`} />
+                {/* Aura de alerta o conexión */}
+                <circle 
+                  cx={pos.x} cy={pos.y} r={status === 'offline' ? "35" : "25"} 
+                  fill={status === 'offline' ? '#ef4444' : status === 'checking' ? '#f59e0b' : '#22d3ee'} 
+                  className={`transition-opacity duration-500 ${isHovered || isSelected || status === 'offline' ? 'opacity-20 animate-ping' : 'opacity-0'}`} 
+                />
                 
                 {/* Punto central */}
                 <circle
                     cx={pos.x}
                     cy={pos.y}
-                    r={isSelected ? 8 : 5}
+                    r={isSelected || status === 'offline' ? 8 : 5}
                     className="transition-all duration-300"
-                    fill={isSelected ? '#22d3ee' : isHovered ? '#67e8f9' : code === 'dhl' ? '#ef4444' : '#ffffff'}
-                    fillOpacity={isHovered || isSelected ? 1 : 0.4}
+                    fill={status === 'offline' ? '#ef4444' : status === 'checking' ? '#f59e0b' : isHovered || isSelected ? '#22d3ee' : '#ffffff'}
+                    fillOpacity={isHovered || isSelected || status !== 'online' ? 1 : 0.4}
                     stroke="#0b1626"
                     strokeWidth="2"
                 />
+
+                {/* Contador de fallos si hay offline */}
+                {status === 'offline' && (
+                  <text x={pos.x} y={pos.y - 15} textAnchor="middle" className="fill-red-500 text-[10px] font-black uppercase tracking-tighter">
+                    {offlineCount} FALLOS
+                  </text>
+                )}
             </g>
           );
         })}
       </svg>
 
-      {/* Panel de detalles inferior */}
+      {/* Info Panel flotante */}
       <div className="absolute bottom-8 right-8 flex flex-col items-end gap-4">
          {hoveredCountry && (
-             <div className="bg-[#1e293b]/90 backdrop-blur-2xl px-6 py-4 rounded-2xl border border-white/10 shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                 <div className="w-10 h-7 overflow-hidden rounded shadow-lg shrink-0">
+             <div className="bg-[#1e293b]/95 backdrop-blur-2xl px-6 py-4 rounded-2xl border border-white/10 shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                 <div className="w-10 h-7 overflow-hidden rounded shadow-lg shrink-0 border border-white/10">
                     <img src={`https://flagcdn.com/w80/${hoveredCountry === 'dhl' ? 'un' : hoveredCountry}.png`} className="w-full h-full object-cover" alt="" />
                  </div>
                  <div>
                      <p className="text-white font-black uppercase text-xs tracking-widest leading-none mb-1">
                         {hoveredCountry === 'dhl' ? 'DHL GLOBAL' : countries.find(c => c.code === hoveredCountry)?.name}
                      </p>
-                     <p className="text-cyan-400 font-bold text-[10px] uppercase tracking-wider">
-                        {hoveredCountry === 'dhl' ? 'Red de Carga' : `${countries.find(c => c.code === hoveredCountry)?.count || 0} Sedes Activas`}
-                     </p>
+                     <div className="flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 rounded-full ${getCountryStatus(hoveredCountry) === 'offline' ? 'bg-red-500' : 'bg-green-500'}`}></span>
+                        <p className={`${getCountryStatus(hoveredCountry) === 'offline' ? 'text-red-400' : 'text-cyan-400'} font-bold text-[10px] uppercase tracking-wider`}>
+                           {getCountryStatus(hoveredCountry) === 'offline' ? `${getOfflineCount(hoveredCountry)} Servidores Caídos` : 'Operativo (VPN OK)'}
+                        </p>
+                     </div>
                  </div>
              </div>
          )}
          <div className="bg-white/5 backdrop-blur-md px-6 py-2 rounded-xl border border-white/10 text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">
-             Satellite Telemetry Link : Stable
+             VPN TELEMETRY : {isChecking ? 'SYNCING...' : 'LIVE'}
          </div>
       </div>
     </div>

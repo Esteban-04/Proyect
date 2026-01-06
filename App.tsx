@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Country, User } from './types';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Country, User, ServerDetails } from './types';
 import { COUNTRIES, DHL_DATA, USER_STORAGE_KEY } from './constants';
+import { CLUB_SPECIFIC_DEFAULTS } from './config/serverDefaults';
 import CountryCard from './components/CountryCard';
 import ClubLocations from './components/ClubLocations';
 import FinalSelection from './components/FinalSelection';
@@ -14,6 +15,12 @@ import ServerStatusSummary from './components/ServerStatusSummary';
 import MapView from './components/MapView';
 import { UserIcon, GlobeIcon } from './assets/icons';
 
+interface FlatServer extends ServerDetails {
+    club: string;
+    country: string;
+    countryCode: string;
+}
+
 const App: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
   
@@ -23,6 +30,10 @@ const App: React.FC = () => {
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
   const [cloudStatus, setCloudStatus] = useState<'online' | 'offline' | 'checking'>('checking');
+
+  // Estado para el monitoreo global (Mapa)
+  const [offlineServers, setOfflineServers] = useState<FlatServer[]>([]);
+  const [isCheckingGlobal, setIsCheckingGlobal] = useState(false);
 
   const [users, setUsers] = useState<User[]>(() => {
     const requiredUsers: User[] = [
@@ -74,9 +85,69 @@ const App: React.FC = () => {
     }
   }, [currentUser]);
 
+  // Lógica para verificar el estado global (Indispensable para el mapa interactivo)
+  const checkGlobalStatus = useCallback(async () => {
+    if (isCheckingGlobal) return;
+    setIsCheckingGlobal(true);
+    const backendUrl = localStorage.getItem('saltex_backend_url') || window.location.origin;
+    
+    try {
+        const cloudRes = await fetch(`${backendUrl}/api/get-all-configs`);
+        const allConfigs = cloudRes.ok ? await cloudRes.json() : {};
+        let gatheredServers: FlatServer[] = [];
+
+        const processClub = (countryName: string, countryCode: string, club: string) => {
+            const configKey = `config_${countryCode}_${club.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const config = allConfigs[configKey] || { servers: CLUB_SPECIFIC_DEFAULTS[club] || [] };
+            config.servers.forEach((s: any) => {
+                gatheredServers.push({ ...s, club, country: countryName, countryCode } as FlatServer);
+            });
+        };
+
+        COUNTRIES.forEach(c => c.clubs?.forEach(club => processClub(c.name, c.code, club)));
+        DHL_DATA.clubs?.forEach(club => processClub('DHL GLOBAL', DHL_DATA.code, club));
+
+        const serversToPing = gatheredServers.filter(s => s.ip && !s.ip.includes('X') && s.ip !== 'N/A');
+        const cloudCheckRes = await fetch(`${backendUrl}/api/check-status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ servers: serversToPing.map((s, i) => ({ id: i, ip: s.ip })) })
+        }).catch(() => null);
+
+        const cloudResults = cloudCheckRes && cloudCheckRes.ok ? await cloudCheckRes.json() : { results: [] };
+        const finalOffline: FlatServer[] = [];
+        
+        for (const s of gatheredServers) {
+            if (!s.ip || s.ip.includes('X') || s.ip === 'N/A') {
+                finalOffline.push(s);
+                continue;
+            }
+            const res = cloudResults.results?.find((r: any) => r.ip === s.ip);
+            if (!res || res.status === 'offline') {
+                finalOffline.push(s);
+            }
+        }
+
+        setOfflineServers(finalOffline);
+    } catch (error) {
+        console.error("Global monitor error:", error);
+    } finally {
+        setIsCheckingGlobal(false);
+    }
+  }, [isCheckingGlobal]);
+
   useEffect(() => {
     syncUsersFromCloud();
   }, []);
+
+  // Activar monitoreo automático cada vez que se entra a PriceSmart o DHL
+  useEffect(() => {
+    if (isAuthenticated) {
+        checkGlobalStatus();
+        const interval = setInterval(checkGlobalStatus, 20000);
+        return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, checkGlobalStatus]);
 
   useEffect(() => { 
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users)); 
@@ -163,7 +234,13 @@ const App: React.FC = () => {
                   {colombia && <div className="mt-4"><CountryCard country={colombia} isSelected={false} onSelect={setSelectedCountry} /></div>}
               </div>
           ) : (
-              <MapView countries={visibleCountries} selectedCountryCode={null} onSelectCountry={setSelectedCountry} />
+              <MapView 
+                countries={visibleCountries} 
+                selectedCountryCode={null} 
+                onSelectCountry={setSelectedCountry} 
+                offlineServers={offlineServers}
+                isChecking={isCheckingGlobal}
+              />
           )}
           
           <div className="mt-12 text-center">
