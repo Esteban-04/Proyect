@@ -52,19 +52,16 @@ const writeDb = (data) => {
     }
 };
 
-// Endpoints para configuraciones de Sedes/Clubs
+// Endpoints para configuraciones
 app.post('/api/save-config', (req, res) => {
     try {
         const { key, servers, cameras } = req.body;
         if (!key) return res.status(400).json({ error: "Key missing" });
-        
         const db = readDb();
         db.configs[key] = { servers, cameras, timestamp: Date.now() };
         writeDb(db);
         res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/get-config/:key', (req, res) => {
@@ -77,7 +74,6 @@ app.get('/api/get-all-configs', (req, res) => {
     res.json(db.configs || {});
 });
 
-// Endpoints para Usuarios
 app.get('/api/get-users', (req, res) => {
     const db = readDb();
     res.json({ users: db.users });
@@ -90,55 +86,36 @@ app.post('/api/save-users', (req, res) => {
         db.users = users;
         writeDb(db);
         res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Endpoints para Alertas
-app.get('/api/get-alert-config', (req, res) => {
-    const db = readDb();
-    res.json({ config: db.alertConfig });
-});
-
-app.post('/api/config-alerts', (req, res) => {
-    try {
-        const { config } = req.body;
-        const db = readDb();
-        db.alertConfig = config;
-        writeDb(db);
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
+// MOTOR DE VERIFICACIÓN EN TIEMPO REAL (NUBE)
 app.post('/api/check-status', async (req, res) => {
     const { servers } = req.body;
     if (!servers || !Array.isArray(servers)) return res.status(400).json({ error: "Invalid data" });
 
+    // Ejecución paralela de pings para máxima velocidad
     const results = await Promise.all(servers.map(async (server) => {
-        // CORRECCIÓN PARA VPN: Ya no ignoramos IPs privadas. 
-        // Si el servidor donde corre este backend tiene acceso a la VPN, el ping funcionará.
-        if (!server.ip || server.ip === 'N/A' || server.ip.includes('X')) {
-            return { id: server.id, status: 'offline', ip: server.ip };
+        const ip = server.ip?.trim();
+        if (!ip || ip === 'N/A' || ip.includes('X') || ip === '0.0.0.0') {
+            return { id: server.id, status: 'offline', ip };
         }
         try {
-            // Se aumentó el timeout a 2 segundos para dar margen a conexiones VPN lentas
-            const resPing = await ping.promise.probe(server.ip, { timeout: 2 });
-            return { id: server.id, status: resPing.alive ? 'online' : 'offline', ip: server.ip };
+            // Se usa un timeout agresivo de 1 segundo para reflejar estado real instantáneo
+            const resPing = await ping.promise.probe(ip, { timeout: 1 });
+            return { id: server.id, status: resPing.alive ? 'online' : 'offline', ip };
         } catch (e) {
-            return { id: server.id, status: 'offline', ip: server.ip };
+            return { id: server.id, status: 'offline', ip };
         }
     }));
     res.json({ results });
 });
 
-// Servir frontend si existe
+// Servir frontend
 const distPath = path.join(__dirname, 'dist');
 if (fs.existsSync(distPath)) {
     app.use(express.static(distPath));
@@ -148,5 +125,5 @@ if (fs.existsSync(distPath)) {
 }
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 SALTEX Monitor Backend stable on port ${PORT}`);
+    console.log(`🚀 SALTEX Global Cloud Monitor Live on port ${PORT}`);
 });
